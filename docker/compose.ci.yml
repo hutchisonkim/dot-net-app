@@ -1,8 +1,11 @@
-version: '3.8'
 services:
   api:
     build:
-      context: ./downloaded-artifacts/api
+      # In CI we download published API artifacts into ../downloaded-artifacts/api
+      # (relative to this compose file which lives in docker/). Use the correct
+      # relative path so the build context resolves. Previously this was
+      # ./downloaded-artifacts/api which incorrectly pointed to docker/downloaded-artifacts.
+      context: ../downloaded-artifacts/api
       dockerfile: docker/Dockerfile.prebuilt.api
     ports:
       - "5000:8080"
@@ -11,7 +14,8 @@ services:
 
   client:
     build:
-      context: ./downloaded-artifacts/client/wwwroot
+      # Published client wwwroot output directory (correct relative path from docker/ folder)
+      context: ../downloaded-artifacts/client/wwwroot
       dockerfile: docker/Dockerfile.prebuilt.client
     ports:
       - "8080:80"
@@ -29,8 +33,8 @@ services:
     depends_on:
       - api
     volumes:
-      - ./downloaded-artifacts/api:/src/DotNetApp.Api:ro
-      - ./downloaded-artifacts/client:/src/DotNetApp.Client:ro
+      - ../downloaded-artifacts/api:/src/DotNetApp.Api:ro
+      - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
       - ./tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests:ro
       - nuget-packages:/root/.nuget/packages
     environment:
@@ -49,7 +53,7 @@ services:
     depends_on:
       - client
     volumes:
-      - ./downloaded-artifacts/client:/src/DotNetApp.Client:ro
+      - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
       - ./tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests:ro
       - nuget-packages:/root/.nuget/packages
     environment:
@@ -69,8 +73,8 @@ services:
       - api
       - client
     volumes:
-      - ./downloaded-artifacts/api:/src/DotNetApp.Api:ro
-      - ./downloaded-artifacts/client:/src/DotNetApp.Client:ro
+      - ../downloaded-artifacts/api:/src/DotNetApp.Api:ro
+      - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
       - ./tests/DotNetApp.E2ETests:/src/DotNetApp.E2ETests:ro
       - nuget-packages:/root/.nuget/packages
     environment:
