@@ -68,17 +68,6 @@ jobs:
           name: client
           path: ./downloaded-artifacts/client
 
-      - name: Inspect downloaded artifacts
-        run: |
-          echo 'Listing downloaded-artifacts root'
-          ls -la ./downloaded-artifacts || true
-          echo 'Listing API artifact (downloaded-artifacts/api)'
-          ls -la ./downloaded-artifacts/api || true
-          echo 'Listing Client artifact (downloaded-artifacts/client)'
-          ls -la ./downloaded-artifacts/client || true
-          echo 'Listing Client wwwroot (downloaded-artifacts/client/wwwroot)'
-          ls -la ./downloaded-artifacts/client/wwwroot || true
-
       - name: Run tests
         run: |
           dotnet test tests/DotNetApp.Api.UnitTests/DotNetApp.Api.UnitTests.csproj -c Debug --no-build --verbosity minimal
@@ -103,17 +92,6 @@ jobs:
         with:
           name: client
           path: ./downloaded-artifacts/client
-
-      - name: Inspect downloaded artifacts
-        run: |
-          echo 'Listing downloaded-artifacts root'
-          ls -la ./downloaded-artifacts || true
-          echo 'Listing API artifact (downloaded-artifacts/api)'
-          ls -la ./downloaded-artifacts/api || true
-          echo 'Listing Client artifact (downloaded-artifacts/client)'
-          ls -la ./downloaded-artifacts/client || true
-          echo 'Listing Client wwwroot (downloaded-artifacts/client/wwwroot)'
-          ls -la ./downloaded-artifacts/client/wwwroot || true
 
       - name: Build and start services and test containers (use prebuilt artifacts)
         run: |
