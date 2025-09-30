@@ -1,8 +1,9 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 ENV ASPNETCORE_URLS="http://+:8080"
-# Copy the published output into the runtime image. The build context MUST be the
-# published output directory (contains DotNetApp.Api.dll and all deps).
-COPY . .
+# In CI we use the repository root as the build context and place the published
+# API output under downloaded-artifacts/api. Only copy that directory to keep
+# the image small and avoid leaking source or test files.
+COPY downloaded-artifacts/api/ ./
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "DotNetApp.Api.dll"]

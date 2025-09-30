@@ -1,6 +1,6 @@
 FROM nginx:alpine
-# Copy the published wwwroot into nginx html root. The build context must be the
-# published client output directory containing the "wwwroot" folder contents.
-COPY . /usr/share/nginx/html/
+# With repository root as build context, copy only the published client static
+# assets (wwwroot) produced into downloaded-artifacts/client/wwwroot.
+COPY downloaded-artifacts/client/wwwroot/ /usr/share/nginx/html/
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

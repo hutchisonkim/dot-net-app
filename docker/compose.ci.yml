@@ -1,11 +1,9 @@
 services:
   api:
     build:
-      # In CI we download published API artifacts into ../downloaded-artifacts/api
-      # (relative to this compose file which lives in docker/). Use the correct
-      # relative path so the build context resolves. Previously this was
-      # ./downloaded-artifacts/api which incorrectly pointed to docker/downloaded-artifacts.
-      context: ../downloaded-artifacts/api
+      # Use the repo root as build context so the Dockerfile (in docker/) is within
+      # the context. The Dockerfile copies published bits from downloaded-artifacts/api.
+      context: ..
       dockerfile: docker/Dockerfile.prebuilt.api
     ports:
       - "5000:8080"
@@ -14,8 +12,9 @@ services:
 
   client:
     build:
-      # Published client wwwroot output directory (correct relative path from docker/ folder)
-      context: ../downloaded-artifacts/client/wwwroot
+      # Use repo root as context so Dockerfile (in docker/) is included. It copies
+      # the published static assets from downloaded-artifacts/client/wwwroot.
+      context: ..
       dockerfile: docker/Dockerfile.prebuilt.client
     ports:
       - "8080:80"
