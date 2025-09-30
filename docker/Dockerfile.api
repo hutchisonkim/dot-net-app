@@ -1,16 +1,19 @@
-# Build stage
+## Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj and restore as distinct layers for better caching
-COPY ["DotNetApp.Api.csproj", "./"]
-RUN dotnet restore "DotNetApp.Api.csproj"
+# Copy project files (API + referenced Core project) first for better layer caching
+COPY src/DotNetApp.Core/DotNetApp.Core.csproj src/DotNetApp.Core/
+COPY src/DotNetApp.Api/DotNetApp.Api.csproj src/DotNetApp.Api/
 
-# Copy everything and publish
+RUN dotnet restore "src/DotNetApp.Api/DotNetApp.Api.csproj"
+
+# Copy the remaining source
 COPY . .
-RUN dotnet publish "DotNetApp.Api.csproj" -c Release -o /app/publish
 
-# Runtime stage
+RUN dotnet publish "src/DotNetApp.Api/DotNetApp.Api.csproj" -c Release -o /app/publish
+
+## Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 ENV ASPNETCORE_URLS="http://+:8080"

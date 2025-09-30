@@ -1,14 +1,16 @@
-# Build stage (publish Blazor WASM)
+## Build stage (publish Blazor WASM)
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj and restore for better cache
-COPY ["DotNetApp.Client.csproj", "./"]
-RUN dotnet restore "DotNetApp.Client.csproj"
+# Copy csproj files (Client + Core) and restore for better cache behavior
+COPY src/DotNetApp.Core/DotNetApp.Core.csproj src/DotNetApp.Core/
+COPY src/DotNetApp.Client/DotNetApp.Client.csproj src/DotNetApp.Client/
+RUN dotnet restore "src/DotNetApp.Client/DotNetApp.Client.csproj"
 
-# Copy remaining sources and publish
+# Copy remaining sources
 COPY . .
-RUN dotnet publish "DotNetApp.Client.csproj" -c Release -o /app/publish
+
+RUN dotnet publish "src/DotNetApp.Client/DotNetApp.Client.csproj" -c Release -o /app/publish
 
 # Nginx stage (serve the generated wwwroot)
 FROM nginx:alpine
@@ -23,7 +25,7 @@ RUN if [ -d /usr/share/nginx/html/wwwroot ]; then \
 		fi
 
 ## Install provided nginx config which proxies /api to backend
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY src/DotNetApp.Client/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

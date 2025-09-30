@@ -2,10 +2,10 @@ services:
 
   api:
     build:
-      context: ./src/DotNetApp.Api
+      context: ..
       dockerfile: docker/Dockerfile.api
     volumes:
-      - ./src/DotNetApp.Api:/src/DotNetApp.Api
+      - ../src/DotNetApp.Api:/src/DotNetApp.Api
     environment:
       - WORKDIR=/src/DotNetApp.Api
     ports:
@@ -15,10 +15,10 @@ services:
 
   client:
     build:
-      context: ./src/DotNetApp.Client
+      context: ..
       dockerfile: docker/Dockerfile.client
     volumes:
-      - ./src/DotNetApp.Client:/src/DotNetApp.Client
+      - ../src/DotNetApp.Client:/src/DotNetApp.Client
     ports:
       - "8080:80"
     depends_on:
@@ -30,14 +30,14 @@ services:
 
   api-integration-tests:
     build:
-      context: ./tests/DotNetApp.Api.IntegrationTests
+      context: ..
       dockerfile: docker/Dockerfile.tests.api-integration
     depends_on:
       - api
     volumes:
-      - ./src/DotNetApp.Api:/src/DotNetApp.Api
-      - ./src/DotNetApp.Client:/src/DotNetApp.Client
-      - ./tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests
+      - ../src/DotNetApp.Api:/src/DotNetApp.Api
+      - ../src/DotNetApp.Client:/src/DotNetApp.Client
+      - ../tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests
       - nuget-packages:/root/.nuget/packages
     environment:
       - WORKDIR=/src/DotNetApp.Api.IntegrationTests
@@ -48,13 +48,13 @@ services:
 
   client-integration-tests:
     build:
-      context: ./tests/DotNetApp.Client.IntegrationTests
+      context: ..
       dockerfile: docker/Dockerfile.tests.client-integration
     depends_on:
       - client
     volumes:
-      - ./src/DotNetApp.Client:/src/DotNetApp.Client
-      - ./tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests
+      - ../src/DotNetApp.Client:/src/DotNetApp.Client
+      - ../tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests
       - nuget-packages:/root/.nuget/packages
     environment:
       - WORKDIR=/src/DotNetApp.Client.IntegrationTests
@@ -65,17 +65,11 @@ services:
 
   e2e-tests:
     build:
-      context: ./tests/DotNetApp.E2ETests
+      context: ..
       dockerfile: docker/Dockerfile.tests.e2e
     depends_on:
       - api
       - client
-    # Do not mount host source into the e2e-tests container; use the image-built contents
-    # volumes:
-    #  - ./src/DotNetApp.Api:/src/DotNetApp.Api
-    #  - ./src/DotNetApp.Client:/src/DotNetApp.Client
-    #  - ./tests/DotNetApp.E2ETests:/src/DotNetApp.E2ETests
-    #  - nuget-packages:/root/.nuget/packages
     environment:
       - WORKDIR=/src/DotNetApp.E2ETests
       - FRONTEND_API_BASE=http://api:8080/
