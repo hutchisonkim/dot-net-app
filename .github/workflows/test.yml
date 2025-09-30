@@ -31,18 +31,61 @@ jobs:
       - name: Build
         run: dotnet build DotNetApp.sln -c Debug --no-restore
 
+      - name: Publish build outputs
+        run: |
+          dotnet publish src/DotNetApp.Client/DotNetApp.Client.csproj -c Debug -o ./artifacts/client
+          dotnet publish src/DotNetApp.Api/DotNetApp.Api.csproj -c Debug -o ./artifacts/api
+
+      - name: Upload API build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api
+          path: artifacts/api
+
+      - name: Upload Client build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client
+          path: artifacts/client
+
   run-unit-tests:
-    name: Run Unit Tests
+    name: Run unit tests
     runs-on: windows-latest
     needs: build
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download API build artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: api
+          path: ./downloaded-artifacts/api
+
+      - name: Download Client build artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: client
+          path: ./downloaded-artifacts/client
+
+      - name: Inspect downloaded artifacts
+        run: |
+          echo 'Listing downloaded-artifacts root'
+          ls -la ./downloaded-artifacts || true
+          echo 'Listing API artifact (downloaded-artifacts/api)'
+          ls -la ./downloaded-artifacts/api || true
+          echo 'Listing Client artifact (downloaded-artifacts/client)'
+          ls -la ./downloaded-artifacts/client || true
+          echo 'Listing Client wwwroot (downloaded-artifacts/client/wwwroot)'
+          ls -la ./downloaded-artifacts/client/wwwroot || true
+
       - name: Run tests
         run: |
           dotnet test tests/DotNetApp.Api.UnitTests/DotNetApp.Api.UnitTests.csproj -c Debug --no-build --verbosity minimal
           dotnet test tests/DotNetApp.Client.UnitTests/DotNetApp.Client.UnitTests.csproj -c Debug --no-build --verbosity minimal
 
   run-integration-tests:
-    name: Run Integration Tests
+    name: Run integration tests
     runs-on: ubuntu-latest
     needs: run-unit-tests
     steps:
