@@ -27,14 +27,15 @@ services:
   # into the container's expected path so tests run against the published app.
   api-integration-tests:
     build:
-      context: ./tests/DotNetApp.Api.IntegrationTests
+      # Use repo root so Dockerfile (in docker/) and test project are both available
+      context: ..
       dockerfile: docker/Dockerfile.tests.api-integration
     depends_on:
       - api
     volumes:
       - ../downloaded-artifacts/api:/src/DotNetApp.Api:ro
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
-      - ./tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests:ro
+      - ../tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests:ro
       - nuget-packages:/root/.nuget/packages
     environment:
       - WORKDIR=/src/DotNetApp.Api.IntegrationTests
@@ -47,13 +48,13 @@ services:
   # exercise the published static assets instead of building from source.
   client-integration-tests:
     build:
-      context: ./tests/DotNetApp.Client.IntegrationTests
+      context: ..
       dockerfile: docker/Dockerfile.tests.client-integration
     depends_on:
       - client
     volumes:
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
-      - ./tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests:ro
+      - ../tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests:ro
       - nuget-packages:/root/.nuget/packages
     environment:
       - WORKDIR=/src/DotNetApp.Client.IntegrationTests
@@ -66,7 +67,7 @@ services:
   # the E2E runner can validate the deployed files rather than building them.
   e2e-tests:
     build:
-      context: ./tests/DotNetApp.E2ETests
+      context: ..
       dockerfile: docker/Dockerfile.tests.e2e
     depends_on:
       - api
@@ -74,7 +75,7 @@ services:
     volumes:
       - ../downloaded-artifacts/api:/src/DotNetApp.Api:ro
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
-      - ./tests/DotNetApp.E2ETests:/src/DotNetApp.E2ETests:ro
+      - ../tests/DotNetApp.E2ETests:/src/DotNetApp.E2ETests:ro
       - nuget-packages:/root/.nuget/packages
     environment:
       - WORKDIR=/src/DotNetApp.E2ETests
