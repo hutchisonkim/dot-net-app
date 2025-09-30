@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using DotNetApp.Core.Abstractions;
 
 namespace DotNetApp.Api.Controllers;
 
@@ -6,9 +7,17 @@ namespace DotNetApp.Api.Controllers;
 [Route("api/[controller]")]
 public class StateController : ControllerBase
 {
-    [HttpGet("health")]
-    public IActionResult Health()
+    private readonly IHealthService _healthService;
+
+    public StateController(IHealthService healthService)
     {
-        return Ok(new { status = "healthy" });
+        _healthService = healthService;
+    }
+
+    [HttpGet("health")]
+    public async Task<IActionResult> Health(CancellationToken cancellationToken)
+    {
+        var status = await _healthService.GetStatusAsync(cancellationToken);
+        return Ok(new { status });
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using DotNetApp.Core;
 using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Core + application services
+builder.Services.AddDotNetAppCore()
+    .AddScoped<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Api.Services.DefaultHealthService>()
+    .AddSingleton<DotNetApp.Core.Abstractions.IClientAssetConfigurator, DotNetApp.Api.Services.BlazorClientAssetConfigurator>();
 
 // Allow CORS for local testing (replace with tighter policy in prod)
 builder.Services.AddCors(options =>
@@ -42,14 +48,9 @@ foreach (var candidate in candidateClientWwwroots)
     }
 }
 
-if (!string.IsNullOrEmpty(clientWwwroot))
-{
-    // Serve static files from the client wwwroot at application root
-    var provider = new PhysicalFileProvider(clientWwwroot);
-    var staticOptions = new StaticFileOptions { FileProvider = provider, ServeUnknownFileTypes = true };
-    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = provider });
-    app.UseStaticFiles(staticOptions);
-}
+// Allow pluggable client asset configuration
+var assetConfigurator = app.Services.GetRequiredService<DotNetApp.Core.Abstractions.IClientAssetConfigurator>();
+assetConfigurator.Configure(app);
 
 app.UseSwagger();
 app.UseSwaggerUI();

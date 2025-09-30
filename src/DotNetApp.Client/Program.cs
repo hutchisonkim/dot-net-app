@@ -17,6 +17,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(baseAddr
 
 // Register ApiClient that encapsulates API calls and uses the centralized HttpClient
 builder.Services.AddScoped<ApiClient>();
+builder.Services.AddScoped<DotNetApp.Core.Abstractions.IHealthStatusProvider>(sp => sp.GetRequiredService<ApiClient>());
 
 await builder.Build().RunAsync();
 

@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
   <ProjectReference Include="..\..\src\DotNetApp.Api\DotNetApp.Api.csproj" />
+  <ProjectReference Include="..\..\src\DotNetApp.Core\DotNetApp.Core.csproj" />
   </ItemGroup>
 </Project>
 

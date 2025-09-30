@@ -3,9 +3,11 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
+using DotNetApp.Core.Abstractions;
+
 namespace DotNetApp.Client.Services;
 
-public class ApiClient
+public class ApiClient : IHealthStatusProvider
 {
     private readonly HttpClient _http;
     private readonly IConfiguration _config;
@@ -44,6 +46,12 @@ public class ApiClient
         }
 
         return null;
+    }
+
+    public async Task<string?> FetchStatusAsync(CancellationToken cancellationToken = default)
+    {
+        var health = await GetHealthAsync();
+        return health?.status;
     }
 }
 
