@@ -1,0 +1,28 @@
+{
+  "folders": [
+    { "path": "../src/DotNetApp.Client" },
+    { "path": "../src/Shared" },
+    { "path": "../tests/DotNetApp.Client.UnitTests" },
+    { "path": "../tests/DotNetApp.Client.IntegrationTests" }
+  ],
+  "settings": {
+    "dotnet.defaultSolution": "../DotNetApp.sln",
+    "files.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/*.user": true
+    },
+    "files.watcherExclude": {
+      "**/bin": true,
+      "**/obj": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-dotnettools.csharp",
+      "ms-vscode-remote.remote-containers",
+      "ms-playwright.playwright"
+    ]
+  },
+  "name": "DotNetApp.Client"
+}

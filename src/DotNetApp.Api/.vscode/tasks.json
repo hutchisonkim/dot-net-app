@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "API: Build",
+      "type": "shell",
+      "command": "dotnet build src/DotNetApp.Api/DotNetApp.Api.csproj -c Debug",
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "API: Run",
+      "type": "shell",
+      "command": "dotnet run --project src/DotNetApp.Api -c Debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "API: Test (Unit)",
+      "type": "shell",
+      "command": "dotnet test tests/DotNetApp.Api.UnitTests/DotNetApp.Api.UnitTests.csproj -c Debug",
+      "problemMatcher": ["$msCompile"]
+    }
+  ]
+}

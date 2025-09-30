@@ -1,0 +1,93 @@
+services:
+
+  api:
+    build:
+      context: ./src/DotNetApp.Api
+      dockerfile: docker/Dockerfile.api
+    volumes:
+      - ./src/DotNetApp.Api:/src/DotNetApp.Api
+    environment:
+      - WORKDIR=/src/DotNetApp.Api
+    ports:
+      - "5000:8080"
+    networks:
+      - default-network
+
+  client:
+    build:
+      context: ./src/DotNetApp.Client
+      dockerfile: docker/Dockerfile.client
+    volumes:
+      - ./src/DotNetApp.Client:/src/DotNetApp.Client
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - default-network
+    environment:
+      - FRONTEND_API_BASE=http://api:8080/
+
+  api-integration-tests:
+    build:
+      context: ./tests/DotNetApp.Api.IntegrationTests
+      dockerfile: docker/Dockerfile.tests.api-integration
+    depends_on:
+      - api
+    volumes:
+      - ./src/DotNetApp.Api:/src/DotNetApp.Api
+      - ./src/DotNetApp.Client:/src/DotNetApp.Client
+      - ./tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests
+      - nuget-packages:/root/.nuget/packages
+    environment:
+      - WORKDIR=/src/DotNetApp.Api.IntegrationTests
+      - FRONTEND_API_BASE=http://api:8080/
+      - NUGET_HTTP_TIMEOUT=200000
+    networks:
+      - default-network
+
+  client-integration-tests:
+    build:
+      context: ./tests/DotNetApp.Client.IntegrationTests
+      dockerfile: docker/Dockerfile.tests.client-integration
+    depends_on:
+      - client
+    volumes:
+      - ./src/DotNetApp.Client:/src/DotNetApp.Client
+      - ./tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests
+      - nuget-packages:/root/.nuget/packages
+    environment:
+      - WORKDIR=/src/DotNetApp.Client.IntegrationTests
+      - FRONTEND_API_BASE=http://api:8080/
+      - NUGET_HTTP_TIMEOUT=200000
+    networks:
+      - default-network
+
+  e2e-tests:
+    build:
+      context: ./tests/DotNetApp.E2ETests
+      dockerfile: docker/Dockerfile.tests.e2e
+    depends_on:
+      - api
+      - client
+    # Do not mount host source into the e2e-tests container; use the image-built contents
+    # volumes:
+    #  - ./src/DotNetApp.Api:/src/DotNetApp.Api
+    #  - ./src/DotNetApp.Client:/src/DotNetApp.Client
+    #  - ./tests/DotNetApp.E2ETests:/src/DotNetApp.E2ETests
+    #  - nuget-packages:/root/.nuget/packages
+    environment:
+      - WORKDIR=/src/DotNetApp.E2ETests
+      - FRONTEND_API_BASE=http://api:8080/
+      - FRONTEND_URL=http://client:80
+      - NUGET_HTTP_TIMEOUT=200000
+    networks:
+      - default-network
+
+networks:
+  default-network:
+    driver: bridge
+
+volumes:
+  nuget-packages:
+    driver: local

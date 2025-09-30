@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV NUGET_PACKAGES=/root/.nuget/packages
+
+CMD ["bash", "-lc", "cd \"$WORKDIR\" && dotnet restore || true && dotnet build --no-restore || true && tail -f /dev/null"]

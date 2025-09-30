@@ -1,0 +1,65 @@
+name: Run Integration Tests (Docker Compose)
+
+on:
+  workflow_run:
+    workflows: ["Run Unit Tests"]
+    types:
+      - completed
+
+jobs:
+  integration-and-e2e:
+    name: Integration and E2E tests (Docker Compose)
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download API build artifact from Unit Tests
+        uses: actions/download-artifact@v4
+        with:
+          name: api
+          path: ./downloaded-artifacts/api
+
+      - name: Download Client build artifact from Unit Tests
+        uses: actions/download-artifact@v4
+        with:
+          name: client
+          path: ./downloaded-artifacts/client
+
+      - name: Inspect downloaded artifacts
+        run: |
+          echo 'Listing downloaded-artifacts root'
+          ls -la ./downloaded-artifacts || true
+          echo 'Listing API artifact (downloaded-artifacts/api)'
+          ls -la ./downloaded-artifacts/api || true
+          echo 'Listing Client artifact (downloaded-artifacts/client)'
+          ls -la ./downloaded-artifacts/client || true
+          echo 'Listing Client wwwroot (downloaded-artifacts/client/wwwroot)'
+          ls -la ./downloaded-artifacts/client/wwwroot || true
+
+      - name: Build and start services and test containers (use prebuilt artifacts)
+        run: |
+          # Use the CI compose override which builds api and client images from
+          # the downloaded artifacts placed at ./downloaded-artifacts
+          docker compose -f docker/docker-compose.yml -f docker/compose.ci.yml up -d --build api client api-integration-tests client-integration-tests e2e-tests
+
+      - name: Run API integration tests
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T api-integration-tests \
+            dotnet test /src/DotNetApp.Api.IntegrationTests -c Debug --no-build || (docker compose -f docker/docker-compose.yml logs --no-color api-integration-tests && exit 1)
+
+      - name: Run Client integration tests
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T client-integration-tests \
+            dotnet test /src/DotNetApp.Client.IntegrationTests -c Debug --no-build || (docker compose -f docker/docker-compose.yml logs --no-color client-integration-tests && exit 1)
+
+      - name: Run E2E tests
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T e2e-tests \
+            dotnet test /src/DotNetApp.E2ETests -c Debug --no-build || (docker compose -f docker/docker-compose.yml logs --no-color e2e-tests && exit 1)
+
+      - name: Tear down compose
+        if: always()
+        run: |
+          docker compose -f docker/docker-compose.yml down -v

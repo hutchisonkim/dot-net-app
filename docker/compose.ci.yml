@@ -1,0 +1,86 @@
+version: '3.8'
+services:
+  api:
+    build:
+      context: ./downloaded-artifacts/api
+      dockerfile: docker/Dockerfile.prebuilt.api
+    ports:
+      - "5000:8080"
+    networks:
+      - default-network
+
+  client:
+    build:
+      context: ./downloaded-artifacts/client/wwwroot
+      dockerfile: docker/Dockerfile.prebuilt.client
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - default-network
+
+  # Integration test runner for API. Mount the downloaded published API output
+  # into the container's expected path so tests run against the published app.
+  api-integration-tests:
+    build:
+      context: ./tests/DotNetApp.Api.IntegrationTests
+      dockerfile: docker/Dockerfile.tests.api-integration
+    depends_on:
+      - api
+    volumes:
+      - ./downloaded-artifacts/api:/src/DotNetApp.Api:ro
+      - ./downloaded-artifacts/client:/src/DotNetApp.Client:ro
+      - ./tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests:ro
+      - nuget-packages:/root/.nuget/packages
+    environment:
+      - WORKDIR=/src/DotNetApp.Api.IntegrationTests
+      - FRONTEND_API_BASE=http://api:8080/
+      - NUGET_HTTP_TIMEOUT=200000
+    networks:
+      - default-network
+
+  # Integration test runner for client. Mount published client outputs so tests
+  # exercise the published static assets instead of building from source.
+  client-integration-tests:
+    build:
+      context: ./tests/DotNetApp.Client.IntegrationTests
+      dockerfile: docker/Dockerfile.tests.client-integration
+    depends_on:
+      - client
+    volumes:
+      - ./downloaded-artifacts/client:/src/DotNetApp.Client:ro
+      - ./tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests:ro
+      - nuget-packages:/root/.nuget/packages
+    environment:
+      - WORKDIR=/src/DotNetApp.Client.IntegrationTests
+      - FRONTEND_API_BASE=http://api:8080/
+      - NUGET_HTTP_TIMEOUT=200000
+    networks:
+      - default-network
+
+  # E2E tests rely on browsers and test harness; mount published app outputs so
+  # the E2E runner can validate the deployed files rather than building them.
+  e2e-tests:
+    build:
+      context: ./tests/DotNetApp.E2ETests
+      dockerfile: docker/Dockerfile.tests.e2e
+    depends_on:
+      - api
+      - client
+    volumes:
+      - ./downloaded-artifacts/api:/src/DotNetApp.Api:ro
+      - ./downloaded-artifacts/client:/src/DotNetApp.Client:ro
+      - ./tests/DotNetApp.E2ETests:/src/DotNetApp.E2ETests:ro
+      - nuget-packages:/root/.nuget/packages
+    environment:
+      - WORKDIR=/src/DotNetApp.E2ETests
+      - FRONTEND_API_BASE=http://api:8080/
+      - FRONTEND_URL=http://client:80
+      - NUGET_HTTP_TIMEOUT=200000
+    networks:
+      - default-network
+
+networks:
+  default-network:
+    driver: bridge

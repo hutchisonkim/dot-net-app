@@ -1,0 +1,51 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV NUGET_PACKAGES=/root/.nuget/packages
+
+# Install minimal OS packages required by Playwright and browsers
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+	   ca-certificates \
+	   gnupg \
+	   curl \
+	   wget \
+	   unzip \
+	   xvfb \
+	   libnss3 \
+	   libatk1.0-0 \
+	   libatk-bridge2.0-0 \
+	   libc6 \
+	   libcairo2 \
+	   libdbus-1-3 \
+	   libexpat1 \
+	   libgbm1 \
+	   libglib2.0-0 \
+	   libgtk-3-0 \
+	   libx11-6 \
+	   libxcomposite1 \
+	   libxdamage1 \
+	   libxrandr2 \
+	   libasound2 \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Install PowerShell Core runtime for the generated playwright.ps1 script to run
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends ca-certificates apt-transport-https software-properties-common \
+	&& wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
+	&& dpkg -i packages-microsoft-prod.deb \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends powershell \
+	&& rm -rf /var/lib/apt/lists/* packages-microsoft-prod.deb
+
+# Build the tests and install Playwright browsers during image build
+COPY . /src/DotNetApp.E2ETests
+RUN cd /src/DotNetApp.E2ETests \
+	&& dotnet restore || true \
+	&& dotnet build --no-restore || true \
+	&& pwsh -NoProfile -ExecutionPolicy Bypass -Command "if (Test-Path 'bin/Debug/net*/playwright.ps1') { & (Get-ChildItem -Path bin/Debug/net*/playwright.ps1 | Select-Object -Last 1).FullName install }"
+
+# For E2E we may need browsers; keep the image ready and running so test harness can exec into it
+CMD ["bash", "-lc", "cd \"$WORKDIR\" && tail -f /dev/null"]

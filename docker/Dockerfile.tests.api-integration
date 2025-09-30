@@ -1,0 +1,11 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+# Use a working directory that will be mounted by docker-compose
+WORKDIR /src
+
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV NUGET_PACKAGES=/root/.nuget/packages
+
+# When the container starts, run restore and build for the mounted WORKDIR
+# then keep the container alive so tests or manual commands can be run from inside.
+CMD ["bash", "-lc", "cd \"$WORKDIR\" && dotnet restore || true && dotnet build --no-restore || true && tail -f /dev/null"]
