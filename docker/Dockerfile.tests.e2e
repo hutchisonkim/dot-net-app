@@ -2,10 +2,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0
 
 WORKDIR /src
 
-ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
-ENV NUGET_PACKAGES=/root/.nuget/packages
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+	NUGET_PACKAGES=/root/.nuget/packages \
+	DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
-# Install minimal OS packages required by Playwright and browsers
+# Install OS packages required by Playwright browsers + wait tooling
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
 	   ca-certificates \
@@ -31,7 +32,7 @@ RUN apt-get update \
 	   libasound2 \
 	&& rm -rf /var/lib/apt/lists/*
 
-# Install PowerShell Core runtime for the generated playwright.ps1 script to run
+# Install PowerShell (for playwright.ps1 scripts)
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends ca-certificates apt-transport-https software-properties-common \
 	&& wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
@@ -40,12 +41,35 @@ RUN apt-get update \
 	&& apt-get install -y --no-install-recommends powershell \
 	&& rm -rf /var/lib/apt/lists/* packages-microsoft-prod.deb
 
-# Build the tests and install Playwright browsers during image build
-COPY . /src/DotNetApp.E2ETests
-RUN cd /src/DotNetApp.E2ETests \
-	&& dotnet restore || true \
-	&& dotnet build --no-restore || true \
-	&& pwsh -NoProfile -ExecutionPolicy Bypass -Command "if (Test-Path 'bin/Debug/net*/playwright.ps1') { & (Get-ChildItem -Path bin/Debug/net*/playwright.ps1 | Select-Object -Last 1).FullName install }"
+# Copy solution + projects explicitly (improves layer caching)
+COPY DotNetApp.sln ./
+COPY src ./src
+COPY tests ./tests
 
-# For E2E we may need browsers; keep the image ready and running so test harness can exec into it
-CMD ["bash", "-lc", "cd \"$WORKDIR\" && tail -f /dev/null"]
+# Restore only the E2E test project (pulls transitive dependencies)
+RUN dotnet restore tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj
+
+# Build the E2E test project (this generates the playwright.ps1 script into its bin directory)
+RUN dotnet build --no-restore -c Debug tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj
+
+# Install playwright browsers (using the generated script)
+RUN pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& tests/DotNetApp.E2ETests/bin/Debug/net8.0/playwright.ps1 install --with-deps"
+
+# Add a lightweight wait script & test runner
+RUN echo '#!/usr/bin/env bash' > /usr/local/bin/run-e2e.sh \
+	&& echo 'set -euo pipefail' >> /usr/local/bin/run-e2e.sh \
+	&& echo 'FRONTEND_URL=${FRONTEND_URL:-http://client:80}' >> /usr/local/bin/run-e2e.sh \
+	&& echo 'echo "Waiting for frontend at $FRONTEND_URL ..."' >> /usr/local/bin/run-e2e.sh \
+	&& echo 'for i in {1..60}; do' >> /usr/local/bin/run-e2e.sh \
+	&& echo '  if curl -fsSL "$FRONTEND_URL" >/dev/null 2>&1; then echo "Frontend is up"; break; fi' >> /usr/local/bin/run-e2e.sh \
+	&& echo '  sleep 1' >> /usr/local/bin/run-e2e.sh \
+	&& echo '  if [ "$i" -eq 60 ]; then echo "Frontend did not become ready in time"; exit 1; fi' >> /usr/local/bin/run-e2e.sh \
+	&& echo 'done' >> /usr/local/bin/run-e2e.sh \
+	&& echo 'echo Running E2E tests...' >> /usr/local/bin/run-e2e.sh \
+	&& echo 'dotnet test --no-build --logger "trx;LogFileName=TestResults.trx" /src/tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj' >> /usr/local/bin/run-e2e.sh \
+	&& chmod +x /usr/local/bin/run-e2e.sh
+
+WORKDIR /src/tests/DotNetApp.E2ETests
+
+# Default command keeps container idle (so you can exec to run tests) unless RUN_E2E=1
+CMD ["bash", "-lc", "if [ \"${RUN_E2E:-0}\" = 1 ]; then /usr/local/bin/run-e2e.sh; else echo 'E2E test container ready. Exec run-e2e.sh or set RUN_E2E=1.' && tail -f /dev/null; fi"]

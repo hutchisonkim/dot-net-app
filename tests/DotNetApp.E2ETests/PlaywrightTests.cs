@@ -28,7 +28,7 @@ public class PlaywrightTests : IAsyncLifetime
         // Ensure the test as a whole cannot hang forever. Enforce a 10 second timeout
         // for the async operations inside this test. This is independent of any
         // Playwright timeouts passed to its API calls.
-        var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://frontend:80";
+    var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://client:80";
 
         Func<Task> testBody = async () =>
         {
