@@ -1,9 +1,32 @@
 @page "/"
-@namespace DotNetApp.Client.Pages
+@using DotNetApp.Core.Abstractions
+@inject IHealthStatusProvider HealthStatusProvider
 
-<h1>DotNetApp Blazor Index Page</h1>
+<h1>DotNetApp</h1>
+
+<p>This page now demonstrates DI + an API call for health status.</p>
+
+<h3>API Health</h3>
+@if (!_loaded)
+{
+    <p><em>Checking API...</em></p>
+}
+else if (_status is null)
+{
+    <p class="text-warning"><strong>Unavailable</strong> (could not reach API)</p>
+}
+else
+{
+    <p class="text-success"><strong>@_status</strong></p>
+}
 
 @code {
-    // Minimal placeholder component used by unit tests.
-    // The tests provide required DI services (HttpClient, ApiClient, IConfiguration) when rendering.
+    private string? _status;
+    private bool _loaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _status = await HealthStatusProvider.FetchStatusAsync();
+        _loaded = true;
+    }
 }
