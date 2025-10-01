@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DotNetApp.Core\DotNetApp.Core.csproj" />
+    <ProjectReference Include="..\DotNetApp.Client.Shared\DotNetApp.Client.Shared.csproj" />
   </ItemGroup>
 </Project>
 

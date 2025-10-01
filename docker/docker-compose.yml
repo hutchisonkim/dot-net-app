@@ -42,6 +42,23 @@ services:
       - default-network
     # The example client uses relative /api calls which nginx forwards; no extra env needed
 
+  unity-example-client:
+    # Serves placeholder (or real) Unity WebGL build output from examples/UnityExampleClient/wwwroot
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.unityexample
+    volumes:
+      - ../examples/UnityExampleClient/wwwroot:/usr/share/nginx/html:ro
+    ports:
+      - "8082:80"
+    depends_on:
+      - api
+    networks:
+      - default-network
+    environment:
+      - FRONTEND_API_BASE=http://api:8080/
+    # Rebuild after changing WebGL output: docker compose build unity-example-client
+
   api-integration-tests:
     build:
       context: ..

@@ -2,6 +2,8 @@ using Bunit;
 using Xunit;
 using DotNetApp.Client.Pages;
 using Microsoft.Extensions.DependencyInjection;
+using DotNetApp.Client.Shared;
+using DotNetApp.Core.Abstractions;
 
 namespace DotNetApp.Client.UnitTests;
 
@@ -16,12 +18,13 @@ public class IndexTests
     var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"idle\" }", System.Net.HttpStatusCode.OK);
     var client = new System.Net.Http.HttpClient(handler) { BaseAddress = new System.Uri("http://localhost/") };
     ctx.Services.AddSingleton<System.Net.Http.HttpClient>(client);
-    var inMemory = new System.Collections.Generic.Dictionary<string, string?> { ["ApiBaseAddress"] = "http://localhost/" };
+    var inMemory = new System.Collections.Generic.Dictionary<string, string> { ["ApiBaseAddress"] = "http://localhost/" };
     ctx.Services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(new DotNetApp.Client.Tests.SimpleConfiguration(inMemory));
-    ctx.Services.AddSingleton<DotNetApp.Client.Services.ApiClient>();
+    // Register shared client abstraction
+    ctx.Services.AddDotNetAppClient(explicitBaseAddress: "http://localhost/");
 
     var cut = ctx.Render<Index>();
-        Assert.Contains("DotNetApp Blazor Index Page", cut.Markup);
+    Assert.Contains("DotNetApp Blazor Index Page", cut.Markup);
     }
 }
 
