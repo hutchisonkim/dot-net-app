@@ -43,12 +43,15 @@ services:
     # The example client uses relative /api calls which nginx forwards; no extra env needed
 
   unity-example-client:
-    # Serves placeholder (or real) Unity WebGL build output from examples/UnityExampleClient/wwwroot
+    # Builds Unity WebGL (placeholder if project/scripts missing) and serves with caching
     build:
       context: ..
-      dockerfile: docker/Dockerfile.unityexample
-    volumes:
-      - ../examples/UnityExampleClient/wwwroot:/usr/share/nginx/html:ro
+      dockerfile: docker/Dockerfile.unitywebgl
+      args:
+        UNITY_IMAGE: unityci/editor:6000.2.5f1-base-3
+    # If you only want to serve a pre-built output, you can mount it instead of building:
+    # volumes:
+    #   - ../examples/UnityExampleClient/wwwroot:/usr/share/nginx/html:ro
     ports:
       - "8082:80"
     depends_on:

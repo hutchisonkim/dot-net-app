@@ -27,6 +27,37 @@ Production Considerations
 - For larger Unity integrations, consider wrapping DI using a lightweight container or using the `Microsoft.Extensions.DependencyInjection` package directly at game startup.
 - Retry, exponential backoff, and error handling have been omitted for brevity.
 
+Unity WebGL Docker Pipeline
+---------------------------
+This repo includes a scaffolded Docker-based WebGL build pipeline (`docker/Dockerfile.unitywebgl`). It uses GameCI `unityci/editor` images.
+
+Current docker-compose service: `unity-example-client` builds with arg:
+```
+UNITY_IMAGE=unityci/editor:6000.2.5f1-base-3
+```
+This is a base image (no WebGL module). To produce an actual WebGL build, switch to a webgl-tagged image that includes the module, e.g.:
+```
+UNITY_IMAGE=unityci/editor:6000.2.5f1-webgl-3
+```
+Then ensure the project and `BuildScript.BuildWebGL` exist.
+
+To enable an actual build:
+1. Place a Unity project at `examples/UnityExampleClient/UnityProject`.
+2. Add an Editor C# script containing a static method `BuildScript.BuildWebGL` that invokes `BuildPipeline.BuildPlayer` to output to `WebGLBuild`.
+3. Run:
+   - `docker compose build unity-example-client`
+   - `docker compose up -d unity-example-client`
+4. Navigate to `http://localhost:8082`.
+
+Fallback Behavior:
+If the project or build method is missing, the Dockerfile writes a placeholder `index.html` so the container still serves content.
+
+Changing Unity Version:
+Edit build args under the service in `docker/docker-compose.yml`. Ensure the tag exists on Docker Hub (see GameCI docs).
+
+Caching & Performance:
+The Nginx config (`docker/nginx.unity.conf`) applies long-lived caching for `.data`, `.wasm`, `.js`, `.symbols` asset types and a no-cache policy for `index.html`.
+
 License
 -------
 This example inherits the repository license.

@@ -1,0 +1,42 @@
+## Unity WebGL build + nginx serve
+# NOTE: This is a scaffold. A real Unity build requires a Unity license and the matching editor image.
+# Using unityci/editor image tags documented at https://github.com/game-ci/unity-actions
+
+ARG UNITY_VERSION=2022.3.9f1
+ARG UNITY_MODULES=webgl
+ARG UNITY_REVISION=1
+
+## Typical tag pattern: unityci/editor:<version>-<module>-<revision>
+## Example: unityci/editor:2022.3.9f1-webgl-1
+FROM unityci/editor:${UNITY_VERSION}-${UNITY_MODULES}-${UNITY_REVISION} AS build
+WORKDIR /workspace
+
+# Copy Unity project (expected under examples/UnityExampleClient/UnityProject)
+# If you store it elsewhere, adjust this path.
+COPY examples/UnityExampleClient/UnityProject/ ./UnityProject/
+
+# Run batch mode build (placeholder command; adapt build path and scenes as needed)
+# The output path is set to /workspace/WebGLBuild
+RUN /opt/unity/Editor/Unity \
+        -projectPath /workspace/UnityProject \
+        -quit -batchmode -nographics \
+        -buildTarget WebGL \
+        -executeMethod BuildScript.BuildWebGL \
+        -logFile /dev/stdout || { \
+            echo "[Unity Pipeline] Falling back to placeholder (project or BuildScript missing)."; \
+            mkdir -p /workspace/WebGLBuild; \
+            printf '%s' '<!DOCTYPE html><html><body><h1>Unity WebGL Placeholder</h1><p>Replace with real build.</p></body></html>' > /workspace/WebGLBuild/index.html; \
+        }
+
+# Runtime stage
+FROM nginx:alpine
+WORKDIR /usr/share/nginx/html
+
+# Copy build output (fallback to existing placeholder wwwroot if build absent)
+COPY --from=build /workspace/WebGLBuild/ ./
+
+# Copy nginx config with caching headers
+COPY docker/nginx.unity.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
