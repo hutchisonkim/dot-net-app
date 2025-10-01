@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -21,6 +21,16 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Api.IntegrationTests", "tests\DotNetApp.Api.IntegrationTests\DotNetApp.Api.IntegrationTests.csproj", "{AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.E2ETests", "tests\DotNetApp.E2ETests\DotNetApp.E2ETests.csproj", "{CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{145A4016-4C34-43C5-B7F6-1713283C35AE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ExampleClient", "ExampleClient", "{83D41EF8-F3C6-4641-8882-2E8D72E4BF4E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{CA3B970E-C0CF-4284-B936-E2427EC5086A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleClient.UnitTests", "examples\ExampleClient\tests\ExampleClient.UnitTests\ExampleClient.UnitTests.csproj", "{F0101073-B32B-4CEE-AEBC-40530A049E0B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleClient.IntegrationTests", "examples\ExampleClient\tests\ExampleClient.IntegrationTests\ExampleClient.IntegrationTests.csproj", "{9E10F0CA-3267-4F88-B9BF-76DEA6AC898B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -60,6 +70,14 @@ Global
 		{CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F0101073-B32B-4CEE-AEBC-40530A049E0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F0101073-B32B-4CEE-AEBC-40530A049E0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F0101073-B32B-4CEE-AEBC-40530A049E0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F0101073-B32B-4CEE-AEBC-40530A049E0B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E10F0CA-3267-4F88-B9BF-76DEA6AC898B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E10F0CA-3267-4F88-B9BF-76DEA6AC898B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E10F0CA-3267-4F88-B9BF-76DEA6AC898B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E10F0CA-3267-4F88-B9BF-76DEA6AC898B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -73,9 +91,12 @@ Global
 		{BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB} = {703793BB-3757-4385-B25E-55A5308DC793}
 		{AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA} = {703793BB-3757-4385-B25E-55A5308DC793}
 		{CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC} = {703793BB-3757-4385-B25E-55A5308DC793}
+		{83D41EF8-F3C6-4641-8882-2E8D72E4BF4E} = {145A4016-4C34-43C5-B7F6-1713283C35AE}
+		{CA3B970E-C0CF-4284-B936-E2427EC5086A} = {83D41EF8-F3C6-4641-8882-2E8D72E4BF4E}
+		{F0101073-B32B-4CEE-AEBC-40530A049E0B} = {CA3B970E-C0CF-4284-B936-E2427EC5086A}
+		{9E10F0CA-3267-4F88-B9BF-76DEA6AC898B} = {CA3B970E-C0CF-4284-B936-E2427EC5086A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {865D83FD-2761-48B0-B275-827738B8E41C}
 	EndGlobalSection
 EndGlobal
-
