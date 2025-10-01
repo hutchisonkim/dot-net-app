@@ -28,6 +28,20 @@ services:
     environment:
       - FRONTEND_API_BASE=http://api:8080/
 
+  example-client:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.exampleclient
+    volumes:
+      - ../examples/ExampleClient:/src/examples/ExampleClient
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+    networks:
+      - default-network
+    # The example client uses relative /api calls which nginx forwards; no extra env needed
+
   api-integration-tests:
     build:
       context: ..
