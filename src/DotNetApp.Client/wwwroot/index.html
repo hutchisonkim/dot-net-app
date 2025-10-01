@@ -1,14 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DotNetApp Homepage</title>
+  <title>DotNetApp</title>
   <base href="/" />
+  <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
-  <h1>DotNetApp Homepage</h1>
-  <!-- Minimal Blazor loader reference so integration tests detect a Blazor app -->
+  <!-- Host page for Blazor WASM. The SPA content (Pages/Index.razor) mounts into #app. -->
+  <div id="app">
+    <div style="padding:1rem;font-family:system-ui,sans-serif;">Loading application...</div>
+  </div>
   <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>
