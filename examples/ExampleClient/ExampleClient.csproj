@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DotNetApp.Core\DotNetApp.Core.csproj" />
+    <ProjectReference Include="..\..\src\DotNetApp.Client.Shared\DotNetApp.Client.Shared.csproj" />
   </ItemGroup>
 
   <!-- Exclude any test projects placed under the example folder from SDK default globs -->

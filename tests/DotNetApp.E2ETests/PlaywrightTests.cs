@@ -23,6 +23,7 @@ public class PlaywrightTests : IAsyncLifetime
     }
 
     [Fact]
+    [Trait("Category", "E2E")]
     public async Task Client_Has_Title_And_BlazorLoader()
     {
         // Ensure the test as a whole cannot hang forever. Enforce a 10 second timeout

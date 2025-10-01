@@ -16,7 +16,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
   <PackageReference Include="bunit" Version="1.40.0" />
   <PackageReference Include="Bunit.Web" Version="1.40.0" />
-    <PackageReference Include="Moq" Version="4.20.1" />
+  <PackageReference Include="Moq" Version="4.20.72" />
   </ItemGroup>
 
   <ItemGroup>

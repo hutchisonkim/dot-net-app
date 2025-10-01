@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
-using ExampleClient.Services;
+using DotNetApp.Client.Shared.Contracts;
 
 namespace ExampleClient.IntegrationTests;
 
@@ -15,15 +15,11 @@ public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
-    public async Task ExampleApiClient_CallsApi_ReturnsHealthStatus()
+    public async Task PlatformApiClient_CallsApi_ReturnsHealthStatus()
     {
         using var client = _factory.CreateClient();
-
-        // Provide the factory HttpClient to the ExampleApiClient to hit the in-memory server
-        var exampleClient = new ExampleApiClient(client);
-
-        var status = await exampleClient.FetchStatusAsync();
-
-    Assert.Equal("healthy", status);
+        var apiClient = new PlatformApiClient(client);
+        var dto = await apiClient.GetHealthStatusAsync();
+        Assert.Equal("healthy", dto?.status);
     }
 }
