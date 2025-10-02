@@ -53,6 +53,8 @@ public class PlatformApiGeneratorSnapshotTests
         generated.Should().NotBeNull();
         generated!.Should().Contain("PostAsJsonAsync");
         generated.Should().Contain("ReadFromJsonAsync<Thing>");
+        // Ensure method signature still returns nullable generic Task<Thing?> while deserialization generic arg is non-nullable
+        generated.Should().Contain("Task<Thing?> CreateAsync");
     }
 
     [Fact]
@@ -64,5 +66,16 @@ public class PlatformApiGeneratorSnapshotTests
         generated.Should().NotBeNull();
         generated!.Should().Contain("PutAsJsonAsync");
         generated.Should().Contain("update/{Uri.EscapeDataString(id.ToString()!)}".Replace("{","{")); // ensure interpolation is present
+    }
+    [Fact]
+    public void Generates_Delete_Returning_Content()
+    {
+        var source = @"using System.Threading; using System.Threading.Tasks; using DotNetApp.CodeGen; namespace Demo { public record Thing(string Name); [ApiContract(""api/things"")] public interface IThings { [Delete(""remove/{id}"")] Task<Thing?> RemoveAsync(string id, CancellationToken ct=default); } }";
+        var (_, _, result) = Run(source);
+        var generated = result.GeneratedTrees.FirstOrDefault(t => t.FilePath.Contains("ThingsClient"))?.GetText()?.ToString();
+        generated.Should().NotBeNull();
+        generated!.Should().Contain("DeleteAsync");
+        generated.Should().Contain("ReadFromJsonAsync<Thing>");
+        generated.Should().Contain("Task<Thing?> RemoveAsync");
     }
 }

@@ -97,7 +97,7 @@ public sealed class ApiClientGenerator : ISourceGenerator
                 // Query parameters = non-body, non-CT simple primitives
                 var bodyParam = member.Parameters.FirstOrDefault(p => p.GetAttributes().Any(a => bodyAttr!=null && SymbolEqualityComparer.Default.Equals(a.AttributeClass, bodyAttr)));
                 var queryParams = member.Parameters
-                    .Where(p => p != bodyParam && p != ctParam && !fullPath.Contains("{" + p.Name + "}", StringComparison.OrdinalIgnoreCase))
+                    .Where(p => !SymbolEqualityComparer.Default.Equals(p, bodyParam) && !SymbolEqualityComparer.Default.Equals(p, ctParam) && !fullPath.Contains("{" + p.Name + "}", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
                 // Build query string assembly
@@ -153,10 +153,8 @@ public sealed class ApiClientGenerator : ISourceGenerator
                     }
                     if (hasReturn && awaitedType is not null)
                     {
-                        if (verb == "POST" || verb == "PUT")
+                        if (verb == "POST" || verb == "PUT" || verb == "DELETE")
                             sb.AppendLine($"            var _response = {sendCall}; _response.EnsureSuccessStatusCode(); return await _response.Content.ReadFromJsonAsync<{awaitedTypeDisplay}>({(ctParam!=null?ctParam.Name:"CancellationToken.None")})!;");
-                        else if (verb == "DELETE")
-                            sb.AppendLine($"            var _response = {sendCall}; _response.EnsureSuccessStatusCode(); return default!; ");
                         else
                             sb.AppendLine("            // Unexpected path");
                     }
