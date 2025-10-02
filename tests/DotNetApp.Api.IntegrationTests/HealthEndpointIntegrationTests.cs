@@ -28,14 +28,14 @@ public class HealthEndpointIntegrationTests : IClassFixture<HealthEndpointIntegr
     }
 
     [Fact]
-    public async Task Health_Returns_Fake_Status_From_Mocked_Service()
+    public async Task Health_WhenCalled_ReturnsMockedStatus()
     {
         var json = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/state/health");
         json.GetProperty("status").GetString().Should().Be(FakeHealthService.CustomStatus);
     }
 
     [Fact]
-    public async Task Root_Serves_Fake_Index_From_FakeConfigurator()
+    public async Task RootRequest_WhenFrontendConfigured_ReturnsFakeIndex()
     {
         var html = await _client.GetStringAsync("/");
         html.Should().Contain("Fake Frontend");

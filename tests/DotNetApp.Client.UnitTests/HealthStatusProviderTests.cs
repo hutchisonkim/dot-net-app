@@ -12,7 +12,7 @@ public class HealthStatusProviderTests
 {
     [Fact]
     [Trait("Category","Unit")]
-    public async Task ApiClient_AsProvider_Returns_Status()
+    public async Task FetchStatusAsync_WhenCalled_ReturnsHealthy()
     {
         // Arrange
         using var ctx = new Bunit.TestContext();

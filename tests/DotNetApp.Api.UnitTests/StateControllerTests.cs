@@ -13,7 +13,7 @@ public class StateControllerTests
 {
     [Fact]
     [Trait("Category", "Unit")]
-    public async Task Health_Returns_Ok_With_Status()
+    public async Task Health_WhenCalled_ReturnsOkWithStatus()
     {
         // Arrange
         var mockHealth = new Mock<IHealthService>();

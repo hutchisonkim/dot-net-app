@@ -17,7 +17,7 @@ public class ServeMatchesPublishedTests
     private static readonly string[] CandidateUrls = new[] { "http://localhost:8080/" };
 
     [Fact]
-    public async Task ClientServes_PublishedIndexHtml()
+    public async Task ClientRootRequest_WhenServed_MatchesPublishedIndexHtml()
     {
         // Configurable overall timeout for the test (seconds). Defaults to 20s.
         var timeoutSeconds = 20;

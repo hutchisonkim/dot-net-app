@@ -30,7 +30,7 @@ public class ServeClientFromBackendTests
 
     [Fact]
     [Trait("Category","Integration")]
-    public async Task ClientServed_IsSameAsPublishedIndex()
+    public async Task ClientRootRequest_WhenServed_MatchesExpectedIndex()
     {
         // Configurable overall timeout for the test (seconds). Defaults to 20s to avoid flakiness.
         var timeoutSeconds = 20;

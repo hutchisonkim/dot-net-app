@@ -35,6 +35,18 @@ dotnet test --filter "Category!=E2E"                # Everything except slow E2E
 
 All `[Fact]` / `[Theory]` tests (except intentionally skipped placeholders) must declare at least one `Category` trait. A convention test will fail the build if a test is missing a category.
 
+### Code Coverage
+
+Collect cross-platform code coverage (lcov, opencover, cobertura) using the provided `coverlet.runsettings`:
+
+```
+dotnet test DotNetApp.sln -c Debug --collect "XPlat Code Coverage" --settings coverlet.runsettings --filter "Category!=E2E"
+```
+
+Outputs (per test project) are written under `TestResults/<guid>/` with the chosen formats. For a unified lcov summary you can optionally use report generation tools (e.g. `reportgenerator`) in CI.
+
+Exclude patterns configured: xUnit + FluentAssertions assemblies, generated/compiler code, EF Migrations, auto-properties.
+
 
 ## Generated API Client
 Contracts decorated with `[ApiContract]` and per-method `[Get]`, `[Post]`, `[Put]`, `[Delete]` generate typed clients at build via the `DotNetApp.CodeGen` source generator.
