@@ -70,6 +70,9 @@ param(
   [switch]$SkipInstallDistro,
   [switch]$Remove,
   [switch]$RestartService,
+  [switch]$Isolated,
+  [string]$RestartPolicy = 'on-failure',
+  [int]$RestartSec = 8,
   [switch]$ScriptDebug
 )
 
@@ -153,6 +156,17 @@ if (-not $RegistrationToken) {
 if (-not $Repo.Contains('/')) { throw "Repo must be in 'owner/name' format" }
 $RepoUrl = "https://github.com/$Repo"
 if (-not $RunnerName) { $RunnerName = "$(hostname)-wsl" }
+
+# Append isolated label automatically if requested
+if ($Isolated -and $Labels -notmatch '(?i)isolated') { $Labels += ',isolated' }
+
+# Normalize restart policy
+$validPolicies = 'always','on-failure'
+if ($RestartPolicy -notin $validPolicies) {
+  Write-Warning "Invalid -RestartPolicy '$RestartPolicy'. Falling back to 'on-failure'. Valid: $($validPolicies -join ', ')"
+  $RestartPolicy = 'on-failure'
+}
+if ($RestartSec -lt 1 -or $RestartSec -gt 300) { Write-Warning "RestartSec $RestartSec out of range (1-300). Using 8."; $RestartSec = 8 }
 
 Write-Host "Repo: $RepoUrl"; Write-Host "Runner name: $RunnerName"; Write-Host "Version: $RunnerVersion";
 
@@ -264,9 +278,9 @@ Raw output excerpt:\n$($cfgResult.StdOut | Select-Object -First 20 | Out-String)
   }
 }
 
-# 7. Optional: systemd service
+# 7. Optional: systemd service (idempotent; will update if already exists with different restart policy)
 if ($Service) {
-    Write-Section "Installing systemd service"
+    Write-Section "Installing / Updating systemd service (policy=$RestartPolicy, delay=${RestartSec}s)"
     $serviceUnit = @"
 [Unit]
 Description=GitHub Actions Runner ($RunnerName)
@@ -276,18 +290,22 @@ After=network.target
 User=$RunnerUser
 WorkingDirectory=$runnerDir
 ExecStart=$runnerDir/run.sh
-Restart=always
-RestartSec=5
+Restart=$RestartPolicy
+RestartSec=$RestartSec
 KillSignal=SIGINT
 TimeoutStopSec=600
 
 [Install]
 WantedBy=multi-user.target
 "@
-  Invoke-WslCommand -Command "echo '$serviceUnit' > /etc/systemd/system/github-runner.service" -Description 'write service unit' -RunAsRoot
-  Invoke-WslCommand -Command "systemctl daemon-reload && systemctl enable --now github-runner" -Description 'enable service' -RunAsRoot
-    Write-Host "Service installed and started." -ForegroundColor Green
-    Write-Host "Use -RestartService to safely recycle the runner." -ForegroundColor DarkGray
+  # Only rewrite if content differs to avoid unnecessary restarts
+  $tmpPath = [System.IO.Path]::GetTempFileName()
+  Set-Content -Path $tmpPath -Value $serviceUnit -NoNewline
+  $escaped = $serviceUnit.Replace("'","'\''")
+  Invoke-WslCommand -Command "if [ ! -f /etc/systemd/system/github-runner.service ] || ! grep -q 'Restart=$RestartPolicy' /etc/systemd/system/github-runner.service || ! grep -q 'RestartSec=$RestartSec' /etc/systemd/system/github-runner.service; then echo '$escaped' > /etc/systemd/system/github-runner.service; systemctl daemon-reload; fi" -Description 'write/update service unit' -RunAsRoot
+  Invoke-WslCommand -Command "systemctl enable github-runner >/dev/null 2>&1 || true; systemctl restart github-runner" -Description 'enable & restart service' -RunAsRoot
+    Write-Host "Service ensured with restart policy '$RestartPolicy' (RestartSec=$RestartSec)." -ForegroundColor Green
+    Write-Host "Use -RestartService to safely recycle the runner without reconfiguration." -ForegroundColor DarkGray
 } else {
     Write-Section "Starting interactive runner (non-service)"
     Write-Host "(You can CTRL+C later; re-run with -Service to daemonize)" -ForegroundColor Yellow

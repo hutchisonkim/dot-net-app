@@ -21,10 +21,29 @@
       "default": "2.328.0"
     },
     {
-      "id": "runnerSha",
+      "id": "runnerName",
       "type": "promptString",
-      "description": "Optional SHA256 of the runner tarball for verification (leave blank to skip)",
+      "description": "Optional explicit runner name (blank -> hostname-wsl)",
       "default": ""
+    },
+    {
+      "id": "runnerLabels",
+      "type": "promptString",
+      "description": "Extra comma-separated labels to append (base: self-hosted,linux,x64,local)",
+      "default": ""
+    },
+    {
+      "id": "restartPolicy",
+      "type": "pickString",
+      "description": "Service restart policy",
+      "options": ["on-failure","always"],
+      "default": "on-failure"
+    },
+    {
+      "id": "restartSec",
+      "type": "promptString",
+      "description": "Seconds before service restart (1-300)",
+      "default": "8"
     }
   ],
   "tasks": [
@@ -39,6 +58,10 @@
         "-Repo","${input:repoId}",
         "-RegistrationToken","${input:runnerToken}",
         "-RunnerVersion","${input:runnerVersion}",
+        "-RunnerName","${input:runnerName}",
+        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "-RestartPolicy","${input:restartPolicy}",
+        "-RestartSec","${input:restartSec}",
         "-Service"
       ],
       "problemMatcher": []
@@ -68,23 +91,11 @@
         "-Repo","${input:repoId}",
         "-RegistrationToken","${input:runnerToken}",
         "-RunnerVersion","${input:runnerVersion}",
+        "-RunnerName","${input:runnerName}",
+        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "-RestartPolicy","${input:restartPolicy}",
+        "-RestartSec","${input:restartSec}",
         "-Replace",
-        "-Service"
-      ],
-      "problemMatcher": []
-    },
-    {
-      "label": "Setup WSL GitHub Runner (Service + Hash Verify)",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "-Repo","${input:repoId}",
-        "-RegistrationToken","${input:runnerToken}",
-        "-RunnerVersion","${input:runnerVersion}",
-        "-RunnerSha256","${input:runnerSha}",
         "-Service"
       ],
       "problemMatcher": []
@@ -100,6 +111,30 @@
         "-Repo","${input:repoId}",
         "-RegistrationToken","${input:runnerToken}",
         "-RunnerVersion","${input:runnerVersion}",
+        "-RunnerName","${input:runnerName}",
+        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "-RestartPolicy","${input:restartPolicy}",
+        "-RestartSec","${input:restartSec}",
+        "-Service"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup WSL GitHub Runner (Isolated Label)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-Repo","${input:repoId}",
+        "-RegistrationToken","${input:runnerToken}",
+        "-RunnerVersion","${input:runnerVersion}",
+        "-RunnerName","${input:runnerName}",
+        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "-Isolated",
+        "-RestartPolicy","${input:restartPolicy}",
+        "-RestartSec","${input:restartSec}",
         "-Service"
       ],
       "problemMatcher": []
