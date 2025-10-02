@@ -5,17 +5,18 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using FluentAssertions;
 using Xunit;
 
 namespace DotNetApp.Client.IntegrationTests;
 
+[Trait("Category","Integration")]
 public class ServeMatchesPublishedTests
 {
     // Prefer localhost first when running tests locally; when running inside containers 'client' may be reachable
     private static readonly string[] CandidateUrls = new[] { "http://localhost:8080/" };
 
     [Fact]
-    [Trait("Category","Integration")]
     public async Task ClientServes_PublishedIndexHtml()
     {
         // Configurable overall timeout for the test (seconds). Defaults to 20s.
@@ -56,14 +57,14 @@ public class ServeMatchesPublishedTests
             if (res != null && res.IsSuccessStatusCode) break;
         }
 
-        Assert.True(res != null, "No response received from frontend service. Last exception: " + (lastEx?.Message ?? "none"));
-        Assert.True(res.IsSuccessStatusCode, $"Client returned non-success status: {(int)res!.StatusCode}");
+    res.Should().NotBeNull();
+    res!.IsSuccessStatusCode.Should().BeTrue($"Client returned non-success status: {(int)res.StatusCode}. Last exception: {lastEx?.Message}");
 
         var served = await res.Content.ReadAsStringAsync();
 
         var expectedPath = FindExpectedIndex();
-        Assert.True(expectedPath != null, "Expected index file not found. Searched from current/base directories and mounted path");
-        var expected = await File.ReadAllTextAsync(expectedPath!);
+    expectedPath.Should().NotBeNull();
+    var expected = await File.ReadAllTextAsync(expectedPath!);
 
         var nServed = Normalize(served);
         var nExpected = Normalize(expected);
@@ -72,18 +73,18 @@ public class ServeMatchesPublishedTests
         if (titleMatch.Success)
         {
             var expectedTitle = titleMatch.Groups[1].Value.Trim();
-            Assert.Contains(expectedTitle, served, StringComparison.OrdinalIgnoreCase);
+            served.Should().Contain(expectedTitle, "served HTML should contain the expected <title> text");
         }
 
         var baseMatch = Regex.Match(expected, "<base href=\"(.*?)\"", RegexOptions.IgnoreCase);
         if (baseMatch.Success)
         {
             var expectedBase = baseMatch.Groups[1].Value.Trim();
-            Assert.Contains($"<base href=\"{expectedBase}\"", served, StringComparison.OrdinalIgnoreCase);
+            served.Should().Contain($"<base href=\"{expectedBase}\"", "served HTML should contain the expected base href");
         }
 
-        Assert.Contains("_framework/blazor.webassembly.js", served, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(nExpected, nServed);
+    served.Should().Contain("_framework/blazor.webassembly.js", "served HTML must include the Blazor loader");
+    nServed.Should().Contain(nExpected, "served normalized HTML should include the normalized expected index content");
     }
 
     private static string? FindExpectedIndex()
