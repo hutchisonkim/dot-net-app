@@ -18,8 +18,11 @@ concurrency:
 
 jobs:
   test:
-    # Prefer self-hosted if explicitly requested via workflow_dispatch (default true), else use hosted ubuntu
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.useSelfHosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
+    # Prefer self-hosted if (a) manually dispatched AND (b) input resolves to true.
+    # Some tooling (e.g. VS Code Actions panel) may omit the input entirely; fall back to its declared default (true) explicitly.
+    # Expression pattern: (cond && 'self-hosted' || 'ubuntu-latest')
+    # We coalesce missing input with 'true' so omission still selects self-hosted as intended.
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && ((github.event.inputs.useSelfHosted || 'true') == 'true') && 'self-hosted' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -32,6 +35,13 @@ jobs:
             testFilter: ''
     name: tests-${{ matrix.name }}
     steps:
+      - name: Runner Context Debug
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "workflow_dispatch.useSelfHosted='${{ github.event.inputs.useSelfHosted }}' (coalesced to '${{ github.event.inputs.useSelfHosted || 'true' }}')"
+          echo "Selected runs-on expression -> ${{ github.event_name == 'workflow_dispatch' && ((github.event.inputs.useSelfHosted || 'true') == 'true') && 'self-hosted' || 'ubuntu-latest' }}"
+          echo "Runner name=$RUNNER_NAME os=$RUNNER_OS arch=$RUNNER_ARCH"
+          echo "Job id=${{ github.job }} ref=${{ github.ref }} sha=${{ github.sha }}"
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -153,7 +163,8 @@ jobs:
   deploy-coverage:
     needs: test
     if: github.ref == 'refs/heads/main'
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.useSelfHosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
+    # Mirror same resilient self-hosted selection logic here
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && ((github.event.inputs.useSelfHosted || 'true') == 'true') && 'self-hosted' || 'ubuntu-latest' }}
     permissions:
       pages: write
       id-token: write
