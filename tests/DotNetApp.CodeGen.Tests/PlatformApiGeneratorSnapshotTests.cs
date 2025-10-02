@@ -33,6 +33,7 @@ public class PlatformApiGeneratorSnapshotTests
     }
 
     [Fact]
+    [Trait("Category","CodeGen")]
     public void Generates_Get_With_Retry_And_Query()
     {
     var source = @"using System.Threading; using System.Threading.Tasks; using DotNetApp.CodeGen; namespace Demo { [ApiContract(""api/sample"")] public interface ISample { [Get(""item""), Retry(2,50)] Task<string?> GetItemAsync(string id, int page, CancellationToken ct = default); } }";
@@ -45,6 +46,7 @@ public class PlatformApiGeneratorSnapshotTests
     }
 
     [Fact]
+    [Trait("Category","CodeGen")]
     public void Generates_Post_With_Body()
     {
         var source = @"using System.Threading; using System.Threading.Tasks; using DotNetApp.CodeGen; namespace Demo { public record Thing(string Name); [ApiContract(""api/things"")] public interface IThings { [Post(""create"")] Task<Thing?> CreateAsync([Body] Thing t, CancellationToken ct=default); } }";
@@ -58,6 +60,7 @@ public class PlatformApiGeneratorSnapshotTests
     }
 
     [Fact]
+    [Trait("Category","CodeGen")]
     public void Generates_Put_With_Route_Param()
     {
         var source = @"using System.Threading; using System.Threading.Tasks; using DotNetApp.CodeGen; namespace Demo { public record Thing(string Name); [ApiContract(""api/things"")] public interface IThings { [Put(""update/{id}"")] Task<Thing?> UpdateAsync(string id, [Body] Thing t, CancellationToken ct=default); } }";
@@ -68,6 +71,7 @@ public class PlatformApiGeneratorSnapshotTests
         generated.Should().Contain("update/{Uri.EscapeDataString(id.ToString()!)}".Replace("{","{")); // ensure interpolation is present
     }
     [Fact]
+    [Trait("Category","CodeGen")]
     public void Generates_Delete_Returning_Content()
     {
         var source = @"using System.Threading; using System.Threading.Tasks; using DotNetApp.CodeGen; namespace Demo { public record Thing(string Name); [ApiContract(""api/things"")] public interface IThings { [Delete(""remove/{id}"")] Task<Thing?> RemoveAsync(string id, CancellationToken ct=default); } }";

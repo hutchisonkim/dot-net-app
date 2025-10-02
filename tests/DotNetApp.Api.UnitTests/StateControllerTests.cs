@@ -1,30 +1,35 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using DotNetApp.Api.Controllers;
+using DotNetApp.Core.Abstractions;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.VisualStudio.TestPlatform.TestHost;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
 using Xunit;
 
 namespace DotNetApp.Api.UnitTests;
 
-public class StateControllerTests : IClassFixture<WebApplicationFactory<Program>>
+// Pure unit tests for StateController (no WebApplicationFactory) to follow MS guidance of fast, isolated unit tests.
+public class StateControllerTests
 {
-    private readonly HttpClient _client;
-
-    public StateControllerTests(WebApplicationFactory<Program> factory)
-    {
-        _client = factory.CreateClient();
-    }
-
     [Fact]
-    public async Task Health_Returns_Healthy()
+    [Trait("Category", "Unit")]
+    public async Task Health_Returns_Ok_With_Status()
     {
-        var res = await _client.GetAsync("/api/state/health");
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
-        var obj = await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        obj.GetProperty("status").GetString().Should().Be("healthy");
+        // Arrange
+        var mockHealth = new Mock<IHealthService>();
+        mockHealth.Setup(h => h.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("healthy");
+        var sut = new StateController(mockHealth.Object);
+
+        // Act
+        var result = await sut.Health(CancellationToken.None);
+
+        // Assert
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.Value.Should().NotBeNull();
+        ok.Value!.ToString().Should().Contain("healthy");
+        mockHealth.Verify(h => h.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
 

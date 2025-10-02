@@ -11,14 +11,19 @@ namespace DotNetApp.Client.UnitTests;
 public class HealthStatusProviderTests
 {
     [Fact]
+    [Trait("Category","Unit")]
     public async Task ApiClient_AsProvider_Returns_Status()
     {
-        using var ctx = new BunitContext();
+        // Arrange
+        using var ctx = new Bunit.TestContext();
         var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"healthy\" }", System.Net.HttpStatusCode.OK);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
 
+        // Act
         var provider = ctx.Services.GetRequiredService<IHealthStatusProvider>();
         var status = await provider.FetchStatusAsync();
+
+        // Assert
         status.Should().Be("healthy");
     }
 }

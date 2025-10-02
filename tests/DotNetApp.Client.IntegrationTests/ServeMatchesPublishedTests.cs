@@ -15,6 +15,7 @@ public class ServeMatchesPublishedTests
     private static readonly string[] CandidateUrls = new[] { "http://localhost:8080/" };
 
     [Fact]
+    [Trait("Category","Integration")]
     public async Task ClientServes_PublishedIndexHtml()
     {
         // Configurable overall timeout for the test (seconds). Defaults to 20s.

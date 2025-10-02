@@ -9,20 +9,21 @@ namespace ExampleClient.UnitTests;
 public class ExamplePageTests
 {
     [Fact]
+    [Trait("Category","Unit")]
     public async Task ExamplePage_ShowsStatusFromIHealthStatusProvider()
     {
+        // Arrange
         using var ctx = new TestContext();
-
         var mockProvider = new Mock<DotNetApp.Core.Abstractions.IHealthStatusProvider>();
         mockProvider.Setup(p => p.FetchStatusAsync(default)).ReturnsAsync("UnitTest: Healthy");
-
         ctx.Services.AddSingleton(mockProvider.Object);
 
-    var cut = ctx.RenderComponent<ExampleClient.Pages.Example>();
+        // Act
+        var cut = ctx.RenderComponent<ExampleClient.Pages.Example>();
+        await Task.Delay(10); // allow render/OnInitializedAsync
 
-    // Allow component to initialize (component will call the mock provider)
-    await Task.Delay(10);
-
-    Assert.Contains("UnitTest: Healthy", cut.Markup);
+        // Assert
+        Assert.Contains("UnitTest: Healthy", cut.Markup);
+        mockProvider.Verify(p => p.FetchStatusAsync(default), Times.Once);
     }
 }
