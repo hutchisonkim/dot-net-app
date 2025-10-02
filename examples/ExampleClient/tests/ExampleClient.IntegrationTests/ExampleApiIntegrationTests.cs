@@ -15,6 +15,7 @@ public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
+    [Trait("Category","Integration")]
     public async Task PlatformApiClient_CallsApi_ReturnsHealthStatus()
     {
         using var client = _factory.CreateClient();

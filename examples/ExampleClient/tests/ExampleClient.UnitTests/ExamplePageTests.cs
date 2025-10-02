@@ -10,7 +10,7 @@ public class ExamplePageTests
 {
     [Fact]
     [Trait("Category","Unit")]
-    public async Task ExamplePage_ShowsStatusFromIHealthStatusProvider()
+    public void ExamplePage_ShowsStatusFromIHealthStatusProvider()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -19,11 +19,10 @@ public class ExamplePageTests
         ctx.Services.AddSingleton(mockProvider.Object);
 
         // Act
-        var cut = ctx.RenderComponent<ExampleClient.Pages.Example>();
-        await Task.Delay(10); // allow render/OnInitializedAsync
+    var cut = ctx.RenderComponent<ExampleClient.Pages.Example>();
 
-        // Assert
-        Assert.Contains("UnitTest: Healthy", cut.Markup);
-        mockProvider.Verify(p => p.FetchStatusAsync(default), Times.Once);
+    // Assert (wait until async render completes instead of arbitrary delay)
+    cut.WaitForAssertion(() => Assert.Contains("UnitTest: Healthy", cut.Markup));
+    mockProvider.Verify(p => p.FetchStatusAsync(default), Times.Once);
     }
 }

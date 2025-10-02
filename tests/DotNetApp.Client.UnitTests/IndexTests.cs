@@ -15,12 +15,12 @@ public class IndexTests
     public void Index_Renders_Welcome()
     {
         // Arrange
-    using var ctx = new TestContext();
+        using var ctx = new TestContext();
         var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"idle\" }", System.Net.HttpStatusCode.OK);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
 
         // Act
-    var cut = ctx.RenderComponent<Index>();
+        var cut = ctx.RenderComponent<Index>();
 
         // Assert
         cut.Markup.Should().Contain("<h1>DotNetApp</h1>");
