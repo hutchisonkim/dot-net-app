@@ -23,6 +23,12 @@ jobs:
     # Expression pattern: (cond && 'self-hosted' || 'ubuntu-latest')
     # We coalesce missing input with 'true' so omission still selects self-hosted as intended.
     runs-on: ${{ github.event_name == 'workflow_dispatch' && ((github.event.inputs.useSelfHosted || 'true') == 'true') && 'self-hosted' || 'ubuntu-latest' }}
+    env:
+      HOME: /home/ghrunner
+      DOTNET_ROOT: /home/ghrunner/.dotnet
+      DOTNET_CLI_HOME: /home/ghrunner/.dotnet
+      NUGET_PACKAGES: /home/ghrunner/.nuget/packages
+      PLAYWRIGHT_BROWSERS_PATH: /home/ghrunner/.cache/ms-playwright
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +41,14 @@ jobs:
             testFilter: ''
     name: tests-${{ matrix.name }}
     steps:
+      - name: Prepare user tool/cache directories (self-hosted only)
+        if: startsWith(runner.name, 'DESKTOP-') || contains(runner.os, 'Linux')
+        run: |
+          mkdir -p "$HOME/.dotnet" "$HOME/.nuget/packages" "$HOME/.cache/ms-playwright" "$HOME/.dotnet/tools"
+          # Prepend user dotnet tool paths to PATH for subsequent steps in this job
+          echo "PATH=/home/ghrunner/.dotnet:/home/ghrunner/.dotnet/tools:$PATH" >> $GITHUB_ENV
+          echo "Ensured tool/cache directories with ownership:";
+          ls -ld "$HOME/.dotnet" "$HOME/.nuget" "$HOME/.cache/ms-playwright"
       - name: Runner Context Debug
         run: |
           echo "event_name=${{ github.event_name }}"

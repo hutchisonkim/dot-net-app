@@ -281,6 +281,8 @@ Raw output excerpt:\n$($cfgResult.StdOut | Select-Object -First 20 | Out-String)
 # 7. Optional: systemd service (idempotent; will update if already exists with different restart policy)
 if ($Service) {
     Write-Section "Installing / Updating systemd service (policy=$RestartPolicy, delay=${RestartSec}s)"
+  # Ensure user tool/cache directories exist with proper ownership before the service starts
+  Invoke-WslCommand -Command "mkdir -p /home/$RunnerUser/.dotnet /home/$RunnerUser/.nuget/packages /home/$RunnerUser/.cache/ms-playwright && chown -R ${RunnerUser}:${RunnerUser} /home/$RunnerUser/.dotnet /home/$RunnerUser/.nuget /home/$RunnerUser/.cache" -Description 'prepare user tool dirs' -RunAsRoot -IgnoreFailure
     $serviceUnit = @"
 [Unit]
 Description=GitHub Actions Runner ($RunnerName)
@@ -294,6 +296,12 @@ Restart=$RestartPolicy
 RestartSec=$RestartSec
 KillSignal=SIGINT
 TimeoutStopSec=600
+Environment=HOME=/home/$RunnerUser
+Environment=DOTNET_ROOT=/home/$RunnerUser/.dotnet
+Environment=DOTNET_CLI_HOME=/home/$RunnerUser/.dotnet
+Environment=NUGET_PACKAGES=/home/$RunnerUser/.nuget/packages
+Environment=PLAYWRIGHT_BROWSERS_PATH=/home/$RunnerUser/.cache/ms-playwright
+Environment=PATH=/home/$RunnerUser/.dotnet:/home/$RunnerUser/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 [Install]
 WantedBy=multi-user.target
