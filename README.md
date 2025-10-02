@@ -1,5 +1,23 @@
 # DotNetApp
 
+## Local CI Acceleration / Self-Hosted Runner (WSL)
+
+You can speed up iterative CI test runs by installing a Linux (Ubuntu) GitHub Actions runner inside WSL on your Windows machine.
+
+Documentation & script:
+
+`scripts/README.setup-wsl-github-runner.md`
+
+Quick start (will prompt for repo + token if omitted):
+
+```
+pwsh -File .\scripts\setup-wsl-github-runner.ps1 -Service
+```
+
+VS Code tasks are provided (Run Task → "Setup WSL GitHub Runner ..."). Use the uninstall task to remove the runner safely. The setup enables systemd in WSL, installs dependencies, registers the runner with labels `self-hosted,linux,x64,local`, and optionally runs it as a service.
+
+---
+
 ## Test Suite Notes
 
 E2E Playwright tests are tagged with `Category=E2E`.

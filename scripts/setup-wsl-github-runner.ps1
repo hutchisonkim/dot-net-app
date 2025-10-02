@@ -58,8 +58,8 @@
 #>
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
-    [Parameter(Mandatory=$true)] [string]$Repo,
-    [Parameter(Mandatory=$true)] [string]$RegistrationToken,
+  [string]$Repo,
+  [string]$RegistrationToken,
     [string]$RunnerVersion = '2.328.0',
     [string]$Distro = 'Ubuntu',
     [string]$RunnerUser = 'ghrunner',
@@ -67,7 +67,9 @@ param(
     [string]$RunnerName,
     [switch]$Replace,
     [switch]$Service,
-    [switch]$SkipInstallDistro
+  [switch]$SkipInstallDistro,
+  [string]$RunnerSha256,
+  [switch]$Remove
 )
 
 function Write-Section($Title) { Write-Host "`n=== $Title ===" -ForegroundColor Cyan }
@@ -81,11 +83,35 @@ function Assert-Command($Name) {
 Write-Section "Pre-flight"
 Assert-Command wsl
 
+if (-not $Repo) {
+  $Repo = Read-Host "Enter GitHub repository (owner/repo)"
+}
+if (-not $RegistrationToken) {
+  $RegistrationToken = Read-Host "Enter ephemeral runner registration token"
+}
+
 if (-not $Repo.Contains('/')) { throw "Repo must be in 'owner/name' format" }
 $RepoUrl = "https://github.com/$Repo"
 if (-not $RunnerName) { $RunnerName = "$(hostname)-wsl" }
 
 Write-Host "Repo: $RepoUrl"; Write-Host "Runner name: $RunnerName"; Write-Host "Version: $RunnerVersion";
+
+$runnerDir = "/home/$RunnerUser/actions-runner"
+
+if ($Remove) {
+  Write-Section "Removal Requested"
+  if (-not $RegistrationToken) {
+    $RegistrationToken = Read-Host "Enter ephemeral runner registration token (required for removal)"
+  }
+  Write-Host "Stopping service (if present)" -ForegroundColor Cyan
+  & wsl.exe -d $Distro /bin/bash -c "sudo systemctl disable --now github-runner 2>/dev/null || true" | Out-Null
+  Write-Host "Removing GitHub runner registration (if config exists)" -ForegroundColor Cyan
+  & wsl.exe -d $Distro /bin/bash -c "if [ -x $runnerDir/config.sh ]; then sudo -u $RunnerUser $runnerDir/config.sh remove --token $RegistrationToken || true; fi" | Out-Null
+  Write-Host "Deleting runner directory" -ForegroundColor Cyan
+  & wsl.exe -d $Distro /bin/bash -c "sudo rm -rf $runnerDir" | Out-Null
+  Write-Host "Removal complete. Verify in GitHub UI that the runner disappeared." -ForegroundColor Green
+  return
+}
 
 # 1. Ensure distro exists
 $existingDistros = (& wsl.exe -l -q) 2>$null | Where-Object { $_ }
@@ -130,7 +156,6 @@ Write-Section "Ensuring PowerShell (pwsh) installed"
 
 # 6. Download & configure runner
 Write-Section "Configuring GitHub Actions runner"
-$runnerDir = "/home/$RunnerUser/actions-runner"
 $labelsEscaped = $Labels.Replace('"','')
 $configFlags = "--url $RepoUrl --token $RegistrationToken --name $RunnerName --labels $labelsEscaped --unattended"
 if ($Replace) { $configFlags += ' --replace' }
@@ -146,7 +171,16 @@ if [ ! -f "${PKG}" ]; then
   echo "Downloading runner $RunnerVersion";
   curl -sSLo "$PKG" -L https://github.com/actions/runner/releases/download/v${RunnerVersion}/$PKG
 fi
-# (Hash validation optional: supply SHA manually if you want)
+# Hash validation (if provided from PowerShell)
+EXPECTED_SHA="${RunnerSha256}"
+if [ -n "$EXPECTED_SHA" ]; then
+  echo "Verifying SHA256";
+  ACTUAL_SHA=$(sha256sum "$PKG" | awk '{print $1}')
+  if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+    echo "SHA256 mismatch: expected $EXPECTED_SHA got $ACTUAL_SHA" >&2
+    exit 1
+  fi
+fi
 if [ ! -d _diag ]; then
   tar xzf "$PKG"
 fi

@@ -1,0 +1,107 @@
+{
+  // Tasks to interactively set up a WSL GitHub Actions self-hosted runner
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "repoId",
+      "type": "promptString",
+      "description": "GitHub repository (owner/repo)",
+      "default": "<owner>/<repo>"
+    },
+    {
+      "id": "runnerToken",
+      "type": "promptString",
+      "description": "Ephemeral runner registration token (from GitHub UI)",
+      "password": true
+    },
+    {
+      "id": "runnerVersion",
+      "type": "promptString",
+      "description": "Runner version (blank for default in script)",
+      "default": "2.328.0"
+    },
+    {
+      "id": "runnerSha",
+      "type": "promptString",
+      "description": "Optional SHA256 of the runner tarball for verification (leave blank to skip)",
+      "default": ""
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Setup WSL GitHub Runner (Service)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-Repo","${input:repoId}",
+        "-RegistrationToken","${input:runnerToken}",
+        "-RunnerVersion","${input:runnerVersion}",
+        "-Service"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup WSL GitHub Runner (Interactive)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-Repo","${input:repoId}",
+        "-RegistrationToken","${input:runnerToken}",
+        "-RunnerVersion","${input:runnerVersion}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Update / Replace Runner",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-Repo","${input:repoId}",
+        "-RegistrationToken","${input:runnerToken}",
+        "-RunnerVersion","${input:runnerVersion}",
+        "-Replace",
+        "-Service"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup WSL GitHub Runner (Service + Hash Verify)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-Repo","${input:repoId}",
+        "-RegistrationToken","${input:runnerToken}",
+        "-RunnerVersion","${input:runnerVersion}",
+        "-RunnerSha256","${input:runnerSha}",
+        "-Service"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Uninstall WSL GitHub Runner",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-Repo","${input:repoId}",
+        "-RegistrationToken","${input:runnerToken}",
+        "-Remove"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
