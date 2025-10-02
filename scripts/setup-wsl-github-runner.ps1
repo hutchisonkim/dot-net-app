@@ -69,6 +69,7 @@ param(
     [switch]$Service,
   [switch]$SkipInstallDistro,
   [switch]$Remove,
+  [switch]$RestartService,
   [switch]$ScriptDebug
 )
 
@@ -106,6 +107,42 @@ function Invoke-WslCommand {
 Write-Section "Pre-flight"
 Assert-Command wsl
 
+# Use a dedicated clean directory for runner binaries separate from any cloned repos
+$runnerDir = "/home/$RunnerUser/gh-runner"
+
+# Fast path: restart service (does not require repo/token)
+if ($RestartService) {
+  Write-Section "Restarting GitHub Runner Service"
+  try {
+    $svcCheck = Invoke-WslCommand -Command '[ "$(ps -p 1 -o comm= 2>/dev/null)" = systemd ] && test -f /etc/systemd/system/github-runner.service && echo present || echo missing' -Description 'detect service' -RunAsRoot -IgnoreFailure
+    if ($svcCheck.StdOut -notmatch 'present') {
+      Write-Warning "github-runner.service not found or systemd not active. Install first with -Service."; return
+    }
+    # Stop service, kill any stray listeners, remove transient session file
+  Invoke-WslCommand -Command "systemctl stop github-runner || true; pkill -f Runner.Listener || true; runnerDir=$runnerDir; [ -f \"$runnerDir/.session\" ] && rm -f \"$runnerDir/.session\" || true" -Description 'stop & purge session' -RunAsRoot -IgnoreFailure | Out-Null
+    Start-Sleep 3
+    Invoke-WslCommand -Command 'systemctl start github-runner' -Description 'start service' -RunAsRoot | Out-Null
+    Start-Sleep 3
+    $status = Invoke-WslCommand -Command 'systemctl is-active github-runner || true' -Description 'status' -RunAsRoot -IgnoreFailure
+    Write-Host "Service status: $($status.StdOut.Trim())" -ForegroundColor Cyan
+    $logs = Invoke-WslCommand -Command 'journalctl -u github-runner -n 40 --no-pager 2>/dev/null || true' -Description 'recent logs' -RunAsRoot -IgnoreFailure
+    $logText = $logs.StdOut
+    Write-Host "---- Last 40 log lines (tail) ----" -ForegroundColor DarkCyan
+    Write-Host ($logText.Trim())
+    if ($logText -match 'A session for this runner already exists') {
+      Write-Warning 'Conflict detected: stale session still reported. Next step: reconfigure with a new runner name to clear server-side session.'
+      Write-Host "Suggested: ./scripts/setup-wsl-github-runner.ps1 -Repo <owner/repo> -RegistrationToken <NEW_TOKEN> -Replace -Service -RunnerName <new-name>" -ForegroundColor DarkGray
+    } elseif ($logText -match 'Listening for Jobs') {
+      Write-Host 'Runner appears healthy (Listening for Jobs).' -ForegroundColor Green
+    } else {
+      Write-Host 'Runner state inconclusive; inspect full logs if issues persist.' -ForegroundColor Yellow
+    }
+  } catch {
+    Write-Error "Failed to restart service: $_"
+  }
+  return
+}
+
 if (-not $Repo) {
   $Repo = Read-Host "Enter GitHub repository (owner/repo)"
 }
@@ -118,8 +155,6 @@ $RepoUrl = "https://github.com/$Repo"
 if (-not $RunnerName) { $RunnerName = "$(hostname)-wsl" }
 
 Write-Host "Repo: $RepoUrl"; Write-Host "Runner name: $RunnerName"; Write-Host "Version: $RunnerVersion";
-
-$runnerDir = "/home/$RunnerUser/actions-runner"
 
 if ($Remove) {
   Write-Section "Removal Requested"
@@ -252,6 +287,7 @@ WantedBy=multi-user.target
   Invoke-WslCommand -Command "echo '$serviceUnit' > /etc/systemd/system/github-runner.service" -Description 'write service unit' -RunAsRoot
   Invoke-WslCommand -Command "systemctl daemon-reload && systemctl enable --now github-runner" -Description 'enable service' -RunAsRoot
     Write-Host "Service installed and started." -ForegroundColor Green
+    Write-Host "Use -RestartService to safely recycle the runner." -ForegroundColor DarkGray
 } else {
     Write-Section "Starting interactive runner (non-service)"
     Write-Host "(You can CTRL+C later; re-run with -Service to daemonize)" -ForegroundColor Yellow

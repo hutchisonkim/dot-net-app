@@ -90,6 +90,21 @@
       "problemMatcher": []
     },
     {
+      "label": "Setup WSL GitHub Runner (Fresh Clean Dir)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-Repo","${input:repoId}",
+        "-RegistrationToken","${input:runnerToken}",
+        "-RunnerVersion","${input:runnerVersion}",
+        "-Service"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "Uninstall WSL GitHub Runner",
       "type": "shell",
       "command": "pwsh",
@@ -111,8 +126,8 @@
       "args": [
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
-        "-Command",
-        "wsl -d Ubuntu -u root bash -lc 'systemctl stop github-runner; pkill -f Runner.Listener || true; systemctl start github-runner; sleep 3; echo ====STATUS====; systemctl is-active github-runner; echo ====LOG====; journalctl -u github-runner -n 20 --no-pager'"
+        "-File","scripts/setup-wsl-github-runner.ps1",
+        "-RestartService"
       ],
       "problemMatcher": []
     }
