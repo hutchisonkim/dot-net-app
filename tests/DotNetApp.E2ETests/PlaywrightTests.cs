@@ -1,9 +1,10 @@
 using System;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Microsoft.Playwright;
 using Xunit;
 
-namespace FullstackTests;
+namespace DotNetApp.E2ETests;
 
 public class PlaywrightTests : IAsyncLifetime
 {
@@ -38,10 +39,10 @@ public class PlaywrightTests : IAsyncLifetime
             await page.GotoAsync(frontendUrl, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 30000 });
 
             var title = await page.TitleAsync();
-            Assert.False(string.IsNullOrWhiteSpace(title));
+            title.Should().NotBeNullOrWhiteSpace();
 
             var content = await page.ContentAsync();
-            Assert.Contains("_framework/blazor.webassembly.js", content, StringComparison.OrdinalIgnoreCase);
+            content.Contains("_framework/blazor.webassembly.js", StringComparison.OrdinalIgnoreCase).Should().BeTrue();
         };
 
         var testTask = testBody();
