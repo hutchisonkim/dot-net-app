@@ -62,6 +62,10 @@ To surface a badge in the README you can manually download and commit one, or pu
 
 To auto-publish badges to a `gh-pages` branch, add a subsequent job that pushes the `coverage-report` directory to `gh-pages` (not included by default to avoid unintended branch writes).
 
+When running on `main`, the workflow now deploys the HTML coverage report to GitHub Pages. Once Pages is enabled for this repository, you can view it at:
+
+`https://<owner>.github.io/<repo>/index.html` (replace with actual owner/repo). If the site is not yet enabled, enable Pages (Source: GitHub Actions) in repository settings.
+
 
 ## Generated API Client
 Contracts decorated with `[ApiContract]` and per-method `[Get]`, `[Post]`, `[Put]`, `[Delete]` generate typed clients at build via the `DotNetApp.CodeGen` source generator.

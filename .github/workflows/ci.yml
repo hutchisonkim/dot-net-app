@@ -1,13 +1,28 @@
 name: CI
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-test-coverage:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: non-e2e
+            runE2E: false
+            testFilter: 'Category!=E2E'
+          - name: full-e2e
+            runE2E: true
+            testFilter: ''
+    name: tests-${{ matrix.name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,36 +38,73 @@ jobs:
       - name: Build
         run: dotnet build DotNetApp.sln --configuration Release --no-restore
 
-      - name: Test with Coverage (non-E2E)
-        run: dotnet test DotNetApp.sln --configuration Release --no-build --collect "XPlat Code Coverage" --settings coverlet.runsettings --filter "Category!=E2E" --logger trx
+      - name: Install Playwright Browsers (E2E)
+        if: matrix.runE2E == true
+        shell: bash
+        run: pwsh tests/DotNetApp.E2ETests/bin/Release/net8.0/playwright.ps1 install
 
-      - name: Install ReportGenerator
+      - name: Test (non-E2E with coverage)
+        if: matrix.runE2E == false
+        run: |
+          dotnet test DotNetApp.sln --configuration Release --no-build \
+            --collect "XPlat Code Coverage" --settings coverlet.runsettings \
+            --filter "${{ matrix.testFilter }}" --logger trx
+
+      - name: Test (full including E2E)
+        if: matrix.runE2E == true && github.ref == 'refs/heads/main'
+        run: |
+          dotnet test DotNetApp.sln --configuration Release --no-build --logger trx
+
+      - name: Skip E2E on PR (informational)
+        if: matrix.runE2E == true && github.ref != 'refs/heads/main'
+        run: echo "Skipping E2E run for non-main ref $GITHUB_REF"
+
+      - name: Install ReportGenerator (coverage matrix only)
+        if: matrix.runE2E == false
         run: dotnet tool install --global dotnet-reportgenerator-globaltool
 
       - name: Generate Coverage Report
+        if: matrix.runE2E == false
         env:
           PATH: $HOME/.dotnet/tools:${{ env.PATH }}
         run: |
           REPORT_DIR=coverage-report
           mkdir -p $REPORT_DIR
-          # Collect all coverage.cobertura.xml files
           FILES=$(find . -type f -name 'coverage.cobertura.xml' -printf '%p;')
           echo "Found cobertura files: $FILES"
           reportgenerator \
             -reports:"${FILES}" \
             -targetdir:"$REPORT_DIR" \
-            -reporttypes:Html;MarkdownSummaryGithub;Badges \
+            -reporttypes:Html;MarkdownSummaryGithub;Badges;TextSummary \
             -title:"DotNetApp Coverage"
           echo "Coverage report generated at $REPORT_DIR/index.html"
 
+      - name: Enforce Coverage Thresholds
+        if: matrix.runE2E == false
+        shell: bash
+        run: |
+          SUMMARY=coverage-report/Summary.txt
+          if [ ! -f "$SUMMARY" ]; then echo "Summary file not found"; exit 1; fi
+          LINE=$(grep -Po 'Line coverage[^0-9]*\K[0-9]+(?=%)' "$SUMMARY" | head -1 || echo 0)
+          BRANCH=$(grep -Po 'Branch coverage[^0-9]*\K[0-9]+(?=%)' "$SUMMARY" | head -1 || echo 0)
+            echo "Line coverage: $LINE%"; echo "Branch coverage: $BRANCH%";
+          MIN_LINE=80
+          MIN_BRANCH=70
+          if [ "$LINE" -lt "$MIN_LINE" ] || [ "$BRANCH" -lt "$MIN_BRANCH" ]; then
+            echo "Coverage below threshold (Line>=$MIN_LINE, Branch>=$MIN_BRANCH)";
+            exit 1;
+          fi
+          echo "Coverage thresholds satisfied."
+
       - name: Upload Coverage Artifact
+        if: matrix.runE2E == false
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage-report
 
       - name: Publish Coverage Summary (PR)
-        if: github.event_name == 'pull_request'
+        if: matrix.runE2E == false && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -71,8 +123,31 @@ jobs:
             }
 
       - name: Expose Badge Artifact
-        if: github.ref == 'refs/heads/main'
+        if: matrix.runE2E == false && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-badges
           path: coverage-report/badge_*.*
+
+  deploy-coverage:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    # Environment block removed; Pages URL will appear in deployment output
+    steps:
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage-report
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
