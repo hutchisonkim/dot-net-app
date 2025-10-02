@@ -47,6 +47,21 @@ Outputs (per test project) are written under `TestResults/<guid>/` with the chos
 
 Exclude patterns configured: xUnit + FluentAssertions assemblies, generated/compiler code, EF Migrations, auto-properties.
 
+### CI Coverage & Badges
+
+GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests (excluding `Category=E2E`), gathers coverage, and produces:
+* HTML report (artifact: `coverage-report`)
+* Markdown summary comment on pull requests
+* Badge images (artifact: `coverage-badges`) named `badge_branchcoverage.svg`, `badge_linecoverage.svg`, etc.
+
+To surface a badge in the README you can manually download and commit one, or publish via Pages. Example (if committed under `docs/coverage/badge_linecoverage.svg`):
+
+```
+![Line Coverage](docs/coverage/badge_linecoverage.svg)
+```
+
+To auto-publish badges to a `gh-pages` branch, add a subsequent job that pushes the `coverage-report` directory to `gh-pages` (not included by default to avoid unintended branch writes).
+
 
 ## Generated API Client
 Contracts decorated with `[ApiContract]` and per-method `[Get]`, `[Post]`, `[Put]`, `[Delete]` generate typed clients at build via the `DotNetApp.CodeGen` source generator.

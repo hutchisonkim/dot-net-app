@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-test-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore DotNetApp.sln
+
+      - name: Build
+        run: dotnet build DotNetApp.sln --configuration Release --no-restore
+
+      - name: Test with Coverage (non-E2E)
+        run: dotnet test DotNetApp.sln --configuration Release --no-build --collect "XPlat Code Coverage" --settings coverlet.runsettings --filter "Category!=E2E" --logger trx
+
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      - name: Generate Coverage Report
+        env:
+          PATH: $HOME/.dotnet/tools:${{ env.PATH }}
+        run: |
+          REPORT_DIR=coverage-report
+          mkdir -p $REPORT_DIR
+          # Collect all coverage.cobertura.xml files
+          FILES=$(find . -type f -name 'coverage.cobertura.xml' -printf '%p;')
+          echo "Found cobertura files: $FILES"
+          reportgenerator \
+            -reports:"${FILES}" \
+            -targetdir:"$REPORT_DIR" \
+            -reporttypes:Html;MarkdownSummaryGithub;Badges \
+            -title:"DotNetApp Coverage"
+          echo "Coverage report generated at $REPORT_DIR/index.html"
+
+      - name: Upload Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
+
+      - name: Publish Coverage Summary (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summaryPath = 'coverage-report/SummaryGithub.md';
+            if (fs.existsSync(summaryPath)) {
+              const body = fs.readFileSync(summaryPath, 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.payload.pull_request.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            } else {
+              core.warning('Coverage summary not found');
+            }
+
+      - name: Expose Badge Artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badges
+          path: coverage-report/badge_*.*
