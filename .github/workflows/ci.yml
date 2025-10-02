@@ -14,6 +14,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: non-e2e
@@ -72,6 +73,7 @@ jobs:
           mkdir -p $REPORT_DIR
           FILES=$(find . -type f -name 'coverage.cobertura.xml' -printf '%p;')
           echo "Found cobertura files: $FILES"
+          if [ -z "$FILES" ]; then echo "No coverage.cobertura.xml files found"; exit 1; fi
           reportgenerator \
             -reports:"${FILES}" \
             -targetdir:"$REPORT_DIR" \
@@ -79,21 +81,33 @@ jobs:
             -title:"DotNetApp Coverage"
           echo "Coverage report generated at $REPORT_DIR/index.html"
 
-      - name: Enforce Coverage Thresholds
+      - name: Extract Coverage Metrics
         if: matrix.runE2E == false
+        id: coverage_metrics
         shell: bash
         run: |
           SUMMARY=coverage-report/Summary.txt
           if [ ! -f "$SUMMARY" ]; then echo "Summary file not found"; exit 1; fi
           LINE=$(grep -Po 'Line coverage[^0-9]*\K[0-9]+(?=%)' "$SUMMARY" | head -1 || echo 0)
           BRANCH=$(grep -Po 'Branch coverage[^0-9]*\K[0-9]+(?=%)' "$SUMMARY" | head -1 || echo 0)
-            echo "Line coverage: $LINE%"; echo "Branch coverage: $BRANCH%";
-          MIN_LINE=80
-          MIN_BRANCH=70
+          echo "Line: $LINE%  Branch: $BRANCH%"
+          echo "line=$LINE" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Enforce Coverage Thresholds
+        if: matrix.runE2E == false
+        shell: bash
+        run: |
+          LINE=${{ steps.coverage_metrics.outputs.line }}
+          BRANCH=${{ steps.coverage_metrics.outputs.branch }}
+          : "${MIN_LINE_COVERAGE:=80}"
+          : "${MIN_BRANCH_COVERAGE:=70}"
+          MIN_LINE=$MIN_LINE_COVERAGE
+          MIN_BRANCH=$MIN_BRANCH_COVERAGE
+          echo "Line coverage: $LINE% (min $MIN_LINE%)"; echo "Branch coverage: $BRANCH% (min $MIN_BRANCH%)";
+          if [ -z "$LINE" ] || [ -z "$BRANCH" ]; then echo "Missing coverage metrics"; exit 1; fi
           if [ "$LINE" -lt "$MIN_LINE" ] || [ "$BRANCH" -lt "$MIN_BRANCH" ]; then
-            echo "Coverage below threshold (Line>=$MIN_LINE, Branch>=$MIN_BRANCH)";
-            exit 1;
-          fi
+            echo "Coverage below threshold (Line>=$MIN_LINE, Branch>=$MIN_BRANCH)"; exit 1; fi
           echo "Coverage thresholds satisfied."
 
       - name: Upload Coverage Artifact
@@ -144,6 +158,9 @@ jobs:
         with:
           name: coverage-report
           path: coverage-report
+      - name: Verify coverage artifact
+        run: |
+          if [ ! -f coverage-report/index.html ]; then echo "coverage-report/index.html missing"; ls -R coverage-report || true; exit 1; fi
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
