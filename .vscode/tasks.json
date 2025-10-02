@@ -103,5 +103,18 @@
       ],
       "problemMatcher": []
     }
+    ,
+    {
+      "label": "Restart WSL GitHub Runner Service",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy","Bypass",
+        "-Command",
+        "wsl -d Ubuntu -u root bash -lc 'systemctl stop github-runner; pkill -f Runner.Listener || true; systemctl start github-runner; sleep 3; echo ====STATUS====; systemctl is-active github-runner; echo ====LOG====; journalctl -u github-runner -n 20 --no-pager'"
+      ],
+      "problemMatcher": []
+    }
   ]
 }
