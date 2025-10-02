@@ -79,6 +79,16 @@ public sealed class ApiClientGenerator : ISourceGenerator
                 var returnType = member.ReturnType; // Expect Task<T> or Task
                 var ctParam = member.Parameters.FirstOrDefault(p => p.Type.ToDisplayString() == "System.Threading.CancellationToken");
                 var hasReturn = TryUnwrapTask(returnType, out var awaitedType);
+                // Determine display type for JSON (strip nullable from reference types for deserialization generic arg)
+                string? awaitedTypeDisplay = null;
+                if (hasReturn && awaitedType is not null)
+                {
+                    awaitedTypeDisplay = awaitedType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+                    if (awaitedType.IsReferenceType && awaitedType.NullableAnnotation == NullableAnnotation.Annotated && awaitedTypeDisplay.EndsWith("?", StringComparison.Ordinal))
+                    {
+                        awaitedTypeDisplay = awaitedTypeDisplay.Substring(0, awaitedTypeDisplay.Length - 1);
+                    }
+                }
                 var methodSig = member.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
                 // Reconstruct method signature manually to control formatting
                 var methodName = member.Name;
@@ -118,8 +128,8 @@ public sealed class ApiClientGenerator : ISourceGenerator
                 // Issue request
                 if (verb == "GET")
                 {
-                    if (hasReturn && awaitedType is not null)
-                        sb.AppendLine($"            return await _http.GetFromJsonAsync<{awaitedType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}>({pathVar}{(ctParam != null ? ", " + ctParam.Name : string.Empty)})!;");
+                    if (hasReturn && awaitedType is not null && awaitedTypeDisplay is not null)
+                        sb.AppendLine($"            return await _http.GetFromJsonAsync<{awaitedTypeDisplay}>({pathVar}{(ctParam != null ? ", " + ctParam.Name : string.Empty)})!;");
                     else
                         sb.AppendLine($"            var _resp = await _http.GetAsync({pathVar}{(ctParam != null ? ", " + ctParam.Name : string.Empty)}); _resp.EnsureSuccessStatusCode(); return; ");
                 }
@@ -144,7 +154,7 @@ public sealed class ApiClientGenerator : ISourceGenerator
                     if (hasReturn && awaitedType is not null)
                     {
                         if (verb == "POST" || verb == "PUT")
-                            sb.AppendLine($"            var _response = {sendCall}; _response.EnsureSuccessStatusCode(); return await _response.Content.ReadFromJsonAsync<{awaitedType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}>({(ctParam!=null?ctParam.Name:"CancellationToken.None")})!;");
+                            sb.AppendLine($"            var _response = {sendCall}; _response.EnsureSuccessStatusCode(); return await _response.Content.ReadFromJsonAsync<{awaitedTypeDisplay}>({(ctParam!=null?ctParam.Name:"CancellationToken.None")})!;");
                         else if (verb == "DELETE")
                             sb.AppendLine($"            var _response = {sendCall}; _response.EnsureSuccessStatusCode(); return default!; ");
                         else
