@@ -6,26 +6,15 @@ using Xunit;
 
 namespace DotNetApp.E2ETests;
 
-public class PlaywrightTests : IAsyncLifetime
+[Collection("Playwright E2E")] // Leverage shared browser instance
+public class PlaywrightTests
 {
-    private IPlaywright? _playwright;
-    private IBrowser? _browser;
-
-    public async Task InitializeAsync()
-    {
-        _playwright = await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_browser != null) await _browser.CloseAsync();
-        _playwright?.Dispose();
-    }
+    private readonly PlaywrightSharedFixture _fx;
+    public PlaywrightTests(PlaywrightSharedFixture fx) => _fx = fx;
 
     [Fact]
     [Trait("Category", "E2E")]
-    public async Task Client_Has_Title_And_BlazorLoader()
+    public async Task Client_Index_Loads_BlazorRuntime()
     {
         // Ensure the test as a whole cannot hang forever. Enforce a 10 second timeout
         // for the async operations inside this test. This is independent of any
@@ -34,7 +23,7 @@ public class PlaywrightTests : IAsyncLifetime
 
         Func<Task> testBody = async () =>
         {
-            await using var context = await _browser!.NewContextAsync();
+            await using var context = await _fx.Browser.NewContextAsync();
             var page = await context.NewPageAsync();
             await page.GotoAsync(frontendUrl, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 30000 });
 
@@ -50,7 +39,7 @@ public class PlaywrightTests : IAsyncLifetime
         if (completed != testTask)
         {
             // If the test body didn't complete within 10s, fail with a clear message.
-            throw new TimeoutException("E2E test 'Client_Has_Title_And_BlazorLoader' timed out after 10 seconds.");
+            throw new TimeoutException("E2E test 'Client_Index_Loads_BlazorRuntime' timed out after 10 seconds.");
         }
         // Propagate any exception from the test body
         await testTask;

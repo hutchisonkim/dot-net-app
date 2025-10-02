@@ -9,7 +9,6 @@ using Xunit;
 
 namespace DotNetApp.Api.UnitTests;
 
-// Pure unit tests for StateController (no WebApplicationFactory) to follow MS guidance of fast, isolated unit tests.
 public class StateControllerTests
 {
     [Fact]
