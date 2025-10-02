@@ -55,14 +55,15 @@
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
         "-File","scripts/setup-wsl-github-runner.ps1",
-        "-Repo","${input:repoId}",
-        "-RegistrationToken","${input:runnerToken}",
-        "-RunnerVersion","${input:runnerVersion}",
-        "-RunnerName","${input:runnerName}",
-        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "-RestartPolicy","${input:restartPolicy}",
-        "-RestartSec","${input:restartSec}",
-        "-Service"
+        "--",
+        "--repo","${input:repoId}",
+        "--token","${input:runnerToken}",
+        "--runner-version","${input:runnerVersion}",
+        "--runner-name","${input:runnerName}",
+        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "--restart-policy","${input:restartPolicy}",
+        "--restart-sec","${input:restartSec}",
+        "--service"
       ],
       "problemMatcher": []
     },
@@ -74,9 +75,10 @@
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
         "-File","scripts/setup-wsl-github-runner.ps1",
-        "-Repo","${input:repoId}",
-        "-RegistrationToken","${input:runnerToken}",
-        "-RunnerVersion","${input:runnerVersion}"
+        "--",
+        "--repo","${input:repoId}",
+        "--token","${input:runnerToken}",
+        "--runner-version","${input:runnerVersion}"
       ],
       "problemMatcher": []
     },
@@ -88,15 +90,16 @@
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
         "-File","scripts/setup-wsl-github-runner.ps1",
-        "-Repo","${input:repoId}",
-        "-RegistrationToken","${input:runnerToken}",
-        "-RunnerVersion","${input:runnerVersion}",
-        "-RunnerName","${input:runnerName}",
-        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "-RestartPolicy","${input:restartPolicy}",
-        "-RestartSec","${input:restartSec}",
-        "-Replace",
-        "-Service"
+        "--",
+        "--repo","${input:repoId}",
+        "--token","${input:runnerToken}",
+        "--runner-version","${input:runnerVersion}",
+        "--runner-name","${input:runnerName}",
+        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "--restart-policy","${input:restartPolicy}",
+        "--restart-sec","${input:restartSec}",
+        "--replace",
+        "--service"
       ],
       "problemMatcher": []
     },
@@ -108,14 +111,15 @@
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
         "-File","scripts/setup-wsl-github-runner.ps1",
-        "-Repo","${input:repoId}",
-        "-RegistrationToken","${input:runnerToken}",
-        "-RunnerVersion","${input:runnerVersion}",
-        "-RunnerName","${input:runnerName}",
-        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "-RestartPolicy","${input:restartPolicy}",
-        "-RestartSec","${input:restartSec}",
-        "-Service"
+        "--",
+        "--repo","${input:repoId}",
+        "--token","${input:runnerToken}",
+        "--runner-version","${input:runnerVersion}",
+        "--runner-name","${input:runnerName}",
+        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "--restart-policy","${input:restartPolicy}",
+        "--restart-sec","${input:restartSec}",
+        "--service"
       ],
       "problemMatcher": []
     },
@@ -127,15 +131,16 @@
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
         "-File","scripts/setup-wsl-github-runner.ps1",
-        "-Repo","${input:repoId}",
-        "-RegistrationToken","${input:runnerToken}",
-        "-RunnerVersion","${input:runnerVersion}",
-        "-RunnerName","${input:runnerName}",
-        "-Labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "-Isolated",
-        "-RestartPolicy","${input:restartPolicy}",
-        "-RestartSec","${input:restartSec}",
-        "-Service"
+        "--",
+        "--repo","${input:repoId}",
+        "--token","${input:runnerToken}",
+        "--runner-version","${input:runnerVersion}",
+        "--runner-name","${input:runnerName}",
+        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
+        "--isolated",
+        "--restart-policy","${input:restartPolicy}",
+        "--restart-sec","${input:restartSec}",
+        "--service"
       ],
       "problemMatcher": []
     },
@@ -147,9 +152,10 @@
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
         "-File","scripts/setup-wsl-github-runner.ps1",
-        "-Repo","${input:repoId}",
-        "-RegistrationToken","${input:runnerToken}",
-        "-Remove"
+        "--",
+        "--repo","${input:repoId}",
+        "--token","${input:runnerToken}",
+        "--remove"
       ],
       "problemMatcher": []
     }
@@ -162,8 +168,26 @@
         "-NoProfile",
         "-ExecutionPolicy","Bypass",
         "-File","scripts/setup-wsl-github-runner.ps1",
-        "-RestartService"
+        "--",
+        "--restart",
+        "--restart-policy","${input:restartPolicy}",
+        "--restart-sec","${input:restartSec}"
       ],
+      "problemMatcher": []
+    }
+    ,
+    {
+      "label": "Runner: Shutdown & Cleanup",
+      "type": "shell",
+      "command": "wsl",
+      "args": ["-d","Ubuntu","-u","root","--","/mnt/c/___work/dot-net-app/scripts/wsl-runner-shutdown.sh"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Runner: Start / Activate",
+      "type": "shell",
+      "command": "wsl",
+      "args": ["-d","Ubuntu","-u","root","--","/mnt/c/___work/dot-net-app/scripts/wsl-runner-start.sh"],
       "problemMatcher": []
     }
   ]
