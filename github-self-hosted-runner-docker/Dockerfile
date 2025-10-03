@@ -1,9 +1,12 @@
 FROM ubuntu:20.04
 
-# Set environment variables
-ENV RUNNER_VERSION=latest
+# Allow pinning the runner version at build time
+ARG RUNNER_VERSION=2.328.0
+ENV RUNNER_VERSION=${RUNNER_VERSION}
 ENV RUNNER_HOME=/home/github-runner
 ENV RUNNER_USER=github-runner
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
 
 # Install necessary dependencies
 RUN apt-get update && \

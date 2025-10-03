@@ -7,10 +7,17 @@ services:
       dockerfile: Dockerfile
     volumes:
       - runner_data:/runner
+      - runner_data:/actions-runner
     env_file:
       - .env
     restart: unless-stopped
-    entrypoint: ["/scripts/entrypoint.sh"]
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    environment:
+      - GITHUB_TOKEN
+      - GITHUB_URL
+      - RUNNER_NAME
+      - RUNNER_LABELS
+      - RUNNER_WORKDIR
 
 volumes:
   runner_data:

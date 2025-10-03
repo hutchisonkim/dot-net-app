@@ -37,16 +37,30 @@ To set up the self-hosted GitHub runner using Docker, follow these steps:
    ```
 
 3. **Build the Docker Image**:
-   Use the Makefile to build the Docker image:
+   Use the Makefile or docker compose to build the Docker image. You can pin a runner version at build time:
    ```bash
+   # Example: build with a pinned runner version
+   docker compose build --build-arg RUNNER_VERSION=2.328.0
+   # or using make (if installed):
    make build
    ```
 
 4. **Start the Runner**:
-   Start the self-hosted runner using Docker Compose:
-   ```bash
-   make up
-   ```
+   You have two safe options to start the runner without committing tokens to disk:
+
+   - Pass the token via environment (keeps token out of source files):
+     ```bash
+     # Bash helper, will prompt for token if not supplied
+     ./scripts/run-with-token.sh
+     # Or pass token on the command line (not recommended to store in shell history):
+     ./scripts/run-with-token.sh "<REGISTRATION_TOKEN>"
+     ```
+
+   - Use the interactive populate script (writes .env locally, do not commit):
+     ```bash
+     ./scripts/populate-env.sh
+     docker compose up --build
+     ```
 
 5. **Access the Runner**:
    The runner will be available for use in your GitHub repository. Ensure that it is properly configured and running.
