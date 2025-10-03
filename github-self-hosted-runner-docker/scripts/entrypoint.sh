@@ -79,26 +79,78 @@ if [ -f "/runner/.runner-configured" ] || [ -f "$RUNNER_DIR/.runner-configured" 
 		echo "FORCE_RECONFIGURE=1: running configure-runner.sh to reconfigure the runner."
 		/usr/local/bin/configure-runner.sh
 	else
-		# Validate presence of essential runner files. If missing, treat the
-		# configuration marker as stale and force reconfiguration.
-		stale_marker=0
-		# run.sh must exist in the actions-runner directory
-		if [ ! -f "$RUNNER_DIR/run.sh" ]; then
-			echo "Warning: $RUNNER_DIR/run.sh not found — configuration marker may be stale."
-			stale_marker=1
-		fi
-		# Either .credentials or .env should exist to indicate a configured runner
-		if [ ! -f "$RUNNER_DIR/.credentials" ] && [ ! -f "$RUNNER_DIR/.env" ]; then
-			echo "Warning: no $RUNNER_DIR/.credentials or $RUNNER_DIR/.env found — configuration marker may be stale."
-			stale_marker=1
+		# If the user provided a management API token and repository, verify
+		# the runner is online server-side via the GitHub API. We will not
+		# trust local marker files; absence of API credentials or an API
+		# response indicating the runner is not online will cause a
+		# reconfiguration to ensure the runner registers correctly.
+		check_server_registration() {
+			# Return codes:
+			# 0 = runner found and status == online
+			# 1 = runner missing or not online (including API errors or missing creds)
+			if [ -z "${GITHUB_API_TOKEN:-}" ] || [ -z "${GITHUB_REPOSITORY:-}" ]; then
+				return 1
+			fi
+
+			# Determine API base (handle GitHub Enterprise Server)
+			if echo "$GITHUB_URL" | grep -qi "github.com"; then
+				API_BASE="https://api.github.com"
+			else
+				API_BASE="${GITHUB_URL%/}/api/v3"
+			fi
+
+			owner=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f1)
+			repo=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2-)
+
+			# Query runners for the repository
+			resp=$(curl -sS -w "\n%{http_code}" -H "Authorization: token $GITHUB_API_TOKEN" -H "Accept: application/vnd.github+json" "$API_BASE/repos/$owner/$repo/actions/runners?per_page=100" ) || true
+			http_status=$(echo "$resp" | tail -n1)
+			body=$(echo "$resp" | sed '$d')
+
+			if [ -z "$http_status" ] || [ "$http_status" -ge 400 ]; then
+				echo "Warning: GitHub API check failed with HTTP status ${http_status:-unknown}."
+				return 1
+			fi
+
+			# Extract the runner status for the given name
+			if command -v jq >/dev/null 2>&1; then
+				status=$(echo "$body" | jq -r --arg name "$RUNNER_NAME" '.runners[] | select(.name==$name) | .status' | head -n1 || true)
+			else
+				# Fallback parsing; may be less reliable but sufficient to
+				# determine 'online' vs other statuses.
+				# Find the entry for the runner name and then look for the
+				# nearest status field following it.
+				status=$(echo "$body" | awk -v name="\"name\": \"$RUNNER_NAME\"" 'index($0, name){found=1} found && /"status"/ {gsub(/.*"status"\s*:\s*"|".*/,"",$0); print $0; exit}' || true)
+			fi
+
+			if [ "$status" = "online" ]; then
+				return 0
+			fi
+
+			return 1
+		}
+
+		# Decide reconfiguration based solely on server-side online check.
+		need_reconfig=1
+		if [ -n "${GITHUB_API_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+			echo "Verifying runner registration on GitHub via API..."
+			if check_server_registration; then
+				echo "Runner '$RUNNER_NAME' is registered and online on GitHub — skipping configuration."
+				need_reconfig=0
+			else
+				echo "Runner '$RUNNER_NAME' is not registered/online on GitHub — will reconfigure."
+				need_reconfig=1
+			fi
+		else
+			echo "No GITHUB_API_TOKEN/GITHUB_REPOSITORY provided — treating local marker as stale and forcing reconfiguration."
+			need_reconfig=1
 		fi
 
-		if [ "$stale_marker" -eq 1 ]; then
-			echo "Detected stale configuration marker; forcing reconfiguration."
-			# Force configure-runner.sh for this invocation only.
+		if [ "$need_reconfig" -eq 1 ]; then
+			echo "Forcing reconfiguration."
 			FORCE_RECONFIGURE=1 /usr/local/bin/configure-runner.sh
 		else
-			echo "Detected existing configuration marker; skipping configuration step."
+			echo "Detected existing configuration marker and verified online — skipping configuration step."
 		fi
 	fi
 else

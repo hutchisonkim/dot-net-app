@@ -37,27 +37,14 @@
       },
       "problemMatcher": [],
       "group": "build"
-    },
-    {
-      "label": "Restart GitHub self-hosted runner (start if stopped)",
-      "type": "shell",
-      "detail": "Restarts the runner containers if running, otherwise prompts for owner/repo and token and starts them",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-Command",
-  "& { Set-Location -Path \"${workspaceFolder}/github-self-hosted-runner-docker\"; $ps = (docker-compose ps -q) -join \"\"; if ([string]::IsNullOrWhiteSpace($ps)) { $env:GITHUB_REPOSITORY=\"${input:ownerRepo}\"; $env:GITHUB_TOKEN=\"${input:runnerToken}\"; $env:GITHUB_URL=\"${input:githubUrl}\"; docker-compose up -d } else { docker-compose restart } }"
-      ],
-      "problemMatcher": [],
-      "group": "build"
     }
   ],
   "inputs": [
     {
       "id": "ownerRepo",
       "type": "promptString",
-      "description": "Enter owner/repo (for example: hutchisonkim/dot-net-app)",
-      "default": ""
+      "description": "Enter owner/repo",
+      "default": "hutchisonkim/dot-net-app"
     },
     {
       "id": "runnerToken",
@@ -65,8 +52,7 @@
       "description": "Enter the GitHub runner registration token",
       "default": "",
       "password": true
-    }
-    ,
+    },
     {
       "id": "githubUrl",
       "type": "promptString",
