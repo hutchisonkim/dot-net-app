@@ -9,3 +9,9 @@ node_modules/
 ~*
 test-results/
 .env
+
+### Ignore runner env files (may contain registration tokens)
+# Local temp file seen in repo: github-self-hosted-runner-docker/runner.env.tmp
+github-self-hosted-runner-docker/runner.env*
+/github-self-hosted-runner-docker/.env
+config/runner.env
