@@ -1,10 +1,7 @@
 name: Test Self-Hosted Runner
 
 on:
-  push:
-    # only run when this workflow file is changed (safe for testing)
-    paths:
-      - '.github/workflows/test-self-hosted.yml'
+  workflow_dispatch:
 
 jobs:
   smoke-test:
