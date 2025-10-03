@@ -21,8 +21,13 @@ fi
 
 # This script removes the GitHub runner from the GitHub repository.
 
-# Load environment variables
-source /config/runner.env
+
+# Load config from /config/runner.env if present (this is optional)
+if [ -f /config/runner.env ]; then
+	echo "Sourcing configuration from /config/runner.env"
+	# shellcheck disable=SC1090
+	source /config/runner.env
+fi
 
 # Check if the runner is registered
 if [ -z "$RUNNER_NAME" ]; then
