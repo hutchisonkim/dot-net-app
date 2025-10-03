@@ -70,12 +70,36 @@ fi
 
 # Configure the GitHub runner (this will use GITHUB_URL and GITHUB_TOKEN)
 # If the runner is already configured, skip configuration unless explicitly forced.
+# Additionally, detect stale markers coming from image/container caching by
+# validating that essential runner files exist. If the marker exists but
+# critical files are missing, force reconfiguration to avoid using a stale
+# configuration state.
 if [ -f "/runner/.runner-configured" ] || [ -f "$RUNNER_DIR/.runner-configured" ]; then
 	if [ "${FORCE_RECONFIGURE:-0}" = "1" ]; then
 		echo "FORCE_RECONFIGURE=1: running configure-runner.sh to reconfigure the runner."
 		/usr/local/bin/configure-runner.sh
 	else
-		echo "Detected existing configuration marker; skipping configuration step."
+		# Validate presence of essential runner files. If missing, treat the
+		# configuration marker as stale and force reconfiguration.
+		stale_marker=0
+		# run.sh must exist in the actions-runner directory
+		if [ ! -f "$RUNNER_DIR/run.sh" ]; then
+			echo "Warning: $RUNNER_DIR/run.sh not found — configuration marker may be stale."
+			stale_marker=1
+		fi
+		# Either .credentials or .env should exist to indicate a configured runner
+		if [ ! -f "$RUNNER_DIR/.credentials" ] && [ ! -f "$RUNNER_DIR/.env" ]; then
+			echo "Warning: no $RUNNER_DIR/.credentials or $RUNNER_DIR/.env found — configuration marker may be stale."
+			stale_marker=1
+		fi
+
+		if [ "$stale_marker" -eq 1 ]; then
+			echo "Detected stale configuration marker; forcing reconfiguration."
+			# Force configure-runner.sh for this invocation only.
+			FORCE_RECONFIGURE=1 /usr/local/bin/configure-runner.sh
+		else
+			echo "Detected existing configuration marker; skipping configuration step."
+		fi
 	fi
 else
 	/usr/local/bin/configure-runner.sh
