@@ -1,0 +1,77 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start GitHub self-hosted runner",
+      "type": "shell",
+      "detail": "Prompts for owner/repo and runner token, then starts the docker-compose stack in github-self-hosted-runner-docker",
+      "command": "docker-compose",
+      "args": [
+        "up",
+        "-d"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/github-self-hosted-runner-docker",
+        "env": {
+          "GITHUB_REPOSITORY": "${input:ownerRepo}",
+          "GITHUB_TOKEN": "${input:runnerToken}",
+          "GITHUB_URL": "${input:githubUrl}"
+        }
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Stop GitHub self-hosted runner",
+      "type": "shell",
+      "detail": "Shuts down the docker-compose stack (github-self-hosted-runner-docker)",
+      "command": "docker-compose",
+      "args": [
+        "down"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/github-self-hosted-runner-docker"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Restart GitHub self-hosted runner (start if stopped)",
+      "type": "shell",
+      "detail": "Restarts the runner containers if running, otherwise prompts for owner/repo and token and starts them",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+  "& { Set-Location -Path \"${workspaceFolder}/github-self-hosted-runner-docker\"; $ps = (docker-compose ps -q) -join \"\"; if ([string]::IsNullOrWhiteSpace($ps)) { $env:GITHUB_REPOSITORY=\"${input:ownerRepo}\"; $env:GITHUB_TOKEN=\"${input:runnerToken}\"; $env:GITHUB_URL=\"${input:githubUrl}\"; docker-compose up -d } else { docker-compose restart } }"
+      ],
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "ownerRepo",
+      "type": "promptString",
+      "description": "Enter owner/repo (for example: hutchisonkim/dot-net-app)",
+      "default": ""
+    },
+    {
+      "id": "runnerToken",
+      "type": "promptString",
+      "description": "Enter the GitHub runner registration token",
+      "default": "",
+      "password": true
+    }
+    ,
+    {
+      "id": "githubUrl",
+      "type": "promptString",
+      "description": "GitHub URL (use https://github.com or your enterprise URL)",
+      "default": "https://github.com"
+    }
+  ]
+}
