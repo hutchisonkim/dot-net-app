@@ -22,6 +22,6 @@ public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         var apiClient = new PlatformApiClient(client);
         var dto = await apiClient.GetHealthStatusAsync();
         // API returns "Healthy" (capital H) — tests should match the real API behavior
-        Assert.Equal("Healthy", dto?.status);
+        dto?.status.Should().Be("Healthy");
     }
 }

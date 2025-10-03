@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using DotNetApp.Core.Abstractions;
+using DotNetApp.Api.Contracts;
 
 namespace DotNetApp.Api.Controllers;
 
@@ -18,6 +19,7 @@ public class StateController : ControllerBase
     public async Task<IActionResult> Health(CancellationToken cancellationToken)
     {
         var status = await _healthService.GetStatusAsync(cancellationToken);
-        return Ok(new { status });
+        var dto = new HealthDto { Status = status };
+        return Ok(dto);
     }
 }

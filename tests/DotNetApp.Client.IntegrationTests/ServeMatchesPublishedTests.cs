@@ -30,35 +30,22 @@ public class ServeMatchesPublishedTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
         using var http = new HttpClient();
 
-        HttpResponseMessage? res = null;
-        Exception? lastEx = null;
-
-        // Try each candidate URL until one responds with success or we hit the overall timeout
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(timeoutSeconds);
+        HttpResponseMessage res = null!;
         foreach (var baseUrl in CandidateUrls)
         {
-            while (DateTime.UtcNow < deadline)
+            try
             {
-                try
-                {
-                    res = await http.GetAsync(baseUrl, cts.Token);
-                    if (res.IsSuccessStatusCode) break;
-                }
-                catch (OperationCanceledException) when (cts.IsCancellationRequested)
-                {
-                    throw new TimeoutException($"Integration test timed out after {timeoutSeconds} seconds while waiting for frontend to respond. Last exception: {lastEx?.Message}");
-                }
-                catch (Exception ex)
-                {
-                    lastEx = ex;
-                }
-                await Task.Delay(1000, cts.Token);
+                res = await DotNetApp.Tests.Shared.HttpRetry.WaitForSuccessAsync(() => http.GetAsync(baseUrl, cts.Token), TimeSpan.FromSeconds(timeoutSeconds), TimeSpan.FromSeconds(1), cts.Token);
+                break;
             }
-            if (res != null && res.IsSuccessStatusCode) break;
+            catch (TimeoutException)
+            {
+                // try next candidate URL
+            }
         }
 
     res.Should().NotBeNull();
-    res!.IsSuccessStatusCode.Should().BeTrue($"Client returned non-success status: {(int)res.StatusCode}. Last exception: {lastEx?.Message}");
+    res!.IsSuccessStatusCode.Should().BeTrue();
 
         var served = await res.Content.ReadAsStringAsync();
 

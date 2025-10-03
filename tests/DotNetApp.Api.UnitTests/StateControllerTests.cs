@@ -27,8 +27,12 @@ public class StateControllerTests
         // Assert
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value.Should().NotBeNull();
-    // Controller wraps the status in an anonymous object; API uses "Healthy"
-    ok.Value!.ToString().Should().Contain("Healthy");
+
+        // Cast the returned value to the DTO and assert explicitly on the Status property
+        var dto = ok.Value as DotNetApp.Api.Contracts.HealthDto;
+        dto.Should().NotBeNull();
+        dto!.Status.Should().Be("Healthy");
+
         mockHealth.Verify(h => h.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

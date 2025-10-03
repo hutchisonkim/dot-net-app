@@ -41,37 +41,25 @@ public class ServeClientFromBackendTests
         }
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+
         using var http = new HttpClient();
 
-        HttpResponseMessage? res = null;
-        Exception? lastEx = null;
-
+        HttpResponseMessage res = null!;
         // Try each candidate URL until one responds with success or we hit the overall timeout
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(timeoutSeconds);
         foreach (var baseUrl in CandidateUrls)
         {
-            while (DateTime.UtcNow < deadline)
+            try
             {
-                try
-                {
-                    res = await http.GetAsync(baseUrl, cts.Token);
-                    if (res.IsSuccessStatusCode) break;
-                }
-                catch (OperationCanceledException) when (cts.IsCancellationRequested)
-                {
-                    throw new TimeoutException($"Integration test timed out after {timeoutSeconds} seconds while waiting for frontend to respond. Last exception: {lastEx?.Message}");
-                }
-                catch (Exception ex)
-                {
-                    lastEx = ex;
-                }
-                await Task.Delay(1000, cts.Token);
+                res = await DotNetApp.Tests.Shared.HttpRetry.WaitForSuccessAsync(() => http.GetAsync(baseUrl, cts.Token), TimeSpan.FromSeconds(timeoutSeconds), TimeSpan.FromSeconds(1), cts.Token);
+                break;
             }
-            if (res != null && res.IsSuccessStatusCode) break;
+            catch (TimeoutException)
+            {
+                // try next candidate URL
+            }
         }
 
-        res.Should().NotBeNull("No response received from frontend service. Last exception: {0}", lastEx?.Message ?? "none");
-        res!.IsSuccessStatusCode.Should().BeTrue($"frontend returned non-success status: {(int)res.StatusCode}");
+        res.Should().NotBeNull("No response received from frontend service.");
 
         var served = await res.Content.ReadAsStringAsync();
 
