@@ -55,10 +55,10 @@ All `[Fact]` / `[Theory]` tests (except intentionally skipped placeholders) must
 
 ### Code Coverage
 
-Collect cross-platform code coverage (lcov, opencover, cobertura) using the provided `coverlet.runsettings`:
+Collect cross-platform code coverage (lcov, opencover, cobertura):
 
 ```
-dotnet test DotNetApp.sln -c Debug --collect "XPlat Code Coverage" --settings coverlet.runsettings --filter "Category!=E2E"
+dotnet test DotNetApp.sln -c Debug --collect "XPlat Code Coverage" --filter "Category!=E2E"
 ```
 
 Outputs (per test project) are written under `TestResults/<guid>/` with the chosen formats. For a unified lcov summary you can optionally use report generation tools (e.g. `reportgenerator`) in CI.

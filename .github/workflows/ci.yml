@@ -75,7 +75,7 @@ jobs:
         run: |
           # Default CI/test matrix excludes E2E tests via the Category!=E2E filter.
           dotnet test DotNetApp.sln --configuration Release --no-build \
-            --collect "XPlat Code Coverage" --settings coverlet.runsettings \
+            --collect "XPlat Code Coverage" \
             --filter "${{ matrix.testFilter }}" --logger trx
 
       - name: Test (full including E2E)
