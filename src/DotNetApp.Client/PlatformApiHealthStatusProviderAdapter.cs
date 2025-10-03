@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using DotNetApp.Client.Shared.Contracts;
+using DotNetApp.Client.Contracts;
 
-namespace DotNetApp.Client.Shared;
+namespace DotNetApp.Client;
 
 public sealed class PlatformApiHealthStatusProviderAdapter : IHealthStatusProvider
 {

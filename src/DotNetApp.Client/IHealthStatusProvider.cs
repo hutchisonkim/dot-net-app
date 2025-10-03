@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DotNetApp.Client.Shared
+namespace DotNetApp.Client
 {
     public interface IHealthStatusProvider
     {

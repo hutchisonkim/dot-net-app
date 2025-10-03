@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DotNetApp.Client.Shared.Contracts;
+namespace DotNetApp.Client.Contracts;
 
 public interface IPlatformApi
 {

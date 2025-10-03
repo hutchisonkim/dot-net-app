@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using DotNetApp.Client;
-using DotNetApp.Client.Shared;
-using DotNetApp.Client.Shared.Contracts;
+using DotNetApp.Client.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);

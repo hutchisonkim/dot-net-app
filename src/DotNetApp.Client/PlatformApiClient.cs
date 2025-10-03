@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DotNetApp.Client.Shared.Contracts;
+namespace DotNetApp.Client.Contracts;
 
 // Minimal client implementation used for testing and local builds when codegen is not available.
 public sealed class PlatformApiClient : IPlatformApi

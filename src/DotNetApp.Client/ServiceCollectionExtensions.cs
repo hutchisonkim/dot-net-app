@@ -1,9 +1,9 @@
 using System;
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
-using DotNetApp.Client.Shared.Contracts;
+using DotNetApp.Client.Contracts;
 
-namespace DotNetApp.Client.Shared;
+namespace DotNetApp.Client;
 
 public static class ServiceCollectionExtensions
 {

@@ -2,7 +2,7 @@ using Bunit;
 using Xunit;
 using DotNetApp.Client.Pages;
 using Microsoft.Extensions.DependencyInjection;
-using DotNetApp.Client.Shared;
+using DotNetApp.Client;
 using FluentAssertions;
 
 namespace DotNetApp.Client.UnitTests;
