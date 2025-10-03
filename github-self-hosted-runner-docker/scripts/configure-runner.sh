@@ -73,12 +73,16 @@ export RUNNER_ALLOW_RUNASROOT=1
 if command -v sudo >/dev/null 2>&1; then
     sudo -u github-runner bash -lc "$CONFIG_CMD"
 else
-    # Try to run as github-runner; if that fails fall back to running as root with RUNNER_ALLOW_RUNASROOT
+    # Try to run as github-runner. If the config command itself fails, do NOT
+    # retry as root because that causes a duplicate registration attempt on the
+    # server (we observed two POSTs). Fail fast so the caller can decide how to
+    # handle retries or forced reconfiguration with proper tokens.
     if su -s /bin/bash -c "$CONFIG_CMD" github-runner; then
         true
     else
-        echo "Falling back to running config as root with RUNNER_ALLOW_RUNASROOT=1"
-        bash -lc "$CONFIG_CMD"
+        echo "Error: config command as user 'github-runner' failed. Not retrying as root to avoid duplicate registration attempts."
+        echo "Please check GITHUB_URL/GITHUB_TOKEN and re-run with FORCE_RECONFIGURE=1 if necessary."
+        exit 1
     fi
 fi
 
