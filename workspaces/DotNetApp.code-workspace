@@ -12,10 +12,8 @@
   "extensions": {
     "recommendations": [
       "ms-dotnettools.csharp",
-      "ms-vscode-remote.remote-containers",
-      "ms-playwright.playwright",
-      "ms-vscode-remote.remote-ssh"
+      "ms-vscode-remote.remote-containers"
     ]
   },
-  "name": "DotNetApp.E2E"
+  "name": "DotNetApp"
 }

@@ -2,8 +2,7 @@
   "folders": [
     { "path": "../src/DotNetApp.Client" },
     { "path": "../src/Shared" },
-    { "path": "../tests/DotNetApp.Client.UnitTests" },
-    { "path": "../tests/DotNetApp.Client.IntegrationTests" }
+    { "path": "../tests/DotNetApp.Client.UnitTests" }
   ],
   "settings": {
     "dotnet.defaultSolution": "../DotNetApp.sln",
@@ -20,8 +19,7 @@
   "extensions": {
     "recommendations": [
       "ms-dotnettools.csharp",
-      "ms-vscode-remote.remote-containers",
-      "ms-playwright.playwright"
+      "ms-vscode-remote.remote-containers"
     ]
   },
   "name": "DotNetApp.Client"
