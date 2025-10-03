@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  github-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - runner_data:/runner
+    env_file:
+      - .env
+    restart: unless-stopped
+    entrypoint: ["/scripts/entrypoint.sh"]
+
+volumes:
+  runner_data:
