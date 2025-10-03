@@ -46,20 +46,17 @@ RUN /usr/local/bin/install-deps.sh
 ARG DOWNLOAD_RUNNER_AT_BUILD=1
 ENV DOWNLOAD_RUNNER_AT_BUILD=${DOWNLOAD_RUNNER_AT_BUILD}
 
-# Download and extract the runner into /actions-runner when enabled.
+## Download and extract the runner into /actions-runner when enabled.
+# Use the download-runner.sh helper so the logic is centralized and easier
+# to maintain. The script is copied earlier to /usr/local/bin during the
+# build and will respect RUNNER_VERSION and run as root during build; it will
+# try to chown the files to ${RUNNER_USER} when possible.
 RUN if [ "${DOWNLOAD_RUNNER_AT_BUILD}" = "1" ]; then \
-            ARCH=$(uname -m) ; \
-            if [ "$ARCH" = "x86_64" ]; then ARCH="x64"; elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ARCH="arm64"; fi ; \
-            mkdir -p /actions-runner ; \
-            echo "Downloading GitHub Actions runner v${RUNNER_VERSION} for ${ARCH} at build time..." ; \
-            curl -fSL -o /actions-runner/actions-runner.tar.gz "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${ARCH}-${RUNNER_VERSION}.tar.gz" ; \
-            tar xzf /actions-runner/actions-runner.tar.gz -C /actions-runner ; \
-            rm -f /actions-runner/actions-runner.tar.gz ; \
-            echo "${RUNNER_VERSION}" > /actions-runner/.runner-version ; \
-            chown -R ${RUNNER_USER}:${RUNNER_USER} /actions-runner ; \
-        else \
-            echo "Skipping build-time runner download (DOWNLOAD_RUNNER_AT_BUILD!=1)" ; \
-        fi
+        echo "DOWNLOAD_RUNNER_AT_BUILD=1: invoking /usr/local/bin/download-runner.sh"; \
+        RUNNER_USER=${RUNNER_USER} /usr/local/bin/download-runner.sh; \
+    else \
+        echo "Skipping build-time runner download (DOWNLOAD_RUNNER_AT_BUILD!=1)"; \
+    fi
 
 # Note: the GitHub runner binary is downloaded at container startup by
 # /usr/local/bin/download-runner.sh (entrypoint) so that the build remains

@@ -84,5 +84,26 @@ fi
 # Start the GitHub runner process
 /usr/local/bin/start-runner.sh
 
-# echo "Container started. Tailing runner logs..."
-# tail -f /runner/_diag/*.log /dev/null || tail -f /dev/null
+echo "Container started. Monitoring runner process (no log tailing)."
+# Prefer monitoring the runner PID file so we don't pollute the terminal with old logs.
+# If a PID file exists, poll the process until it exits. Otherwise block silently.
+PID_FILE="/runner/.runner.pid"
+if [ -f "$PID_FILE" ]; then
+	pid=$(cat "$PID_FILE" || echo "")
+	if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
+		echo "Monitoring runner pid $pid"
+		# Poll until the process dies; don't print diag logs here.
+		while kill -0 "$pid" >/dev/null 2>&1; do
+			sleep 5
+		done
+		echo "Runner process $pid exited. Container will exit."
+		exit 0
+	else
+		echo "PID file present but process $pid not running; exiting.";
+		exit 1
+	fi
+else
+	echo "No runner pid file found; sleeping to keep container alive (no logs)."
+	# Keep container alive silently; user can `docker compose logs` to inspect logs.
+	while true; do sleep 3600; done
+fi

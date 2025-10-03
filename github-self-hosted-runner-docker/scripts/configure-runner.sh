@@ -2,28 +2,10 @@
 
 set -euo pipefail
 
-# Source configuration file if present, otherwise rely on environment variables
-if [ -f /config/runner.env ]; then
-    echo "Sourcing configuration from /config/runner.env"
-    # shellcheck disable=SC1090
-    source /config/runner.env
-else
-    echo "Configuration file /config/runner.env not found. Using environment variables if present."
-fi
-
-# Validate required environment variables
-missing=()
-if [ -z "${GITHUB_URL:-}" ]; then missing+=(GITHUB_URL); fi
-if [ -z "${GITHUB_TOKEN:-}" ]; then missing+=(GITHUB_TOKEN); fi
-if [ -z "${RUNNER_NAME:-}" ]; then missing+=(RUNNER_NAME); fi
-if [ -z "${RUNNER_LABELS:-}" ]; then missing+=(RUNNER_LABELS); fi
-
-if [ ${#missing[@]} -ne 0 ]; then
-    echo "Missing required environment variables: ${missing[*]}"
-    echo "Either create /config/runner.env from runner.env.example or set the variables in the host environment."
-    exit 1
-fi
-
+# NOTE: this script assumes the caller (entrypoint) has already sourced
+# /config/runner.env or set the environment variables. Keep this script
+# focused on the configure/remove/cleanup logic so it can be invoked from
+# entrypoint without duplicating validation or sourcing.
 echo "Configuring GitHub runner..."
 ACTION_RUNNER_DIR="/actions-runner"
 cd "$ACTION_RUNNER_DIR" || exit 1

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 echo "Starting GitHub runner..."
 
 # Use an atomic lock directory to avoid a race between multiple start attempts.
@@ -62,12 +60,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Ensure the runner is configured
-if [ ! -f /runner/.runner-configured ]; then
-  echo "Runner is not configured. Please run the configure script first."
-  exit 1
-fi
-
 # Run from the actions-runner directory to ensure ./run.sh is found
 ACTION_RUNNER_DIR="/actions-runner"
 cd "$ACTION_RUNNER_DIR" || { echo "Failed to cd to $ACTION_RUNNER_DIR"; exit 1; }
@@ -86,15 +78,38 @@ else
   fi
 fi
 
-# Briefly wait and check the listener process specifically
-sleep 2
+# Wait for the Runner.Listener process to appear and record its PID so
+# subsequent invocations can detect a running runner without races.
+# We prefer the process owned by the 'github-runner' user but will accept any
+# Runner.Listener if that's not present.
+MAX_WAIT=15
+found_pid=""
+for i in $(seq 1 "$MAX_WAIT"); do
+  # Prefer a Runner.Listener owned by the github-runner user
+  if pgrep -u github-runner -f "Runner.Listener" >/dev/null 2>&1; then
+    found_pid=$(pgrep -u github-runner -f "Runner.Listener" | head -n1)
+  elif pgrep -f "Runner.Listener" >/dev/null 2>&1; then
+    found_pid=$(pgrep -f "Runner.Listener" | head -n1)
+  fi
 
-if pgrep -f Runner.Listener >/dev/null 2>&1; then
-  echo "GitHub runner is running."
+  if [ -n "$found_pid" ]; then
+    echo "$found_pid" > "$PID_FILE" || true
+    # Attempt to set ownership so the runner user can read/remove it
+    chown github-runner:github-runner "$PID_FILE" 2>/dev/null || true
+    echo "Recorded Runner.Listener pid $found_pid to $PID_FILE"
+    break
+  fi
+
+  sleep 1
+done
+
+if [ -z "$found_pid" ]; then
+  echo "Failed to detect Runner.Listener after $MAX_WAIT seconds. Check /runner/_diag for logs."
+  # continue — we still wait on the backgrounded start command to keep the container alive
 else
-  echo "Failed to start the GitHub runner. Check /runner/_diag for logs."
-  exit 1
+  echo "GitHub runner is running (pid $found_pid)."
 fi
 
-# Keep the script running to keep the container alive
+# Keep the script running to keep the container alive. We wait on the last
+# background job so the container stays alive the same way it did before.
 wait $!

@@ -21,9 +21,10 @@ RUNNER_URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSIO
 RUNNER_DIR="/actions-runner"
 mkdir -p "$RUNNER_DIR"
 
-echo "$RUNNER_VERSION" > "$VERSION_MARKER"
 # Version marker file used to record the currently installed runner version
 VERSION_MARKER="$RUNNER_DIR/.runner-version"
+
+echo "Using RUNNER_VERSION=$RUNNER_VERSION, runner dir=$RUNNER_DIR"
 
 if [ -f "$VERSION_MARKER" ]; then
     INSTALLED_VERSION=$(cat "$VERSION_MARKER" || true)
