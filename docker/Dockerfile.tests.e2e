@@ -46,14 +46,23 @@ COPY DotNetApp.sln ./
 COPY src ./src
 COPY tests ./tests
 
-# Restore only the E2E test project (pulls transitive dependencies)
-RUN dotnet restore tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj
+# Restore only the E2E test project (pulls transitive dependencies) but only when RunE2E is enabled.
+# This keeps the image lightweight for non-E2E scenarios and avoids triggering Playwright tooling during workspace/test runs.
+ARG RUN_E2E=0
+ENV RUN_E2E=${RUN_E2E}
 
-# Build the E2E test project (this generates the playwright.ps1 script into its bin directory)
-RUN dotnet build --no-restore -c Debug tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj
+RUN if [ "${RUN_E2E}" = "1" ]; then \
+			dotnet restore tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj /p:RunE2E=true; \
+		else echo "Skipping E2E restore (RUN_E2E=${RUN_E2E})"; fi
 
-# Install playwright browsers (using the generated script)
-RUN pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& tests/DotNetApp.E2ETests/bin/Debug/net8.0/playwright.ps1 install --with-deps"
+RUN if [ "${RUN_E2E}" = "1" ]; then \
+			dotnet build --no-restore -c Debug tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj /p:RunE2E=true; \
+		else echo "Skipping E2E build (RUN_E2E=${RUN_E2E})"; fi
+
+# Install playwright browsers (using the generated script) only when enabled
+RUN if [ "${RUN_E2E}" = "1" ]; then \
+			pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& tests/DotNetApp.E2ETests/bin/Debug/net8.0/playwright.ps1 install --with-deps"; \
+		else echo "Skipping Playwright browser install (RUN_E2E=${RUN_E2E})"; fi
 
 # Add a lightweight wait script & test runner
 RUN echo '#!/usr/bin/env bash' > /usr/local/bin/run-e2e.sh \

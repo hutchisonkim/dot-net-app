@@ -73,6 +73,7 @@ jobs:
       - name: Test (non-E2E with coverage)
         if: matrix.runE2E == false
         run: |
+          # Default CI/test matrix excludes E2E tests via the Category!=E2E filter.
           dotnet test DotNetApp.sln --configuration Release --no-build \
             --collect "XPlat Code Coverage" --settings coverlet.runsettings \
             --filter "${{ matrix.testFilter }}" --logger trx
@@ -80,7 +81,10 @@ jobs:
       - name: Test (full including E2E)
         if: matrix.runE2E == true && github.ref == 'refs/heads/main'
         run: |
-          dotnet test DotNetApp.sln --configuration Release --no-build --logger trx
+          # Run regular tests (non-E2E) first
+          dotnet test DotNetApp.sln --configuration Release --no-build --logger trx --filter "Category!=E2E"
+          # Then run E2E project explicitly with RunE2E enabled so it can load Playwright and browsers
+          dotnet test tests/DotNetApp.E2ETests/DotNetApp.E2ETests.csproj --configuration Release --no-build --logger trx /p:RunE2E=true
 
       - name: Skip E2E on PR (informational)
         if: matrix.runE2E == true && github.ref != 'refs/heads/main'
