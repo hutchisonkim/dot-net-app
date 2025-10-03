@@ -84,5 +84,5 @@ fi
 # Start the GitHub runner process
 /usr/local/bin/start-runner.sh
 
-echo "Container started. Tailing runner logs..."
-tail -f /runner/_diag/*.log /dev/null || tail -f /dev/null
+# echo "Container started. Tailing runner logs..."
+# tail -f /runner/_diag/*.log /dev/null || tail -f /dev/null
