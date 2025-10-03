@@ -45,6 +45,18 @@ To set up the self-hosted GitHub runner using Docker, follow these steps:
    make build
    ```
 
+  Optional: seed the image with the GitHub Actions runner at build time so empty
+  named volumes mounted at runtime are pre-populated and the container startup
+  won't need to download the runner. This is controlled by the
+  `DOWNLOAD_RUNNER_AT_BUILD` build-arg (defaults to 1). Example:
+   ```bash
+   # Build and include the runner binary in the image (default behavior):
+   docker compose build --build-arg RUNNER_VERSION=2.328.0 --build-arg DOWNLOAD_RUNNER_AT_BUILD=1
+
+   # If you want to skip downloading the runner during image build set:
+   docker compose build --build-arg DOWNLOAD_RUNNER_AT_BUILD=0
+   ```
+
 4. **Start the Runner**:
    You have two safe options to start the runner without committing tokens to disk:
 

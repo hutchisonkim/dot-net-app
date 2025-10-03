@@ -21,6 +21,7 @@ RUNNER_URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSIO
 RUNNER_DIR="/actions-runner"
 mkdir -p "$RUNNER_DIR"
 
+echo "$RUNNER_VERSION" > "$VERSION_MARKER"
 # Version marker file used to record the currently installed runner version
 VERSION_MARKER="$RUNNER_DIR/.runner-version"
 
@@ -30,8 +31,21 @@ else
     INSTALLED_VERSION=""
 fi
 
+# If the version marker matches and run.sh exists, we're done
 if [ "$INSTALLED_VERSION" = "$RUNNER_VERSION" ] && [ -f "$RUNNER_DIR/run.sh" ]; then
     echo "Runner version $RUNNER_VERSION already present in $RUNNER_DIR — skipping download."
+    exit 0
+fi
+
+# If we don't have a version marker but runner files already exist (for example
+# because the image was built with the runner), create the marker and skip.
+if [ -z "$INSTALLED_VERSION" ] && [ -f "$RUNNER_DIR/run.sh" ]; then
+    echo "Found existing runner files in $RUNNER_DIR but no version marker. Creating marker for version $RUNNER_VERSION and skipping download."
+    echo "$RUNNER_VERSION" > "$VERSION_MARKER"
+    # try to set ownership if possible
+    if command -v chown >/dev/null 2>&1; then
+        chown -R "${RUNNER_USER:-github-runner}":"${RUNNER_USER:-github-runner}" "$RUNNER_DIR" || true
+    fi
     exit 0
 fi
 
@@ -46,5 +60,10 @@ rm -f "$RUNNER_DIR/actions-runner.tar.gz"
 
 # Persist the installed version so subsequent container restarts can skip download
 echo "$RUNNER_VERSION" > "$VERSION_MARKER"
+
+# Try to chown the directory so the non-root runner user can use it
+if command -v chown >/dev/null 2>&1; then
+    chown -R "${RUNNER_USER:-github-runner}":"${RUNNER_USER:-github-runner}" "$RUNNER_DIR" || true
+fi
 
 echo "GitHub runner downloaded and extracted to $RUNNER_DIR (version $RUNNER_VERSION)."
