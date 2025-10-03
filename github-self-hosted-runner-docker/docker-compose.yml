@@ -8,8 +8,8 @@ services:
       - runner_data:/actions-runner
     env_file:
       - .env
-    restart: unless-stopped
-    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    restart: "no"
+    entrypoint: "/usr/local/bin/entrypoint.sh"
     environment:
       - GITHUB_TOKEN
       - GITHUB_URL
