@@ -4,7 +4,6 @@ using FluentAssertions;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client.Shared;
-using DotNetApp.Core.Abstractions;
 
 namespace DotNetApp.Client.UnitTests;
 

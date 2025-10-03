@@ -18,7 +18,7 @@ public class StateControllerTests
         // Arrange
         var mockHealth = new Mock<IHealthService>();
         mockHealth.Setup(h => h.GetStatusAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync("healthy");
+            .ReturnsAsync("Healthy");
         var sut = new StateController(mockHealth.Object);
 
         // Act
@@ -27,7 +27,8 @@ public class StateControllerTests
         // Assert
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value.Should().NotBeNull();
-        ok.Value!.ToString().Should().Contain("healthy");
+    // Controller wraps the status in an anonymous object; API uses "Healthy"
+    ok.Value!.ToString().Should().Contain("Healthy");
         mockHealth.Verify(h => h.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

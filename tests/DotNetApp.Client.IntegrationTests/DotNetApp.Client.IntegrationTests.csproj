@@ -10,10 +10,12 @@
   <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
   <PackageReference Include="FluentAssertions" Version="7.0.0" />
   <PackageReference Include="coverlet.collector" Version="6.0.0" />
+  <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
     <PackageReference Include="DotNet.Testcontainers" Version="1.6.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\DotNetApp.Client\DotNetApp.Client.csproj" />
+    <ProjectReference Include="..\..\src\DotNetApp.Api\DotNetApp.Api.csproj" />
   </ItemGroup>
 </Project>
 

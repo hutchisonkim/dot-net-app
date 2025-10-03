@@ -12,7 +12,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Core + application services
-builder.Services.AddDotNetAppCore()
+// Register core-like services directly (DotNetApp.Core project removed in this workspace).
+builder.Services
     .AddScoped<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Api.Services.DefaultHealthService>()
     .AddSingleton<DotNetApp.Core.Abstractions.IClientAssetConfigurator, DotNetApp.Api.Services.BlazorClientAssetConfigurator>();
 

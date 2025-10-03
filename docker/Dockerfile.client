@@ -2,8 +2,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj files (Client + Core) and restore for better cache behavior
-COPY src/DotNetApp.Core/DotNetApp.Core.csproj src/DotNetApp.Core/
 COPY src/DotNetApp.Client/DotNetApp.Client.csproj src/DotNetApp.Client/
 RUN dotnet restore "src/DotNetApp.Client/DotNetApp.Client.csproj"
 

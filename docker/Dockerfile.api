@@ -2,8 +2,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy project files (API + referenced Core project) first for better layer caching
-COPY src/DotNetApp.Core/DotNetApp.Core.csproj src/DotNetApp.Core/
 COPY src/DotNetApp.Api/DotNetApp.Api.csproj src/DotNetApp.Api/
 
 RUN dotnet restore "src/DotNetApp.Api/DotNetApp.Api.csproj"

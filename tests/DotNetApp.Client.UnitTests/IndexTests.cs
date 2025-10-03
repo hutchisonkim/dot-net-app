@@ -3,7 +3,6 @@ using Xunit;
 using DotNetApp.Client.Pages;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client.Shared;
-using DotNetApp.Core.Abstractions;
 using FluentAssertions;
 
 namespace DotNetApp.Client.UnitTests;

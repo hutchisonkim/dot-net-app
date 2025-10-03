@@ -27,41 +27,6 @@ services:
       - default-network
     environment:
       - FRONTEND_API_BASE=http://api:8080/
-
-  example-client:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.exampleclient
-    volumes:
-      - ../examples/ExampleClient:/src/examples/ExampleClient
-    ports:
-      - "8081:80"
-    depends_on:
-      - api
-    networks:
-      - default-network
-    # The example client uses relative /api calls which nginx forwards; no extra env needed
-
-  unity-example-client:
-    # Builds Unity WebGL (placeholder if project/scripts missing) and serves with caching
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.unitywebgl
-      args:
-        UNITY_IMAGE: unityci/editor:6000.2.5f1-base-3
-    # If you only want to serve a pre-built output, you can mount it instead of building:
-    # volumes:
-    #   - ../examples/UnityExampleClient/wwwroot:/usr/share/nginx/html:ro
-    ports:
-      - "8082:80"
-    depends_on:
-      - api
-    networks:
-      - default-network
-    environment:
-      - FRONTEND_API_BASE=http://api:8080/
-    # Rebuild after changing WebGL output: docker compose build unity-example-client
-
   api-integration-tests:
     build:
       context: ..

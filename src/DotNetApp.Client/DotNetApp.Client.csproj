@@ -15,7 +15,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DotNetApp.Core\DotNetApp.Core.csproj" />
     <ProjectReference Include="..\DotNetApp.Client.Shared\DotNetApp.Client.Shared.csproj" />
   </ItemGroup>
 </Project>
