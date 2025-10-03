@@ -75,6 +75,16 @@ USAGE
 
 need(){ command -v "$1" >/dev/null 2>&1 || { err "Missing required command: $1"; exit 1; }; }
 
+# Subcommand dispatch: allow explicit subcommands for finer control
+if [ $# -ge 1 ]; then
+  case "$1" in
+    download|configure|service|remove)
+      SUBCMD="$1"; shift
+      exec "$(dirname "$0")/gh-runner-${SUBCMD}.sh" "$@"
+      ;;
+  esac
+fi
+
 # Parse args
 while [ $# -gt 0 ]; do
   case "$1" in

@@ -18,11 +18,8 @@ concurrency:
 
 jobs:
   test:
-    # Prefer self-hosted if (a) manually dispatched AND (b) input resolves to true.
-    # Some tooling (e.g. VS Code Actions panel) may omit the input entirely; fall back to its declared default (true) explicitly.
-    # Expression pattern: (cond && 'self-hosted' || 'ubuntu-latest')
-    # We coalesce missing input with 'true' so omission still selects self-hosted as intended.
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && ((github.event.inputs.useSelfHosted || 'true') == 'true') && 'self-hosted' || 'ubuntu-latest' }}
+    # Force tests to run on the self-hosted runner only
+    runs-on: self-hosted
     env:
       HOME: /home/ghrunner
       DOTNET_ROOT: /home/ghrunner/.dotnet
@@ -177,8 +174,8 @@ jobs:
   deploy-coverage:
     needs: test
     if: github.ref == 'refs/heads/main'
-    # Mirror same resilient self-hosted selection logic here
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && ((github.event.inputs.useSelfHosted || 'true') == 'true') && 'self-hosted' || 'ubuntu-latest' }}
+    # Deploy steps run on the self-hosted runner only
+    runs-on: self-hosted
     permissions:
       pages: write
       id-token: write

@@ -50,129 +50,79 @@
     {
       "label": "Setup WSL GitHub Runner (Service)",
       "type": "shell",
-      "command": "pwsh",
+      "command": "wsl",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "--",
-        "--repo","${input:repoId}",
-        "--token","${input:runnerToken}",
-        "--runner-version","${input:runnerVersion}",
-        "--runner-name","${input:runnerName}",
-        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "--restart-policy","${input:restartPolicy}",
-        "--restart-sec","${input:restartSec}",
-        "--service"
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/gh-runner.sh --repo ${input:repoId} --token ${input:runnerToken} --version ${input:runnerVersion} --name ${input:runnerName} --labels self-hosted,linux,x64,local${input:runnerLabels} --restart-policy ${input:restartPolicy} --restart-sec ${input:restartSec} --service"
       ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
       "label": "Setup WSL GitHub Runner (Interactive)",
       "type": "shell",
-      "command": "pwsh",
+      "command": "wsl",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "--",
-        "--repo","${input:repoId}",
-        "--token","${input:runnerToken}",
-        "--runner-version","${input:runnerVersion}"
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/gh-runner.sh --repo ${input:repoId} --token ${input:runnerToken} --version ${input:runnerVersion} --name ${input:runnerName} --labels self-hosted,linux,x64,local${input:runnerLabels}"
       ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
       "label": "Update / Replace Runner",
       "type": "shell",
-      "command": "pwsh",
+      "command": "wsl",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "--",
-        "--repo","${input:repoId}",
-        "--token","${input:runnerToken}",
-        "--runner-version","${input:runnerVersion}",
-        "--runner-name","${input:runnerName}",
-        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "--restart-policy","${input:restartPolicy}",
-        "--restart-sec","${input:restartSec}",
-        "--replace",
-        "--service"
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/gh-runner.sh --repo ${input:repoId} --token ${input:runnerToken} --version ${input:runnerVersion} --name ${input:runnerName} --labels self-hosted,linux,x64,local${input:runnerLabels} --restart-policy ${input:restartPolicy} --restart-sec ${input:restartSec} --replace --service"
       ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
       "label": "Setup WSL GitHub Runner (Fresh Clean Dir)",
       "type": "shell",
-      "command": "pwsh",
+      "command": "wsl",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "--",
-        "--repo","${input:repoId}",
-        "--token","${input:runnerToken}",
-        "--runner-version","${input:runnerVersion}",
-        "--runner-name","${input:runnerName}",
-        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "--restart-policy","${input:restartPolicy}",
-        "--restart-sec","${input:restartSec}",
-        "--service"
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/gh-runner.sh --repo ${input:repoId} --token ${input:runnerToken} --version ${input:runnerVersion} --name ${input:runnerName} --labels self-hosted,linux,x64,local${input:runnerLabels} --restart-policy ${input:restartPolicy} --restart-sec ${input:restartSec} --service"
       ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
       "label": "Setup WSL GitHub Runner (Isolated Label)",
       "type": "shell",
-      "command": "pwsh",
+      "command": "wsl",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "--",
-        "--repo","${input:repoId}",
-        "--token","${input:runnerToken}",
-        "--runner-version","${input:runnerVersion}",
-        "--runner-name","${input:runnerName}",
-        "--labels","self-hosted,linux,x64,local${input:runnerLabels}",
-        "--isolated",
-        "--restart-policy","${input:restartPolicy}",
-        "--restart-sec","${input:restartSec}",
-        "--service"
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/gh-runner.sh --repo ${input:repoId} --token ${input:runnerToken} --version ${input:runnerVersion} --name ${input:runnerName} --labels self-hosted,linux,x64,local${input:runnerLabels} --isolated --restart-policy ${input:restartPolicy} --restart-sec ${input:restartSec} --service"
       ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
       "label": "Uninstall WSL GitHub Runner",
       "type": "shell",
-      "command": "pwsh",
+      "command": "wsl",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "--",
-        "--repo","${input:repoId}",
-        "--token","${input:runnerToken}",
-        "--remove"
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/gh-runner.sh --repo ${input:repoId} --token ${input:runnerToken} --remove"
       ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     }
     ,
     {
       "label": "Restart WSL GitHub Runner Service",
       "type": "shell",
-      "command": "pwsh",
+      "command": "wsl",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy","Bypass",
-        "-File","scripts/setup-wsl-github-runner.ps1",
-        "--",
-        "--restart",
-        "--restart-policy","${input:restartPolicy}",
-        "--restart-sec","${input:restartSec}"
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/gh-runner.sh --restart --restart-policy ${input:restartPolicy} --restart-sec ${input:restartSec}"
       ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     }
     ,
@@ -180,14 +130,22 @@
       "label": "Runner: Shutdown & Cleanup",
       "type": "shell",
       "command": "wsl",
-      "args": ["-d","Ubuntu","-u","root","--","/mnt/c/___work/dot-net-app/scripts/wsl-runner-shutdown.sh"],
+      "args": [
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/wsl-runner-shutdown.sh"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
       "label": "Runner: Start / Activate",
       "type": "shell",
       "command": "wsl",
-      "args": ["-d","Ubuntu","-u","root","--","/mnt/c/___work/dot-net-app/scripts/wsl-runner-start.sh"],
+      "args": [
+        "-d","Ubuntu","--","bash","-lc",
+        "sudo bash ./scripts/wsl-runner-start.sh"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     }
   ]
