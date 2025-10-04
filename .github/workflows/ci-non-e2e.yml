@@ -35,6 +35,22 @@ jobs:
           name: runner-diagnostics
           path: runner-diagnostics.txt
 
+      - name: Network diagnostics (curl verbose)
+        shell: bash
+        run: |
+          echo "---- curl verbose to dot.net ----" > network-diagnostics.txt
+          curl -vI https://dot.net >> network-diagnostics.txt 2>&1 || true
+          echo "---- curl verbose to builds.dotnet.microsoft.com ----" >> network-diagnostics.txt
+          curl -vI https://builds.dotnet.microsoft.com >> network-diagnostics.txt 2>&1 || true
+          echo "---- curl fetch dotnet-install.sh (verbose) ----" >> network-diagnostics.txt
+          curl -vS https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh >> network-diagnostics.txt 2>&1 || true
+
+      - name: Upload network diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-diagnostics
+          path: network-diagnostics.txt
+
       - name: Checkout
         uses: actions/checkout@v4
 
