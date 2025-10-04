@@ -1,0 +1,54 @@
+name: CI Non-E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      useSelfHosted:
+        description: "Run tests on self-hosted runner instead of ubuntu-latest"
+        required: false
+        default: "true"
+
+jobs:
+  test:
+    name: non-e2e-tests
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && ((github.event.inputs.useSelfHosted || 'true') == 'true') && 'self-hosted' || 'ubuntu-latest' }}
+    steps:
+      - name: Runner diagnostic (save to file)
+        shell: bash
+        run: |
+          echo "---- Runner info ----" > runner-diagnostics.txt
+          uname -a >> runner-diagnostics.txt 2>&1 || true
+          echo "RUNNER_NAME=$RUNNER_NAME" >> runner-diagnostics.txt
+          echo "RUNNER_OS=$RUNNER_OS" >> runner-diagnostics.txt
+          echo "HOME=$HOME" >> runner-diagnostics.txt
+          echo "---- Tool locations ----" >> runner-diagnostics.txt
+          command -v dotnet >> runner-diagnostics.txt 2>&1 || true
+          command -v pwsh >> runner-diagnostics.txt 2>&1 || true
+          command -v curl >> runner-diagnostics.txt 2>&1 || true
+          command -v tar >> runner-diagnostics.txt 2>&1 || true
+          command -v unzip >> runner-diagnostics.txt 2>&1 || true
+          ls -ld "$HOME" >> runner-diagnostics.txt 2>&1 || true
+
+      - name: Upload runner diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-diagnostics
+          path: runner-diagnostics.txt
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore DotNetApp.sln
+
+      - name: Build
+        run: dotnet build DotNetApp.sln --configuration Release --no-restore
+
+      - name: Test (non-E2E)
+        run: |
+          dotnet test DotNetApp.sln --configuration Release --no-build --filter "Category!=E2E" --logger trx
