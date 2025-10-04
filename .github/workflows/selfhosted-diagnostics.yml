@@ -28,6 +28,17 @@ jobs:
           echo "--- /etc/hosts ---" >> diag.txt
           cat /etc/hosts >> diag.txt 2>&1 || true
 
+      - name: Install missing network tools (apt-get, best-effort)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Attempting best-effort install of iproute2, dnsutils, traceroute"
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update -y && sudo apt-get install -y iproute2 dnsutils traceroute || true
+          else
+            echo "apt-get not available; skipping package install" >> diag.txt
+          fi
+
       - name: Curl tests (dot.net and builds.dotnet.microsoft.com)
         shell: bash
         run: |
@@ -38,6 +49,19 @@ jobs:
           curl -vI --ipv4 --retry 3 https://builds.dotnet.microsoft.com >> curl.txt 2>&1 || true
           printf "\n--- curl builds.dotnet.microsoft.com (ipv6) ---\n" >> curl.txt || true
           curl -vI --ipv6 --retry 1 https://builds.dotnet.microsoft.com >> curl.txt 2>&1 || true
+
+      - name: DNS and traceroute checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "--- getent hosts builds.dotnet.microsoft.com ---" > dns.txt
+          getent hosts builds.dotnet.microsoft.com >> dns.txt 2>&1 || true
+          echo "--- host builds.dotnet.microsoft.com ---" >> dns.txt
+          host builds.dotnet.microsoft.com >> dns.txt 2>&1 || true
+          echo "--- nslookup builds.dotnet.microsoft.com ---" >> dns.txt
+          nslookup builds.dotnet.microsoft.com >> dns.txt 2>&1 || true
+          echo "--- traceroute builds.dotnet.microsoft.com (may require installed traceroute) ---" >> dns.txt
+          traceroute builds.dotnet.microsoft.com >> dns.txt 2>&1 || true
 
       - name: OpenSSL s_client tests
         shell: bash
@@ -64,4 +88,5 @@ jobs:
             diag.txt
             curl.txt
             openssl.txt
+            dns.txt
             tools.txt
