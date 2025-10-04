@@ -104,48 +104,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache dotnet install directory
-        uses: actions/cache@v4
-        with:
-          path: |
-            $HOME/.dotnet
-          key: dotnet-cache-${{ runner.os }}-8.0-${{ hashFiles('global.json') }}
-          restore-keys: |
-            dotnet-cache-${{ runner.os }}-8.0-
-
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.nuget/packages
-          key: nuget-cache-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            nuget-cache-${{ runner.os }}-
-
-      - name: Install .NET into user directory (IPv4-first, cached)
+      - name: Install .NET into user directory (no sudo)
         shell: bash
         run: |
-          set -euo pipefail
-          DOTNET_DIR="$HOME/.dotnet"
-          echo "Installing dotnet to $DOTNET_DIR (IPv4-first, cached)"
-          mkdir -p "$DOTNET_DIR"
-          # Try IPv4 download first, fall back to default if needed
-          if curl --ipv4 --retry 5 -fsSLo dotnet-install.sh https://dot.net/v1/dotnet-install.sh; then
-            echo "Downloaded installer via IPv4"
-            bash dotnet-install.sh --channel 8.0 --install-dir "$DOTNET_DIR" --no-path || true
-          else
-            echo "IPv4 download failed, trying default download"
-            curl --retry 5 -fsSLo dotnet-install.sh https://dot.net/v1/dotnet-install.sh
-            bash dotnet-install.sh --channel 8.0 --install-dir "$DOTNET_DIR" --no-path || true
-          fi
-          echo "DOTNET_ROOT=$DOTNET_DIR" >> "$GITHUB_ENV"
-          echo "$DOTNET_DIR" >> "$GITHUB_PATH"
+          echo "Installing dotnet to $HOME/.dotnet"
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+          bash ./dotnet-install.sh --channel 8.0 --install-dir "$HOME/.dotnet"
+          echo "PATH=$HOME/.dotnet:$PATH" >> $GITHUB_ENV
+          echo "DOTNET_ROOT=$HOME/.dotnet" >> $GITHUB_ENV
+          echo "Installed dotnet version: $($HOME/.dotnet/dotnet --version)"
 
-      - name: Warm up NuGet cache (dotnet restore)
-        shell: bash
-        run: |
-          echo "Warming NuGet cache with dotnet restore"
-          dotnet restore DotNetApp.sln --verbosity minimal || true
+      - name: Restore
+        run: dotnet restore DotNetApp.sln
 
       - name: Build
         run: dotnet build DotNetApp.sln --configuration Release --no-restore
