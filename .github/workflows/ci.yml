@@ -56,6 +56,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Runner diagnostic (print tools and env)
+        shell: bash
+        run: |
+          echo "---- Runner info ----"
+          uname -a || true
+          echo "RUNNER_NAME=$RUNNER_NAME"; echo "RUNNER_OS=$RUNNER_OS"; echo "HOME=$HOME"
+          echo "---- Tool locations ----"
+          command -v dotnet || true
+          command -v pwsh || true
+          command -v curl || true
+          command -v tar || true
+          command -v unzip || true
+          ls -ld "$HOME" || true
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
