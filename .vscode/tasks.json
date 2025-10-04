@@ -25,7 +25,34 @@
         "-StreamLiveLogs"
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "GITHUB_REPOSITORY": "${input:ownerRepo}"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dispatch-and-stream",
+      "type": "shell",
+      "detail": "Alias task with simple label to run scripts\\dispatch_and_stream.ps1 (exact shell command)",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\dispatch_and_stream.ps1 -WorkflowFile ci-selfhosted-robust.yml -Ref main -Repo hutchisonkim/dot-net-app -PollIntervalSeconds 2 -TimeoutMinutes 10 -StreamLiveLogs",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "GITHUB_REPOSITORY": "${input:ownerRepo}"
+        }
       },
       "presentation": {
         "echo": true,
