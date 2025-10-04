@@ -6,8 +6,6 @@ services:
     volumes:
       - runner_data:/runner
       - runner_data:/actions-runner
-    env_file:
-      - .env
     restart: "no"
     entrypoint: "/usr/local/bin/entrypoint.sh"
     environment:
