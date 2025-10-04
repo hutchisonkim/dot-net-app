@@ -45,7 +45,52 @@ while ($true) {
     $info = $infoJson | ConvertFrom-Json
     $status = $info.status
     $conclusion = $info.conclusion
-    Write-Host "[$(Get-Date -Format o)] status=$status conclusion=$conclusion"
+
+    # Try to resolve repo (owner/name) for detailed job/step inspection
+    $repo = $null
+    try {
+        $repo = gh repo view --json name,owner --jq '.owner.login + "/" + .name' 2>$null
+    } catch {
+        $repo = $env:GITHUB_REPOSITORY
+    }
+
+    # Try to print a concise human-friendly current action: Job -> Step
+    $currentAction = $null
+    if ($repo) {
+        $jobsRaw = gh api "repos/$repo/actions/runs/$runId/jobs" --jq '.jobs' 2>$null
+        if ($jobsRaw) {
+            $jobs = $jobsRaw | ConvertFrom-Json
+            # Prefer a job that has any non-completed steps (in_progress/queued or other), otherwise prefer job with status != completed
+            $currentJob = $jobs | Where-Object { $_.steps -and ($_.steps | Where-Object { $_.status -ne 'completed' } ) } | Select-Object -First 1
+            if (-not $currentJob) { $currentJob = $jobs | Where-Object { $_.status -ne 'completed' } | Select-Object -First 1 }
+            if (-not $currentJob) { $currentJob = $jobs | Select-Object -First 1 }
+
+            if ($currentJob) {
+                $jobName = $currentJob.name
+                $currentStep = $null
+                if ($currentJob.steps) {
+                    # Choose step in order: in_progress, queued, first not completed
+                    $currentStep = $currentJob.steps | Where-Object { $_.status -eq 'in_progress' } | Select-Object -First 1
+                    if (-not $currentStep) { $currentStep = $currentJob.steps | Where-Object { $_.status -eq 'queued' } | Select-Object -First 1 }
+                    if (-not $currentStep) { $currentStep = $currentJob.steps | Where-Object { $_.status -ne 'completed' } | Select-Object -First 1 }
+                }
+
+                if ($currentStep) {
+                    $currentAction = "$jobName -> $($currentStep.name) ($($currentStep.status))"
+                } else {
+                    # fallback to job-level status if no step info
+                    $currentAction = "$jobName ($($currentJob.status))"
+                }
+            }
+        }
+    }
+
+    if ($currentAction) {
+        Write-Host "[$(Get-Date -Format o)] Current action: $currentAction"
+    } else {
+        Write-Host "[$(Get-Date -Format o)] status=$status conclusion=$conclusion"
+    }
+
     if ($status -eq 'completed') { break }
     Start-Sleep -Seconds $PollIntervalSeconds
 }
