@@ -1,0 +1,67 @@
+name: Self-hosted Runner Diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gather-diagnostics:
+    name: Gather network & TLS diagnostics (self-hosted)
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Collect environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Date: $(date)" > diag.txt
+          echo "--- uname -a ---" >> diag.txt
+          uname -a >> diag.txt 2>&1 || true
+          echo "--- env (filtered) ---" >> diag.txt
+          env | sort | egrep -i "proxy|http|https|dns|home|runner|github" >> diag.txt || true
+          echo "--- /etc/resolv.conf ---" >> diag.txt
+          cat /etc/resolv.conf >> diag.txt 2>&1 || true
+          echo "--- /etc/hosts ---" >> diag.txt
+          cat /etc/hosts >> diag.txt 2>&1 || true
+
+      - name: Curl tests (dot.net and builds.dotnet.microsoft.com)
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf "\n--- curl dot.net (follow redirects) ---\n" >> curl.txt || true
+          curl -vI --ipv4 --retry 3 https://dot.net >> curl.txt 2>&1 || true
+          printf "\n--- curl builds.dotnet.microsoft.com (ipv4) ---\n" >> curl.txt || true
+          curl -vI --ipv4 --retry 3 https://builds.dotnet.microsoft.com >> curl.txt 2>&1 || true
+          printf "\n--- curl builds.dotnet.microsoft.com (ipv6) ---\n" >> curl.txt || true
+          curl -vI --ipv6 --retry 1 https://builds.dotnet.microsoft.com >> curl.txt 2>&1 || true
+
+      - name: OpenSSL s_client tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "--- openssl s_client (connect by name) ---" > openssl.txt
+          openssl s_client -connect builds.dotnet.microsoft.com:443 -servername builds.dotnet.microsoft.com -brief < /dev/null >> openssl.txt 2>&1 || true
+          echo "--- openssl s_client (connect by ipv4) ---" >> openssl.txt
+          openssl s_client -connect 24.200.0.138:443 -servername builds.dotnet.microsoft.com -brief < /dev/null >> openssl.txt 2>&1 || true
+
+      - name: Save available network tools list
+        shell: bash
+        run: |
+          echo "--- which tools ---" > tools.txt
+          for t in host nslookup dig traceroute tracepath ip route ss netstat curl openssl; do
+            which $t || true
+          done >> tools.txt 2>&1 || true
+
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfhosted-diagnostics
+          path: |
+            diag.txt
+            curl.txt
+            openssl.txt
+            tools.txt

@@ -1,0 +1,36 @@
+name: CI Self-hosted Robust Non-E2E
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test (self-hosted)
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dotnet locally (robust)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Installing dotnet locally to $HOME/.dotnet (force IPv4, retries)"
+          curl --ipv4 --retry 5 -fsSLo dotnet-install.sh https://dot.net/v1/dotnet-install.sh
+          bash dotnet-install.sh --channel 8.0 --install-dir "$HOME/.dotnet" --no-path
+          echo "DOTNET_ROOT=$HOME/.dotnet" >> "$GITHUB_ENV"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+
+      - name: Verify dotnet
+        shell: bash
+        run: |
+          echo "--- dotnet --info ---"
+          dotnet --info || true
+
+      - name: Run non-E2E tests
+        shell: bash
+        run: |
+          dotnet test DotNetApp.sln --verbosity minimal --filter "TestCategory!=E2E"
