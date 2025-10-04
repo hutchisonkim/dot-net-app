@@ -2,32 +2,70 @@ param(
     [string]$WorkflowFile = 'ci-selfhosted-robust.yml',
     [string]$Ref = 'main',
     [int]$PollIntervalSeconds = 5,
-    [int]$TimeoutMinutes = 30
+    [int]$TimeoutMinutes = 30,
+    [switch]$AlwaysShowSnapshot = $false,
+    [switch]$StreamLiveLogs = $false,
+    [string]$Repo
 )
 
-# Dispatch the workflow
+# --- Resolve repository slug early for all gh commands ---
+$repo = $null
+
+if ($Repo) {
+    $repo = $Repo
+} elseif ($env:GITHUB_REPOSITORY) {
+    $repo = $env:GITHUB_REPOSITORY
+} else {
+    try {
+        $repo = gh repo view --json name,owner --jq '.owner.login + "/" + .name' 2>$null
+    } catch {}
+}
+
+# --- Validate repo resolution ---
+if (-not $repo) {
+    Write-Error @"
+Could not determine repository.
+You must either:
+  - Run this script inside a git repo linked with GitHub CLI, OR
+  - Pass -Repo 'owner/repo' explicitly.
+Example:
+  .\run-workflow.ps1 -Repo 'my-org/my-repo' -WorkflowFile 'ci.yml'
+"@
+    exit 1
+}
+
+Write-Host "✅ Using repository: $repo"
+
+# --- Dispatch the workflow ---
 $start = Get-Date
 Write-Host "Dispatching workflow '$WorkflowFile' on ref '$Ref' at $start"
-$dispatch = gh workflow run $WorkflowFile --ref $Ref 2>&1
+$dispatch = gh workflow run $WorkflowFile --ref $Ref -R $repo 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to dispatch workflow: $dispatch"
     exit 2
 }
 
-# Poll for a new run created after we dispatched
+# --- Poll for a new run created after we dispatched ---
 $deadline = $start.AddMinutes($TimeoutMinutes)
 Write-Host "Waiting up to $TimeoutMinutes minutes for a run to appear..."
 $runId = $null
+$runRestId = $null
+
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds $PollIntervalSeconds
-    $json = gh run list --workflow=$WorkflowFile --limit 20 --json databaseId,headSha,status,conclusion,createdAt 2>$null
+    $json = gh run list --workflow=$WorkflowFile --limit 20 --json databaseId,headSha,status,conclusion,createdAt -R $repo 2>$null
     if (-not $json) { continue }
+
     $runs = $json | ConvertFrom-Json
-    # Find the most recent run with createdAt >= our dispatch time - 10s
-    $candidate = $runs | Where-Object { ([datetime]$_.createdAt) -ge $start.AddSeconds(-10) } | Sort-Object {[datetime]$_.createdAt} -Descending | Select-Object -First 1
+    $candidate = $runs | Where-Object { ([datetime]$_.createdAt) -ge $start.AddSeconds(-10) } |
+                 Sort-Object {[datetime]$_.createdAt} -Descending | Select-Object -First 1
     if ($candidate) {
         $runId = $candidate.databaseId
-        Write-Host "Found run id $runId (status: $($candidate.status), createdAt: $($candidate.createdAt))"
+        $runUrl = gh run view $runId -R $repo --json url --jq '.url' 2>$null
+        if ($runUrl -and ($runUrl -match '/runs/([0-9]+)')) {
+            $runRestId = $Matches[1]
+        }
+        Write-Host "Found run id $runId (REST id: $runRestId, status: $($candidate.status), createdAt: $($candidate.createdAt))"
         break
     }
 }
@@ -37,69 +75,148 @@ if (-not $runId) {
     exit 3
 }
 
-# Poll the run until it's completed, printing status updates
+# --- Poll the run until completion ---
 Write-Host "Polling run $runId until completion (poll every $PollIntervalSeconds s)"
-while ($true) {
-    $infoJson = gh run view $runId --json status,conclusion 2>$null
-    if (-not $infoJson) { Start-Sleep -Seconds $PollIntervalSeconds; continue }
-    $info = $infoJson | ConvertFrom-Json
-    $status = $info.status
-    $conclusion = $info.conclusion
 
-    # Try to resolve repo (owner/name) for detailed job/step inspection
-    $repo = $null
-    try {
-        $repo = gh repo view --json name,owner --jq '.owner.login + "/" + .name' 2>$null
-    } catch {
-        $repo = $env:GITHUB_REPOSITORY
+function Get-JobsSnapshot {
+    param(
+        [string]$repo,
+        [string]$runId,
+        [string]$runRestId
+    )
+
+    $lines = @()
+    if (-not $repo) { return $lines }
+
+    $jobs = $null
+
+    # Prefer REST API (more accurate mid-run)
+    if ($runRestId) {
+        $jobsRaw = gh api -H 'Accept: application/vnd.github+json' "repos/$repo/actions/runs/$runRestId/jobs?per_page=100" --jq '.jobs' 2>$null
+        if ($jobsRaw) {
+            try { $jobs = $jobsRaw | ConvertFrom-Json } catch {}
+        }
     }
 
-    # Try to print a concise human-friendly current action: Job -> Step
-    $currentAction = $null
-    if ($repo) {
-        $jobsRaw = gh api "repos/$repo/actions/runs/$runId/jobs" --jq '.jobs' 2>$null
-        if ($jobsRaw) {
-            $jobs = $jobsRaw | ConvertFrom-Json
-            # Prefer a job that has any non-completed steps (in_progress/queued or other), otherwise prefer job with status != completed
-            $currentJob = $jobs | Where-Object { $_.steps -and ($_.steps | Where-Object { $_.status -ne 'completed' } ) } | Select-Object -First 1
-            if (-not $currentJob) { $currentJob = $jobs | Where-Object { $_.status -ne 'completed' } | Select-Object -First 1 }
-            if (-not $currentJob) { $currentJob = $jobs | Select-Object -First 1 }
+    # Fallback to GraphQL (gh run view)
+    if (-not $jobs -or $jobs.Count -eq 0) {
+        $jobsView = gh run view $runId -R $repo --json jobs --jq '.jobs' 2>$null
+        if ($jobsView) {
+            try { $jobs = $jobsView | ConvertFrom-Json } catch {}
+        }
+    }
 
-            if ($currentJob) {
-                $jobName = $currentJob.name
-                $currentStep = $null
-                if ($currentJob.steps) {
-                    # Choose step in order: in_progress, queued, first not completed
-                    $currentStep = $currentJob.steps | Where-Object { $_.status -eq 'in_progress' } | Select-Object -First 1
-                    if (-not $currentStep) { $currentStep = $currentJob.steps | Where-Object { $_.status -eq 'queued' } | Select-Object -First 1 }
-                    if (-not $currentStep) { $currentStep = $currentJob.steps | Where-Object { $_.status -ne 'completed' } | Select-Object -First 1 }
-                }
+    if (-not $jobs) { return $lines }
 
-                if ($currentStep) {
-                    $currentAction = "$jobName -> $($currentStep.name) ($($currentStep.status))"
+    foreach ($job in $jobs) {
+        $jobLine = "Job: $($job.name) - $($job.status)"
+        if ($job.conclusion) { $jobLine += " (conclusion: $($job.conclusion))" }
+        $lines += $jobLine
+
+        # Fetch detailed steps if missing
+        if (-not $job.steps -and $job.id) {
+            $stepsRaw = gh api -H 'Accept: application/vnd.github+json' "repos/$repo/actions/jobs/$($job.id)" --jq '.steps' 2>$null
+            if ($stepsRaw) {
+                try { $job.steps = $stepsRaw | ConvertFrom-Json } catch {}
+            }
+        }
+
+        if ($job.steps) {
+            foreach ($step in $job.steps) {
+                $stepName = $step.name -replace '\s+', ' '
+                if ($step.conclusion) {
+                    $lines += "  Step: $stepName - $($step.status) (conclusion: $($step.conclusion))"
                 } else {
-                    # fallback to job-level status if no step info
-                    $currentAction = "$jobName ($($currentJob.status))"
+                    $lines += "  Step: $stepName - $($step.status)"
                 }
             }
         }
     }
 
-    if ($currentAction) {
-        Write-Host "[$(Get-Date -Format o)] Current action: $currentAction"
+    return $lines
+}
+
+$prevSnapshot = @()
+$watchJob = $null
+
+if ($StreamLiveLogs) {
+    try {
+        Write-Host "Starting live log streaming (gh run watch $runId)"
+        $watchJob = Start-Job -Name "gh-watch-$runId" -ScriptBlock {
+            param($rid, $rep)
+            gh run watch $rid -R $rep --exit-status
+        } -ArgumentList $runId, $repo
+    } catch {
+        Write-Warning "Exception starting live log watcher: $($_.Exception.Message)"
+    }
+}
+
+while ($true) {
+    $infoJson = gh run view $runId -R $repo --json status,conclusion 2>$null
+    if (-not $infoJson) { Start-Sleep -Seconds $PollIntervalSeconds; continue }
+
+    $info = $infoJson | ConvertFrom-Json
+    $status = $info.status
+    $conclusion = $info.conclusion
+
+    if (-not $runRestId) {
+        $runUrl = gh run view $runId -R $repo --json url --jq '.url' 2>$null
+        if ($runUrl -and ($runUrl -match '/runs/([0-9]+)')) { $runRestId = $Matches[1] }
+    }
+
+    if ($watchJob) {
+        try { Receive-Job -Job $watchJob -Keep | ForEach-Object { Write-Host "[live] $_" } } catch {}
+    }
+
+    $snapshot = Get-JobsSnapshot -repo $repo -runId $runId -runRestId $runRestId
+
+    if ($snapshot.Count -eq 0) {
+        Write-Host "[$(Get-Date -Format o)] status=$status conclusion=$conclusion (no job/step info yet)"
     } else {
-        Write-Host "[$(Get-Date -Format o)] status=$status conclusion=$conclusion"
+        $changed = $false
+        if ($prevSnapshot.Count -ne $snapshot.Count) { $changed = $true }
+        else {
+            for ($i = 0; $i -lt $snapshot.Count; $i++) {
+                if ($snapshot[$i] -ne $prevSnapshot[$i]) { $changed = $true; break }
+            }
+        }
+
+        if ($changed -or $AlwaysShowSnapshot) {
+            if ($changed) {
+                Write-Host "[$(Get-Date -Format o)] Job/step snapshot (changed):"
+            } else {
+                Write-Host "[$(Get-Date -Format o)] Job/step snapshot:"
+            }
+            foreach ($line in $snapshot) { Write-Host $line }
+            $prevSnapshot = $snapshot
+        } else {
+            $inProg = $snapshot | Where-Object { $_ -match 'Step: .* - in_progress' } | Select-Object -First 1
+            if ($inProg) { Write-Host "[$(Get-Date -Format o)] Current: $inProg" }
+            else {
+                $queued = $snapshot | Where-Object { $_ -match 'Step: .* - queued' } | Select-Object -First 1
+                if ($queued) { Write-Host "[$(Get-Date -Format o)] Current: $queued" }
+                else { Write-Host "[$(Get-Date -Format o)] status=$status conclusion=$conclusion" }
+            }
+        }
     }
 
     if ($status -eq 'completed') { break }
     Start-Sleep -Seconds $PollIntervalSeconds
 }
 
-Write-Host "Run completed with conclusion: $conclusion. Streaming logs below."
-# Stream logs
-gh run view $runId --log
+Write-Host "Run completed with conclusion: $conclusion."
 
-# Exit with non-zero if the run failed
+if (-not $StreamLiveLogs) {
+    Write-Host "Streaming logs below."
+    gh run view $runId -R $repo --log
+}
+
+if ($watchJob) {
+    try {
+        Receive-Job -Job $watchJob -Wait -AutoRemoveJob | ForEach-Object { Write-Host "[live] $_" }
+    } catch {}
+}
+
 if ($conclusion -ne 'success') {
     Write-Error "Workflow run $runId finished with conclusion: $conclusion"
     exit 4
