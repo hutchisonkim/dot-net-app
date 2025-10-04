@@ -6,15 +6,27 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using Xunit;
+using DotNetApp.Tests.Shared;
 
 namespace DotNetApp.Client.IntegrationTests;
 
 [Trait("Category","Integration")]
+[Collection("docker-compose")]
 public class ServeMatchesPublishedTests
 {
-    // Prefer localhost first when running tests locally; when running inside containers 'client' may be reachable
-    private static readonly string[] CandidateUrls = new[] { "http://localhost:8080/" };
+    private readonly string[] CandidateUrls;
 
+    public ServeMatchesPublishedTests(LocalStaticFrontendFixture fixture)
+    {
+        if (!string.IsNullOrWhiteSpace(fixture?.FrontendUrl))
+        {
+            CandidateUrls = new[] { fixture.FrontendUrl };
+        }
+        else
+        {
+            CandidateUrls = new[] { "http://localhost:8080/" };
+        }
+    }
     [Fact]
     public async Task ClientRootRequest_WhenServed_MatchesPublishedIndexHtml()
     {

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using Xunit;
+using DotNetApp.Tests.Shared;
 
 #nullable enable
 
@@ -15,8 +16,20 @@ namespace DotNetApp.Api.IntegrationTests;
 [Collection("docker-compose")]
 public class ServeClientFromBackendTests
 {
-    // Allow an override for CI or local runs
-    private static readonly string[] CandidateUrls = BuildCandidateUrls();
+    private readonly string[] CandidateUrls;
+
+    public ServeClientFromBackendTests(LocalStaticFrontendFixture fixture)
+    {
+        // Prefer fixture-provided FrontendUrl when the collection fixture started a local server.
+        if (!string.IsNullOrWhiteSpace(fixture?.FrontendUrl))
+        {
+            CandidateUrls = new[] { fixture.FrontendUrl };
+        }
+        else
+        {
+            CandidateUrls = BuildCandidateUrls();
+        }
+    }
 
     private static string[] BuildCandidateUrls()
     {
@@ -45,7 +58,7 @@ public class ServeClientFromBackendTests
 
         HttpResponseMessage res = null!;
         // Try each candidate URL until one responds with success or we hit the overall timeout
-        foreach (var baseUrl in CandidateUrls)
+    foreach (var baseUrl in CandidateUrls)
         {
             try
             {
