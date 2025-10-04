@@ -100,6 +100,27 @@ jobs:
           echo "--- dotnet --info ---"
           dotnet --info || true
 
+      - name: Collect curl traces (if any)
+        if: always()
+        shell: bash
+        run: |
+          echo "Collecting curl traces into workspace"
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/traces" || true
+          # copy any curl trace files created by diagnostic steps
+          for f in /tmp/curl-trace*.txt /tmp/curl-trace.txt; do
+            if [ -f "$f" ]; then
+              cp -v "$f" "$GITHUB_WORKSPACE/artifacts/traces/" || true
+            fi
+          done
+
+      - name: Upload curl trace artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: curl-traces
+          path: artifacts/traces/
+          retention-days: 7
+
       - name: Warm up NuGet cache (dotnet restore)
         shell: bash
         run: |
