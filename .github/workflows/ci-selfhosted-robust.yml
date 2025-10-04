@@ -37,24 +37,38 @@ jobs:
           restore-keys: |
             dotnet-cache-${{ runner.os }}-8.0-
 
-      - name: Install dotnet locally (robust, try IPv4 then fallback)
+      - name: Ensure dotnet 8 is available (use existing or attempt installer)
         shell: bash
         run: |
           set -euo pipefail
-          DOTNET_DIR="$HOME/.dotnet"
-          echo "Installing dotnet locally to $DOTNET_DIR (try IPv4 then fallback)"
-          mkdir -p "$DOTNET_DIR"
-          # prefer IPv4; if that fails, fallback to default
-          if curl --ipv4 --retry 5 -fsSLo dotnet-install.sh https://dot.net/v1/dotnet-install.sh; then
-            echo "Downloaded installer via IPv4"
-            bash dotnet-install.sh --channel 8.0 --install-dir "$DOTNET_DIR" --no-path || true
+          if command -v dotnet >/dev/null 2>&1; then
+            ver=$(dotnet --version || true)
+            echo "dotnet found on PATH: $ver"
+            # if it's not 8.x, still continue but warn
+            if [[ "$ver" != 8.* ]]; then
+              echo "Warning: dotnet version $ver found; recommended: .NET 8.x for CI builds"
+            fi
           else
-            echo "IPv4 download failed, trying normal download"
-            curl --retry 5 -fsSLo dotnet-install.sh https://dot.net/v1/dotnet-install.sh
-            bash dotnet-install.sh --channel 8.0 --install-dir "$DOTNET_DIR" --no-path || true
+            echo "dotnet not found on runner; attempting to download installer (requires outbound network access)"
+            DOTNET_DIR="$HOME/.dotnet"
+            mkdir -p "$DOTNET_DIR"
+            # try IPv4 first, then fallback to default
+            if curl --ipv4 --retry 5 -fsSLo dotnet-install.sh https://dot.net/v1/dotnet-install.sh; then
+              echo "Downloaded installer via IPv4"
+              bash dotnet-install.sh --channel 8.0 --install-dir "$DOTNET_DIR" --no-path || true
+            else
+              echo "IPv4 download failed; trying normal download"
+              if curl --retry 5 -fsSLo dotnet-install.sh https://dot.net/v1/dotnet-install.sh; then
+                bash dotnet-install.sh --channel 8.0 --install-dir "$DOTNET_DIR" --no-path || true
+              else
+                echo "Failed to download dotnet installer. This self-hosted runner may not have outbound HTTPS access to dot.net." >&2
+                echo "Options: (1) preinstall .NET 8 on the runner, (2) allow outbound access to https://dot.net and https://builds.dotnet.microsoft.com." >&2
+                exit 1
+              fi
+            fi
+            echo "DOTNET_ROOT=$DOTNET_DIR" >> "$GITHUB_ENV"
+            echo "$DOTNET_DIR" >> "$GITHUB_PATH"
           fi
-          echo "DOTNET_ROOT=$DOTNET_DIR" >> "$GITHUB_ENV"
-          echo "$DOTNET_DIR" >> "$GITHUB_PATH"
 
       - name: Verify dotnet
         shell: bash
