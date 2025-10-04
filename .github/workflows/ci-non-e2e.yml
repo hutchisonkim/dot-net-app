@@ -51,6 +51,56 @@ jobs:
           name: network-diagnostics
           path: network-diagnostics.txt
 
+      - name: Deep network & TLS diagnostics
+        shell: bash
+        run: |
+          set +e
+          out=network-deep.txt
+          echo "==== Deep network & TLS diagnostics ====" > "$out"
+          echo "Date: $(date -u)" >> "$out"
+          echo "---- Environment proxies ----" >> "$out"
+          env | grep -i proxy >> "$out" 2>&1 || true
+          echo "---- /etc/hosts ----" >> "$out"
+          cat /etc/hosts >> "$out" 2>&1 || true
+          echo "---- /etc/resolv.conf ----" >> "$out"
+          cat /etc/resolv.conf >> "$out" 2>&1 || true
+          echo "---- DNS resolution (getent / host / nslookup) ----" >> "$out"
+          getent hosts builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+          host builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+          nslookup builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+          which dig >/dev/null 2>&1 && dig +short builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+          echo "---- traceroute / tracepath ----" >> "$out"
+          which traceroute >/dev/null 2>&1 && traceroute -n builds.dotnet.microsoft.com >> "$out" 2>&1 || tracepath builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+          echo "---- ip route / ip addr ----" >> "$out"
+          ip route >> "$out" 2>&1 || route -n >> "$out" 2>&1 || true
+          ip addr >> "$out" 2>&1 || true
+          echo "---- socket/listening info (ss/netstat) ----" >> "$out"
+          ss -tn >> "$out" 2>&1 || netstat -tn >> "$out" 2>&1 || true
+
+          echo "---- Attempt TLS connection with openssl ----" >> "$out"
+          which openssl >/dev/null 2>&1 && openssl s_client -connect builds.dotnet.microsoft.com:443 -servername builds.dotnet.microsoft.com -brief < /dev/null >> "$out" 2>&1 || true
+
+          echo "---- curl tests (ipv4/ipv6/connect-to/tls1.2) ----" >> "$out"
+          curl -vI --ipv4 https://builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+          curl -vI --ipv6 https://builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+          # try resolving an IP and using --connect-to to bypass DNS routing
+          IP=$(getent hosts builds.dotnet.microsoft.com | awk '{print $1; exit}')
+          if [ -n "$IP" ]; then
+            echo "Resolved IP=$IP" >> "$out"
+            curl -v --connect-to builds.dotnet.microsoft.com:443:${IP}:443 https://builds.dotnet.microsoft.com/ >> "$out" 2>&1 || true
+          else
+            echo "No IP resolved via getent" >> "$out"
+          fi
+          curl -v --tls-max 1.2 https://builds.dotnet.microsoft.com >> "$out" 2>&1 || true
+
+          echo "---- End diagnostics ----" >> "$out"
+
+      - name: Upload deep network diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-deep
+          path: network-deep.txt
+
       - name: Checkout
         uses: actions/checkout@v4
 
