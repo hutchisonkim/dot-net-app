@@ -72,9 +72,22 @@ jobs:
         shell: bash
         run: |
           echo "Attempting to start docker compose stack for CI (if available)"
-          if command -v docker >/dev/null 2>&1; then
+          # Temporarily disable 'errexit' so a missing docker binary doesn't kill the step
+          set +e
+          command -v docker >/dev/null 2>&1
+          has_docker=$?
+          set -e
+          if [ "$has_docker" -eq 0 ]; then
             echo "docker found, bringing up compose stack"
-            docker compose -f docker/compose.ci.yml up -d || true
+            # run docker compose but don't fail the step if it errors
+            set +e
+            docker compose -f docker/compose.ci.yml up -d
+            dc_exit=$?
+            set -e
+            if [ $dc_exit -ne 0 ]; then
+              echo "docker compose returned $dc_exit; continuing and relying on test fixture fallback"
+            fi
+
             # wait briefly for frontend at http://localhost:8080/ to become available
             for i in {1..30}; do
               if curl -sSf http://localhost:8080/ >/dev/null 2>&1; then
@@ -85,7 +98,7 @@ jobs:
               echo "waiting for frontend ($i)..."
               sleep 1
             done
-            if [ -z "$(grep -E '^FRONTEND_URL=' "$GITHUB_ENV" 2>/dev/null)" ]; then
+            if ! grep -qE '^FRONTEND_URL=' "$GITHUB_ENV" 2>/dev/null; then
               echo "docker-compose started (or attempted) but frontend not reachable; tests will use in-test fallback if available"
             fi
           else
