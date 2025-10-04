@@ -2,6 +2,11 @@ name: CI Self-hosted Robust Non-E2E
 
 on:
   workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: 'Whether to run E2E tests'
+        required: false
+        default: 'false'
 
 permissions:
   contents: read
@@ -63,7 +68,13 @@ jobs:
           echo "Warming NuGet cache with dotnet restore"
           dotnet restore DotNetApp.sln --verbosity minimal || true
 
-      - name: Run non-E2E tests
+      - name: Run tests
         shell: bash
         run: |
-          dotnet test DotNetApp.sln --verbosity minimal --filter "TestCategory!=E2E"
+          if [ "${{ github.event.inputs.run_e2e }}" = "true" ]; then
+            echo "Running E2E tests"
+            dotnet test DotNetApp.sln --filter "TestCategory==E2E"
+          else
+            echo "Skipping E2E; running unit/integration only"
+            dotnet test DotNetApp.sln --filter "TestCategory!=E2E"
+          fi

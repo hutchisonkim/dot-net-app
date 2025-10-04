@@ -39,7 +39,7 @@ Write-Host "✅ Using repository: $repo"
 # --- Dispatch the workflow ---
 $start = Get-Date
 Write-Host "Dispatching workflow '$WorkflowFile' on ref '$Ref' at $start"
-$dispatch = gh workflow run $WorkflowFile --ref $Ref -R $repo 2>&1
+$dispatch = gh workflow run $WorkflowFile --ref $Ref -R $repo --field "run_e2e=$env:RUN_E2E" 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to dispatch workflow: $dispatch"
     exit 2
