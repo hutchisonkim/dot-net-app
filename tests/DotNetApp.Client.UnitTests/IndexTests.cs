@@ -3,14 +3,13 @@ using Xunit;
 using DotNetApp.Client.Pages;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client;
-using FluentAssertions;
 
 namespace DotNetApp.Client.UnitTests;
 
 public class IndexTests
 {
     [Fact]
-    [Trait("Category","Unit")]
+    [Trait("Category", "Unit")]
     public void Index_Renders_Welcome()
     {
         // Arrange
@@ -21,8 +20,8 @@ public class IndexTests
         // Act
         var cut = ctx.RenderComponent<Index>();
 
-        // Assert
-        cut.Markup.Should().Contain("<h1>DotNetApp</h1>");
+        // Assert (xUnit)
+        Assert.Contains("<h1>DotNetApp</h1>", cut.Markup);
     }
 }
 

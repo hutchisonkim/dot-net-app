@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using Xunit;
-using FluentAssertions;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client;
@@ -22,7 +21,7 @@ public class HealthStatusProviderTests
         var provider = ctx.Services.GetRequiredService<IHealthStatusProvider>();
         var status = await provider.FetchStatusAsync();
 
-        // Assert
-        status.Should().Be("healthy");
+    // Assert
+    Assert.Equal("healthy", status);
     }
 }

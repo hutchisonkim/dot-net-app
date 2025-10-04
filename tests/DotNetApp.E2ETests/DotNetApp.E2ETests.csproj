@@ -6,6 +6,8 @@
     <!-- E2E tests are opt-in. Default is false so workspace/test-explorer runs won't try to execute Playwright tests.
          Set /p:RunE2E=true on the dotnet CLI (or CI) to enable test SDK and test packages for E2E runs. -->
     <RunE2E Condition="'$(RunE2E)'==''">false</RunE2E>
+    <!-- Define a conditional compilation symbol when RunE2E is true so E2E source files can be excluded from normal builds -->
+    <DefineConstants Condition="'$(RunE2E)' == 'true'">RUN_E2E</DefineConstants>
   </PropertyGroup>
 
   <!-- Only bring in test SDK and test-only packages when RunE2E is explicitly enabled -->
@@ -13,8 +15,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
-    <PackageReference Include="Microsoft.Playwright" Version="1.41.1" />
-    <PackageReference Include="FluentAssertions" Version="7.0.0" />
+  <PackageReference Include="Microsoft.Playwright" Version="1.41.1" />
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
   </ItemGroup>
 </Project>

@@ -3,6 +3,6 @@
     <!-- Central package management for common dependencies to reduce version drift -->
     <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.0" />
-    <PackageVersion Include="FluentAssertions" Version="6.9.0" />
+  <!-- FluentAssertions removed: tests refactored to use xUnit Assert -->
   </ItemGroup>
 </Project>

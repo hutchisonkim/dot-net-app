@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
-using FluentAssertions;
 using Xunit;
 
 namespace DotNetApp.Client.IntegrationTests;
@@ -44,13 +43,13 @@ public class ServeMatchesPublishedTests
             }
         }
 
-    res.Should().NotBeNull();
-    res!.IsSuccessStatusCode.Should().BeTrue();
+    Assert.NotNull(res);
+    Assert.True(res!.IsSuccessStatusCode);
 
         var served = await res.Content.ReadAsStringAsync();
 
         var expectedPath = FindExpectedIndex();
-    expectedPath.Should().NotBeNull();
+    Assert.NotNull(expectedPath);
     var expected = await File.ReadAllTextAsync(expectedPath!);
 
         var nServed = Normalize(served);
@@ -60,18 +59,18 @@ public class ServeMatchesPublishedTests
         if (titleMatch.Success)
         {
             var expectedTitle = titleMatch.Groups[1].Value.Trim();
-            served.Should().Contain(expectedTitle, "served HTML should contain the expected <title> text");
+            Assert.Contains(expectedTitle, served);
         }
 
         var baseMatch = Regex.Match(expected, "<base href=\"(.*?)\"", RegexOptions.IgnoreCase);
         if (baseMatch.Success)
         {
             var expectedBase = baseMatch.Groups[1].Value.Trim();
-            served.Should().Contain($"<base href=\"{expectedBase}\"", "served HTML should contain the expected base href");
+            Assert.Contains($"<base href=\"{expectedBase}\"", served);
         }
 
-    served.Should().Contain("_framework/blazor.webassembly.js", "served HTML must include the Blazor loader");
-    nServed.Should().Contain(nExpected, "served normalized HTML should include the normalized expected index content");
+    Assert.Contains("_framework/blazor.webassembly.js", served);
+    Assert.Contains(nExpected, nServed);
     }
 
     private static string? FindExpectedIndex()

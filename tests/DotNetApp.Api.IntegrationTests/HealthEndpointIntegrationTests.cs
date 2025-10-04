@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNetApp.Core.Abstractions;
-using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -30,15 +29,15 @@ public class HealthEndpointIntegrationTests : IClassFixture<HealthEndpointIntegr
     [Fact]
     public async Task Health_WhenCalled_ReturnsMockedStatus()
     {
-        var json = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/state/health");
-        json.GetProperty("status").GetString().Should().Be(FakeHealthService.CustomStatus);
+    var json = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/state/health");
+    Assert.Equal(FakeHealthService.CustomStatus, json.GetProperty("status").GetString());
     }
 
     [Fact]
     public async Task RootRequest_WhenFrontendConfigured_ReturnsFakeIndex()
     {
-        var html = await _client.GetStringAsync("/");
-        html.Should().Contain("Fake Frontend");
+    var html = await _client.GetStringAsync("/");
+    Assert.Contains("Fake Frontend", html);
     }
 
     public class CustomWebAppFactory : WebApplicationFactory<Program>

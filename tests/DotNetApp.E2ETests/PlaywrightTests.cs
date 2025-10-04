@@ -1,6 +1,6 @@
+#if RUN_E2E
 using System;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Microsoft.Playwright;
 using Xunit;
 
@@ -28,10 +28,10 @@ public class PlaywrightTests
             await page.GotoAsync(frontendUrl, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 30000 });
 
             var title = await page.TitleAsync();
-            title.Should().NotBeNullOrWhiteSpace();
+            Assert.False(string.IsNullOrWhiteSpace(title));
 
             var content = await page.ContentAsync();
-            content.Contains("_framework/blazor.webassembly.js", StringComparison.OrdinalIgnoreCase).Should().BeTrue();
+            Assert.True(content?.IndexOf("_framework/blazor.webassembly.js", StringComparison.OrdinalIgnoreCase) >= 0);
         };
 
         var testTask = testBody();
@@ -45,3 +45,4 @@ public class PlaywrightTests
         await testTask;
     }
 }
+#endif

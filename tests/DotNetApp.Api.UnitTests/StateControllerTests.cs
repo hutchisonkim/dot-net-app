@@ -2,10 +2,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using DotNetApp.Api.Controllers;
 using DotNetApp.Core.Abstractions;
-using FluentAssertions;
+using Xunit;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Xunit;
 
 namespace DotNetApp.Api.UnitTests;
 
@@ -25,13 +24,13 @@ public class StateControllerTests
         var result = await sut.Health(CancellationToken.None);
 
         // Assert
-        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().NotBeNull();
+    var ok = Assert.IsType<OkObjectResult>(result);
+    Assert.NotNull(ok.Value);
 
-        // Cast the returned value to the DTO and assert explicitly on the Status property
-        var dto = ok.Value as DotNetApp.Api.Contracts.HealthDto;
-        dto.Should().NotBeNull();
-        dto!.Status.Should().Be("Healthy");
+    // Cast the returned value to the DTO and assert explicitly on the Status property
+    var dto = ok.Value as DotNetApp.Api.Contracts.HealthDto;
+    Assert.NotNull(dto);
+    Assert.Equal("Healthy", dto!.Status);
 
         mockHealth.Verify(h => h.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

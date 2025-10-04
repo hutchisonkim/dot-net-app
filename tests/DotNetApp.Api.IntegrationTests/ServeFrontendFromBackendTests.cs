@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
-using FluentAssertions;
 using Xunit;
 
 #nullable enable
@@ -59,12 +58,12 @@ public class ServeClientFromBackendTests
             }
         }
 
-        res.Should().NotBeNull("No response received from frontend service.");
+    Assert.NotNull(res);
 
         var served = await res.Content.ReadAsStringAsync();
 
         var expectedPath = FindExpectedIndex();
-        expectedPath.Should().NotBeNull("Expected index file not found. Searched from current/base directories and mounted path");
+    Assert.NotNull(expectedPath);
 
         string expected;
         if (expectedPath!.EndsWith(".razor", StringComparison.OrdinalIgnoreCase))
@@ -89,23 +88,23 @@ public class ServeClientFromBackendTests
         var nExpected = Normalize(expected);
 
         var titleMatch = Regex.Match(expected, "<title>(.*?)</title>", RegexOptions.IgnoreCase);
-        if (titleMatch.Success)
-        {
-            var expectedTitle = titleMatch.Groups[1].Value.Trim();
-            served.Should().Contain(expectedTitle, "served HTML should contain the expected <title> text");
-        }
+            if (titleMatch.Success)
+            {
+                var expectedTitle = titleMatch.Groups[1].Value.Trim();
+                Assert.Contains(expectedTitle, served);
+            }
 
         var baseMatch = Regex.Match(expected, "<base href=\"(.*?)\"", RegexOptions.IgnoreCase);
-        if (baseMatch.Success)
-        {
-            var expectedBase = baseMatch.Groups[1].Value.Trim();
-            served.Should().Contain($"<base href=\"{expectedBase}\"", "served HTML should contain the expected base href");
-        }
+            if (baseMatch.Success)
+            {
+                var expectedBase = baseMatch.Groups[1].Value.Trim();
+                Assert.Contains($"<base href=\"{expectedBase}\"", served);
+            }
 
-        // Always check for the Blazor loader
-        served.Should().Contain("_framework/blazor.webassembly.js", "served HTML must include the Blazor loader");
+    // Always check for the Blazor loader
+    Assert.Contains("_framework/blazor.webassembly.js", served);
 
-        nServed.Should().Contain(nExpected, "served normalized HTML should include the normalized expected index content");
+    Assert.Contains(nExpected, nServed);
     }
 
     private static string? FindExpectedIndex()

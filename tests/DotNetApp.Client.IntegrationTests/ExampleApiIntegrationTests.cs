@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
-using FluentAssertions;
 using DotNetApp.Client.Contracts;
 
 namespace DotNetApp.Client.IntegrationTests;
@@ -22,7 +21,7 @@ public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         using var client = _factory.CreateClient();
         var apiClient = new PlatformApiClient(client);
         var dto = await apiClient.GetHealthStatusAsync();
-        // API returns "Healthy" (capital H) — tests should match the real API behavior
-        dto?.status.Should().Be("Healthy");
+    // API returns "Healthy" (capital H) — tests should match the real API behavior
+    Assert.Equal("Healthy", dto?.status);
     }
 }
