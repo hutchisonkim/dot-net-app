@@ -66,7 +66,7 @@
           "GITHUB_REPOSITORY": "${input:ownerRepo}",
           "GITHUB_TOKEN": "${input:runnerToken}",
           "GITHUB_URL": "${input:githubUrl}",
-          "RUNNER_NAME": "my-runner",
+          "RUNNER_NAME": "self-hosted-runner-01",
           "RUNNER_LABELS": "self-hosted,Linux,X64"
         }
       },
