@@ -1,4 +1,4 @@
-name: CI Self-hosted Robust Non-E2E
+name: CI Self-hosted Robust
 
 on:
   workflow_dispatch:
