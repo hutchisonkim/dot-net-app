@@ -38,10 +38,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
+      - name: Install .NET into user directory (no sudo)
+        shell: bash
+        run: |
+          echo "Installing dotnet to $HOME/.dotnet"
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+          bash ./dotnet-install.sh --channel 8.0 --install-dir "$HOME/.dotnet"
+          echo "PATH=$HOME/.dotnet:$PATH" >> $GITHUB_ENV
+          echo "DOTNET_ROOT=$HOME/.dotnet" >> $GITHUB_ENV
+          echo "Installed dotnet version: $($HOME/.dotnet/dotnet --version)"
 
       - name: Restore
         run: dotnet restore DotNetApp.sln
