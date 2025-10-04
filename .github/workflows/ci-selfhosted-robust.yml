@@ -27,6 +27,13 @@ jobs:
           key: nuget-cache-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
           restore-keys: |
             nuget-cache-${{ runner.os }}-
+      - name: show NuGet cache target sizes
+        shell: bash
+        run: |
+          echo "NuGet cache target: $HOME/.nuget/packages"
+          du -sh "$HOME/.nuget/packages" 2>/dev/null || echo "missing or empty"
+          echo "Top entries under ~/.nuget/packages (size path)"
+          find "$HOME/.nuget/packages" -maxdepth 3 -printf "%s %p\n" 2>/dev/null | sort -nr | head -n 40 || true
 
       - name: Cache dotnet install directory
         uses: actions/cache@v4
@@ -36,6 +43,29 @@ jobs:
           key: dotnet-cache-${{ runner.os }}-8.0-${{ hashFiles('global.json') }}
           restore-keys: |
             dotnet-cache-${{ runner.os }}-8.0-
+      - name: show dotnet cache target sizes
+        shell: bash
+        run: |
+          echo "dotnet cache target: $HOME/.dotnet"
+          du -sh "$HOME/.dotnet" 2>/dev/null || echo "missing or empty"
+          echo "Top entries under ~/.dotnet (size path)"
+          find "$HOME/.dotnet" -maxdepth 3 -printf "%s %p\n" 2>/dev/null | sort -nr | head -n 40 || true
+
+      - name: inspect actions/cache manifest files (if any)
+        if: always()
+        shell: bash
+        run: |
+          echo "Searching for actions/cache manifest files under /tmp/github-runner"
+          find /tmp -path '*/github-runner/*/manifest.txt' -print -exec sh -c '
+            echo "---- HEAD of {} ----";
+            head -n 200 "{}" || true;
+            echo;
+            echo "---- stat {} ----";
+            stat "{}" || true;
+            echo;
+            echo "---- top size of listed files in {} ----";
+            awk "{print \$0}" "{}" | xargs -I{} bash -c "if [ -e '{}' ]; then stat -c '%s %F %n' '{}' 2>/dev/null || echo 'missing: {}'; fi" | sort -nr | head -n 40;
+          ' \; || true
 
       - name: Diagnostic / check connectivity
         shell: bash
