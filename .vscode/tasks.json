@@ -65,7 +65,9 @@
         "env": {
           "GITHUB_REPOSITORY": "${input:ownerRepo}",
           "GITHUB_TOKEN": "${input:runnerToken}",
-          "GITHUB_URL": "${input:githubUrl}"
+          "GITHUB_URL": "${input:githubUrl}",
+          "RUNNER_NAME": "my-runner",
+          "RUNNER_LABELS": "self-hosted,Linux,X64"
         }
       },
       "problemMatcher": [],
