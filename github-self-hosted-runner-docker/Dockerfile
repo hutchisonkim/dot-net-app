@@ -63,5 +63,22 @@ RUN if [ "${DOWNLOAD_RUNNER_AT_BUILD}" = "1" ]; then \
 # cacheable and the downloaded artifacts can be persisted in a volume on the
 # host. Avoid downloading the runner at image build time.
 
+# Optional: install .NET SDK here as a late layer so earlier layers remain cached
+# Controlled by build arg INSTALL_DOTNET (set to 1 to install at build time)
+ARG INSTALL_DOTNET=1
+ENV INSTALL_DOTNET=${INSTALL_DOTNET}
+
+RUN if [ "${INSTALL_DOTNET}" = "1" ]; then \
+            echo "Installing .NET SDK 8.0 at build time"; \
+            wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb && \
+            dpkg -i /tmp/packages-microsoft-prod.deb && \
+            apt-get update && \
+            apt-get install -y --no-install-recommends dotnet-sdk-8.0 ca-certificates && \
+            rm -f /tmp/packages-microsoft-prod.deb && \
+            apt-get clean && rm -rf /var/lib/apt/lists/*; \
+        else \
+            echo "Skipping .NET SDK install at build time (INSTALL_DOTNET!=1)"; \
+        fi
+
 # Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
