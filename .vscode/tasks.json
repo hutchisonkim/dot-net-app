@@ -10,7 +10,7 @@
         "cwd": "${workspaceFolder}",
         "env": {
           "GITHUB_REPOSITORY": "${input:ownerRepo}",
-          "TEST_FILTER": "TestCategory!=E2E"
+          "TEST_FILTER": "Category!=E2E"
         }
       },
       "presentation": {
@@ -35,7 +35,7 @@
         "cwd": "${workspaceFolder}",
         "env": {
           "GITHUB_REPOSITORY": "${input:ownerRepo}",
-          "TEST_FILTER": "TestCategory==E2E"
+          "TEST_FILTER": "Category==E2E"
         }
       },
       "presentation": {

@@ -3,10 +3,10 @@ name: CI Self-hosted Robust
 on:
   workflow_dispatch:
     inputs:
-      run_e2e:
-        description: 'Whether to run E2E tests'
+      test_filter:
+        description: 'Filter expression for tests, e.g. "Category==E2E" or "Category!=E2E"'
         required: false
-        default: 'false'
+        default: 'Category!=E2E'
 
 permissions:
   contents: read
@@ -71,10 +71,4 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          if [ "${{ github.event.inputs.run_e2e }}" = "true" ]; then
-            echo "Running E2E tests"
-            dotnet test DotNetApp.sln --filter "TestCategory==E2E"
-          else
-            echo "Skipping E2E; running unit/integration only"
-            dotnet test DotNetApp.sln --filter "TestCategory!=E2E"
-          fi
+          dotnet test DotNetApp.sln --filter "${{ github.event.inputs.test_filter }}"
