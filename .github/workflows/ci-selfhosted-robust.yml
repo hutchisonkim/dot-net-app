@@ -2,6 +2,11 @@ name: CI Self-hosted Robust Non-E2E
 
 on:
   workflow_dispatch:
+    inputs:
+      testFilter:
+        description: 'dotnet test filter (e.g. "TestCategory=E2E" or "TestCategory!=E2E")'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -63,7 +68,16 @@ jobs:
           echo "Warming NuGet cache with dotnet restore"
           dotnet restore DotNetApp.sln --verbosity minimal || true
 
-      - name: Run non-E2E tests
+      - name: Run tests (parameterized)
         shell: bash
+        env:
+          TEST_FILTER: "${{ inputs.testFilter }}"
         run: |
-          dotnet test DotNetApp.sln --verbosity minimal --filter "TestCategory!=E2E"
+          # If no test filter provided, default to skipping E2E tests
+          if [ -z "${TEST_FILTER}" ]; then
+            FILTER='TestCategory!=E2E'
+          else
+            FILTER="${TEST_FILTER}"
+          fi
+          echo "Running dotnet test with filter: $FILTER"
+          dotnet test DotNetApp.sln --verbosity minimal --filter "$FILTER"

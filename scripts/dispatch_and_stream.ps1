@@ -5,6 +5,7 @@ param(
     [int]$TimeoutMinutes = 30,
     [switch]$AlwaysShowSnapshot = $false,
     [switch]$StreamLiveLogs = $false,
+    [switch]$E2E = $false,
     [string]$Repo
 )
 
@@ -36,10 +37,25 @@ Example:
 
 Write-Host "✅ Using repository: $repo"
 
+# Debugging helper: show how parameters were bound and raw args (helps troubleshoot task invocations)
+try {
+    $pb = $PSBoundParameters | ConvertTo-Json -Compress -ErrorAction Stop
+} catch {
+    $pb = "$PSBoundParameters"
+}
+Write-Host "DEBUG: PSBoundParameters: $pb"
+Write-Host "DEBUG: raw args: $args"
+Write-Host "DEBUG: env TEST_FILTER: $env:TEST_FILTER"
+
 # --- Dispatch the workflow ---
 $start = Get-Date
 Write-Host "Dispatching workflow '$WorkflowFile' on ref '$Ref' at $start"
-$dispatch = gh workflow run $WorkflowFile --ref $Ref -R $repo 2>&1
+$dispatchCmd = "gh workflow run '$WorkflowFile' --ref $Ref -R $repo"
+# Allow TEST_FILTER env var to drive E2E behavior (TASK sets TEST_FILTER=E2E). Keep -E2E switch as alternative.
+if ($E2E -or ($env:TEST_FILTER -and $env:TEST_FILTER -ieq 'E2E')) { $dispatchCmd += " --field inputs.e2e=true" }
+
+Write-Host "Running: $dispatchCmd"
+$dispatch = iex $dispatchCmd 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to dispatch workflow: $dispatch"
     exit 2

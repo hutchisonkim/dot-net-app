@@ -2,32 +2,15 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Dispatch and stream (ci-selfhosted-robust)",
+      "label": "dispatch-and-stream:non-e2e",
       "type": "shell",
-      "detail": "Runs scripts\\dispatch_and_stream.ps1 to dispatch the ci-selfhosted-robust workflow and stream live logs",
-      "command": "powershell",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        ".\\scripts\\dispatch_and_stream.ps1",
-        "-WorkflowFile",
-        "ci-selfhosted-robust.yml",
-        "-Ref",
-        "main",
-        "-Repo",
-        "${input:ownerRepo}",
-        "-PollIntervalSeconds",
-        "2",
-        "-TimeoutMinutes",
-        "10",
-        "-StreamLiveLogs"
-      ],
+      "detail": "Alias task with simple label to run scripts\\dispatch_and_stream.ps1 (exact shell command)",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\dispatch_and_stream.ps1 -WorkflowFile ci-selfhosted-robust.yml -Ref main -Repo hutchisonkim/dot-net-app -PollIntervalSeconds 2 -TimeoutMinutes 10 -StreamLiveLogs",
       "options": {
         "cwd": "${workspaceFolder}",
         "env": {
-          "GITHUB_REPOSITORY": "${input:ownerRepo}"
+          "GITHUB_REPOSITORY": "${input:ownerRepo}",
+          "TEST_FILTER": "TestCategory!=E2E"
         }
       },
       "presentation": {
@@ -44,14 +27,15 @@
       "problemMatcher": []
     },
     {
-      "label": "dispatch-and-stream",
+      "label": "dispatch-and-stream:only-e2e",
       "type": "shell",
       "detail": "Alias task with simple label to run scripts\\dispatch_and_stream.ps1 (exact shell command)",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\dispatch_and_stream.ps1 -WorkflowFile ci-selfhosted-robust.yml -Ref main -Repo hutchisonkim/dot-net-app -PollIntervalSeconds 2 -TimeoutMinutes 10 -StreamLiveLogs",
       "options": {
         "cwd": "${workspaceFolder}",
         "env": {
-          "GITHUB_REPOSITORY": "${input:ownerRepo}"
+          "GITHUB_REPOSITORY": "${input:ownerRepo}",
+          "TEST_FILTER": "TestCategory=E2E"
         }
       },
       "presentation": {
