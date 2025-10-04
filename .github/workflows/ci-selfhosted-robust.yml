@@ -37,6 +37,30 @@ jobs:
           restore-keys: |
             dotnet-cache-${{ runner.os }}-8.0-
 
+      - name: Diagnostic / check connectivity
+        shell: bash
+        run: |
+          echo "=== Diagnostics: runner environment and network ==="
+          date || true
+          uname -a || true
+          cat /etc/os-release || true
+          echo "--- curl / openssl versions ---"
+          curl -V || true
+          openssl version || true
+          echo "--- DNS resolution ---"
+          # try a few different tools (not all runners have them installed)
+          getent hosts builds.dotnet.microsoft.com 2>/dev/null || host builds.dotnet.microsoft.com 2>/dev/null || true
+          dig +short builds.dotnet.microsoft.com 2>/dev/null || true
+          echo "--- traceroute / tracepath ---"
+          (traceroute -n builds.dotnet.microsoft.com 2>/dev/null || tracepath builds.dotnet.microsoft.com 2>/dev/null) || true
+          echo "--- curl verbose TLS connect test ---"
+          curl -vS --connect-timeout 10 https://builds.dotnet.microsoft.com/ -o /dev/null || true
+          echo "--- attempt to download dotnet installer with retries (trace written to /tmp/curl-trace.txt) ---"
+          curl --retry 5 --retry-delay 3 --retry-connrefused -v --trace-ascii /tmp/curl-trace.txt https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh || true
+          echo "--- tail of curl trace (last 200 lines) ---"
+          if [ -f /tmp/curl-trace.txt ]; then tail -n 200 /tmp/curl-trace.txt || true; fi
+          echo "=== End diagnostics ==="
+
       - name: Ensure dotnet 8 is available (use existing or attempt installer)
         shell: bash
         run: |
