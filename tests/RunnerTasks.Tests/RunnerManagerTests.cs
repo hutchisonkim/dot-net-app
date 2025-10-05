@@ -17,8 +17,8 @@ namespace RunnerTasks.Tests
             _output = output;
         }
 
-        [Fact]
-        public async Task LogFeatures_SmokeTest()
+    [Fact]
+    public async Task StartWithRetries_WhenTransientFailureThenSuccess_LogsAndReturnsTrue()
         {
             // Arrange: create a fake service that fails once then succeeds to trigger retry logs
             var fake = new FakeRunnerService(new[] { false, true });
@@ -41,8 +41,9 @@ namespace RunnerTasks.Tests
             Assert.True(ok);
             Assert.Equal(2, fake.RegisterCallCount);
         }
+
         [Fact]
-        public async Task Test_RetryLogic_SucceedsAfterRetries()
+        public async Task StartWithRetries_WhenFailsThenSucceeds_AttemptsUntilSuccess()
         {
             var fake = new FakeRunnerService(new[] { false, false, true });
             var manager = new RunnerManager(fake);
@@ -54,7 +55,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task Test_RetryLogic_FailsAllAttempts()
+        public async Task StartWithRetries_WhenAlwaysFails_ReturnsFalseAfterMaxRetries()
         {
             var fake = new FakeRunnerService(new[] { false, false, false, false });
             var manager = new RunnerManager(fake);
@@ -66,7 +67,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task Test_StartStop_CallsContainerMethods()
+        public async Task StartRunnerStackAsync_WithValidEnv_DelegatesToServiceAndReturnsTrue()
         {
             var fake = new FakeRunnerService(new[] { true });
             var manager = new RunnerManager(fake);
@@ -83,7 +84,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-    public async Task OrchestrateStart_CallsRegisterThenStart_WhenRegisterSucceeds()
+    public async Task OrchestrateStart_WhenRegisterSucceeds_StartsContainers()
         {
             // Arrange
             var token = "t";
@@ -108,7 +109,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task OrchestrateStart_DoesNotStart_WhenRegisterFailsAfterRetries()
+        public async Task OrchestrateStart_WhenRegisterAlwaysFails_DoesNotStartContainers()
         {
             // Arrange
             var token = "t";
@@ -135,7 +136,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task StartWithRetries_TreatsExceptionsAsTransientAndRetries()
+        public async Task StartWithRetries_WhenExceptionsThenSuccess_RetriesAndReturnsTrue()
         {
             // Arrange
             var token = "t";
@@ -161,7 +162,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task OrchestrateStart_ReturnsFalse_WhenStartContainersFail()
+        public async Task OrchestrateStart_WhenStartContainersReturnFalse_RecordsWarningAndReturnsFalse()
         {
             // Arrange
             var token = "t";
@@ -187,7 +188,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task OrchestrateStart_ThrowsArgumentException_WhenEnvMissingRepository()
+        public async Task OrchestrateStart_WhenEnvMissingRepository_ThrowsArgumentException()
         {
             // Arrange
             var token = "t";
@@ -203,7 +204,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task StartWithRetries_CanBeCancelled()
+        public async Task StartWithRetries_WhenCancelled_ThrowsTaskCanceledException()
         {
             // Arrange
             var token = "t";
@@ -231,7 +232,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-    public async Task Integration_StartsDockerComposeAndRegistersRunner()
+    public async Task Integration_OrchestrateStartAndStop_WithFakeOrRealRunner_WorksBasedOnEnv()
         {
             // If RUN_INTEGRATION=1, run the real docker-compose integration. Otherwise run a mock-based integration
             // so the test passes in environments without Docker.
@@ -273,6 +274,71 @@ namespace RunnerTasks.Tests
                 AssertWithLogs.True(stopped, "OrchestrateStopAsync should succeed with FakeRunnerService", _output, testLogger);
                 AssertWithLogs.Equal(1, fake.StopCallCount, "StopCallCount mismatch", _output, testLogger);
             }
+        }
+
+        [Fact]
+        public void Constructor_WhenServiceIsNull_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new RunnerManager(null!));
+        }
+
+        [Fact]
+        public async Task StartWithRetries_WhenMaxRetriesIsNotPositive_ThrowsArgumentOutOfRange()
+        {
+            var fake = new FakeRunnerService(new[] { true });
+            var manager = new RunnerManager(fake);
+
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => manager.StartWithRetriesAsync("t", "r", "u", maxRetries: 0));
+        }
+
+        [Fact]
+        public async Task StartWithRetries_WhenRegisterAlwaysThrows_ReturnsFalseAfterRetries()
+        {
+            var mock = new Mock<IRunnerService>(MockBehavior.Strict);
+            mock.Setup(s => s.RegisterAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("boom"));
+
+            var manager = new RunnerManager(mock.Object, new TestLogger<RunnerManager>());
+
+            var result = await manager.StartWithRetriesAsync("t", "r", "u", maxRetries: 3, baseDelayMs: 1);
+
+            Assert.False(result);
+            mock.Verify(s => s.RegisterAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.AtLeast(3));
+        }
+
+        [Fact]
+        public async Task OrchestrateStart_WhenEnvVarsIsNull_ThrowsArgumentNullException()
+        {
+            var fake = new FakeRunnerService(new[] { true });
+            var manager = new RunnerManager(fake);
+
+            await Assert.ThrowsAsync<ArgumentNullException>(() => manager.OrchestrateStartAsync("t", "r", "u", null!));
+        }
+
+        [Fact]
+        public async Task OrchestrateStart_WhenStartContainersThrows_PropagatesException()
+        {
+            var mock = new Mock<IRunnerService>(MockBehavior.Strict);
+            mock.Setup(s => s.RegisterAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(true);
+            mock.Setup(s => s.StartContainersAsync(It.IsAny<string[]>(), It.IsAny<System.Threading.CancellationToken>())).ThrowsAsync(new InvalidOperationException("up failed"));
+
+            var manager = new RunnerManager(mock.Object);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => manager.OrchestrateStartAsync("t", "r", "u", new[] { "GITHUB_REPOSITORY=foo/bar" }));
+        }
+
+        [Fact]
+        public async Task OrchestrateStopAsync_DelegatesToServiceStop()
+        {
+            var mock = new Mock<IRunnerService>(MockBehavior.Strict);
+            mock.Setup(s => s.StopContainersAsync(It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(true).Verifiable();
+
+            var manager = new RunnerManager(mock.Object);
+
+            var ok = await manager.OrchestrateStopAsync();
+
+            Assert.True(ok);
+            mock.Verify();
         }
     }
 }
