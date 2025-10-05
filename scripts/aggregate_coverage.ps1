@@ -70,7 +70,8 @@ foreach ($file in $coverageFiles) {
   $summary += [pscustomobject]@{
     source = $file
     dest = $destPath
-    lineRatePercent = if ($lineRatePercent -ne $null) { $lineRatePercent } else { 'n/a' }
+    # ensure a numeric value (0) when line-rate is not present to make downstream tooling simpler
+    lineRatePercent = if ($lineRatePercent -ne $null) { $lineRatePercent } else { 0 }
   }
 }
 
