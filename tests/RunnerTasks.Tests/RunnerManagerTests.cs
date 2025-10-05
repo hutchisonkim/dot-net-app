@@ -64,8 +64,8 @@ namespace RunnerTasks.Tests
             mock.Setup(s => s.RegisterAsync(token, repo, url, It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(true).Verifiable();
             mock.Setup(s => s.StartContainersAsync(env, It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(true).Verifiable();
 
-            var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<RunnerManager>>();
-            var manager = new RunnerManager(mock.Object, loggerMock.Object);
+            var testLogger = new TestLogger<RunnerManager>();
+            var manager = new RunnerManager(mock.Object, testLogger);
 
             // Act
             var ok = await manager.OrchestrateStartAsync(token, repo, url, env, maxRetries: 3, baseDelayMs: 1);
@@ -91,8 +91,8 @@ namespace RunnerTasks.Tests
             // Start should never be called
             mock.Setup(s => s.StartContainersAsync(It.IsAny<string[]>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(true);
 
-            var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<RunnerManager>>();
-            var manager = new RunnerManager(mock.Object, loggerMock.Object);
+            var testLogger = new TestLogger<RunnerManager>();
+            var manager = new RunnerManager(mock.Object, testLogger);
 
             // Act
             var ok = await manager.OrchestrateStartAsync(token, repo, url, env, maxRetries: 3, baseDelayMs: 1);
@@ -118,8 +118,8 @@ namespace RunnerTasks.Tests
                 .ThrowsAsync(new System.Exception("transient2"))
                 .ReturnsAsync(true);
 
-            var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<RunnerManager>>();
-            var manager = new RunnerManager(mock.Object, loggerMock.Object);
+            var testLogger = new TestLogger<RunnerManager>();
+            var manager = new RunnerManager(mock.Object, testLogger);
 
             // Act
             var ok = await manager.StartWithRetriesAsync(token, repo, url, maxRetries: 3, baseDelayMs: 1);
@@ -143,8 +143,8 @@ namespace RunnerTasks.Tests
             // Simulate partial/compose failure
             mock.Setup(s => s.StartContainersAsync(env, It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(false).Verifiable();
 
-            var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<RunnerManager>>();
-            var manager = new RunnerManager(mock.Object, loggerMock.Object);
+            var testLogger = new TestLogger<RunnerManager>();
+            var manager = new RunnerManager(mock.Object, testLogger);
 
             // Act
             var ok = await manager.OrchestrateStartAsync(token, repo, url, env, maxRetries: 2, baseDelayMs: 1);
@@ -152,25 +152,7 @@ namespace RunnerTasks.Tests
             // Assert
             Assert.False(ok);
             mock.VerifyAll();
-            // Verify that the logger recorded a Warning with the expected message by inspecting recorded invocations.
-            var found = false;
-            foreach (var inv in loggerMock.Invocations)
-            {
-                if (inv.Method.Name == "Log"
-                    && inv.Arguments.Count >= 3
-                    && inv.Arguments[0] is Microsoft.Extensions.Logging.LogLevel level
-                    && level == Microsoft.Extensions.Logging.LogLevel.Warning)
-                {
-                    var state = Convert.ToString(inv.Arguments[2]) ?? string.Empty;
-                    if (state.Contains("StartRunnerStackAsync returned false"))
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-            }
-
-            Assert.True(found, "Expected a Warning log entry containing 'StartRunnerStackAsync returned false'");
+            Assert.True(testLogger.Contains(Microsoft.Extensions.Logging.LogLevel.Warning, "StartRunnerStackAsync returned false"));
         }
 
         [Fact]
