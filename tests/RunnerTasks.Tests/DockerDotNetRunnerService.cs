@@ -74,13 +74,7 @@ namespace RunnerTasks.Tests
             var logParams = new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = true, Tail = "all" };
             var stream = await _client.Containers.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false);
 
-            // Create simple forwarding streams that write incoming bytes to the logger immediately.
-            var stdoutForward = new ActionStream(b => {
-                try { var s = Encoding.UTF8.GetString(b); _logger?.LogInformation("[container stdout] {Line}", s.TrimEnd()); } catch { }
-            });
-            var stderrForward = new ActionStream(b => {
-                try { var s = Encoding.UTF8.GetString(b); _logger?.LogWarning("[container stderr] {Line}", s.TrimEnd()); } catch { }
-            });
+            // Log directly from the read loop below.
 
             _ = Task.Run(async () =>
             {
@@ -103,8 +97,6 @@ namespace RunnerTasks.Tests
                 catch (Exception ex) { _logger?.LogDebug(ex, "Error streaming container logs"); }
                 finally
                 {
-                    try { stdoutForward.Dispose(); } catch { }
-                    try { stderrForward.Dispose(); } catch { }
                     try { stream.Dispose(); } catch { }
                 }
             }, cancellationToken);
@@ -139,8 +131,6 @@ namespace RunnerTasks.Tests
             }
 
             var logs = await _client.Containers.GetContainerLogsAsync(id, new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = true }, cancellationToken).ConfigureAwait(false);
-            var regStdout = new ActionStream(b => { try { var s = Encoding.UTF8.GetString(b); _logger?.LogInformation("[register stdout] {Line}", s.TrimEnd()); } catch { } });
-            var regStderr = new ActionStream(b => { try { var s = Encoding.UTF8.GetString(b); _logger?.LogWarning("[register stderr] {Line}", s.TrimEnd()); } catch { } });
             try
             {
                 var buffer = new byte[1024];
@@ -163,8 +153,6 @@ namespace RunnerTasks.Tests
             }
             finally
             {
-                try { regStdout.Dispose(); } catch { }
-                try { regStderr.Dispose(); } catch { }
                 try { logs.Dispose(); } catch { }
             }
 
@@ -197,50 +185,4 @@ namespace RunnerTasks.Tests
         }
     }
 
-    // Minimal stream that writes incoming byte arrays to an Action<byte[]> then discards.
-    // Docker.DotNet CopyOutputToAsync expects Streams for stdout/stderr; we provide a thin implementation.
-    internal class ActionStream : System.IO.Stream
-    {
-        private readonly Action<byte[]> _onData;
-        private bool _disposed;
-
-        public ActionStream(Action<byte[]> onData)
-        {
-            _onData = onData ?? throw new ArgumentNullException(nameof(onData));
-        }
-
-        public override bool CanRead => false;
-        public override bool CanSeek => false;
-        public override bool CanWrite => true;
-        public override long Length => throw new NotSupportedException();
-        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-
-        public override void Flush() { }
-
-        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-        public override long Seek(long offset, System.IO.SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(ActionStream));
-            if (count == 0) return;
-            if (offset == 0 && count == buffer.Length)
-            {
-                _onData(buffer);
-            }
-            else
-            {
-                var tmp = new byte[count];
-                Array.Copy(buffer, offset, tmp, 0, count);
-                _onData(tmp);
-            }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            _disposed = true;
-            base.Dispose(disposing);
-        }
-    }
 }
