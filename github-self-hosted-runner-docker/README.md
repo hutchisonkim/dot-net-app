@@ -1,6 +1,6 @@
 # GitHub Self-Hosted Runner (docker)
 
-Tip: Known issue — subsequent runners may not get configured when container image/volume caches contain stale state. If a runner unexpectedly skips configuration, remove the runner volumes or wipe `/runner` and `/actions-runner` in the container before restarting (or run with `FORCE_RECONFIGURE=1`).
+Tip: Known issue — subsequent runners may not get configured when container image/volume caches contain stale state. If a runner unexpectedly skips configuration, remove the runner volumes or wipe `/runner` and `/actions-runner` in the container before restarting.
 
 This folder contains a small Docker setup to run a GitHub Actions self-hosted runner in a container.
 
@@ -14,7 +14,7 @@ Quick start
 If you need to reconfigure a runner (e.g., after wiping state):
 - Obtain a registration token for the repo/org (via UI or API).
 - Run inside the running container:
-	- `FORCE_RECONFIGURE=1 GITHUB_TOKEN='<REG_TOKEN>' /usr/local/bin/configure-runner.sh`
+	- `GITHUB_TOKEN='<REG_TOKEN>' /usr/local/bin/configure-runner.sh`
 	- then ` /usr/local/bin/start-runner.sh`
 
 Notes

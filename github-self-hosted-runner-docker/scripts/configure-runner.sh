@@ -10,61 +10,40 @@ echo "Configuring GitHub runner..."
 ACTION_RUNNER_DIR="/actions-runner"
 cd "$ACTION_RUNNER_DIR" || exit 1
 
-## If the runner has already been successfully configured, avoid re-running
-## configuration on container start. Reconfiguring automatically can lead to
-## session conflicts on GitHub (a session may already exist for the same
-## runner name). To force reconfiguration/cleanup explicitly set
-## FORCE_RECONFIGURE=1 in the environment.
-if [ -f "/runner/.runner-configured" ] || [ -f "$ACTION_RUNNER_DIR/.runner-configured" ]; then
-    if [ "${FORCE_RECONFIGURE:-0}" = "1" ]; then
-        echo "FORCE_RECONFIGURE=1: proceeding to cleanup and reconfigure the runner."
-    else
-        echo "Runner already configured (marker found) — skipping reconfiguration."
-        exit 0
-    fi
+# If entrypoint created /config/runner.env (it does), source it here so this
+# script has the same variable values even if the parent shell didn't export
+# them. This ensures GITHUB_TOKEN is available to the removal/config commands
+# without relying on another token variable.
+if [ -f /config/runner.env ]; then
+    # shellcheck disable=SC1090
+    source /config/runner.env || true
 fi
 
-## Only run cleanup when explicitly requested (FORCE_RECONFIGURE=1). This
-## avoids accidental removal of valid configuration files on normal restarts.
-if [ "${FORCE_RECONFIGURE:-0}" = "1" ]; then
-    echo "FORCE_RECONFIGURE=1: performing cleanup before reconfiguration."
+# Export the common runner-related vars so child commands see them.
+export GITHUB_TOKEN GITHUB_URL RUNNER_NAME RUNNER_LABELS RUNNER_WORKDIR
 
-    if [ -n "${RUNNER_DELETE_TOKEN:-}" ]; then
-        echo "RUNNER_DELETE_TOKEN provided — attempting server-side remove via config.sh remove"
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    echo "Attempting to remove existing runner configuration..."
+    if [ -x ./config.sh ]; then
+        # Run removal as the non-root runner user to avoid config.sh refusing
+        # to run under sudo/root. Prefer sudo if available, otherwise use su.
         if command -v sudo >/dev/null 2>&1; then
-            sudo -u github-runner bash -lc "cd $ACTION_RUNNER_DIR && ./config.sh remove --token \"$RUNNER_DELETE_TOKEN\"" || true
+            sudo -u github-runner bash -lc "cd $ACTION_RUNNER_DIR && ./config.sh remove --token \"$GITHUB_TOKEN\"" || true
         else
-            su -s /bin/bash -c "cd $ACTION_RUNNER_DIR && ./config.sh remove --token \"$RUNNER_DELETE_TOKEN\"" github-runner || true
+            su -s /bin/bash -c "cd $ACTION_RUNNER_DIR && ./config.sh remove --token \"$GITHUB_TOKEN\"" github-runner || true
         fi
+    elif [ -x ./config.cmd ]; then
+        ./config.cmd remove || true
     else
-        echo "No RUNNER_DELETE_TOKEN provided — performing local cleanup of runner state files."
+        echo "No config.sh found, skipping removal. You can manually remove the runner in GitHub settings."
     fi
-
-    echo "Cleaning up leftover runner state files (if any)."
-    for f in \
-        "$ACTION_RUNNER_DIR/.runner" \
-        "$ACTION_RUNNER_DIR/.credentials" \
-        "$ACTION_RUNNER_DIR/.credentials_rsaparams" \
-        "$ACTION_RUNNER_DIR/.env" \
-        "$ACTION_RUNNER_DIR/.runner-configured" \
-        "/runner/.runner" \
-        "/runner/.credentials" \
-        "/runner/.credentials_rsaparams" \
-        "/runner/.env" \
-        "/runner/.runner-configured"; do
-        if [ -e "$f" ]; then
-            echo "Removing $f"
-            rm -f "$f" || true
-        fi
-    done
-
-    # Ensure ownership is correct after cleanup
-    chown -R github-runner:github-runner "$ACTION_RUNNER_DIR" /runner || true
-    echo "Runner cleanup complete. Proceeding to configure a fresh runner."
 fi
+    
+
+
 
 # Build the configure command
-CONFIG_CMD="cd $ACTION_RUNNER_DIR && env HOME=/home/github-runner USER=github-runner ./config.sh --unattended --url \"$GITHUB_URL\" --token \"$GITHUB_TOKEN\" --name \"$RUNNER_NAME\" --labels \"$RUNNER_LABELS\" --work \"${RUNNER_WORKDIR:-_work}\" --replace"
+CONFIG_CMD="cd $ACTION_RUNNER_DIR && env HOME=/home/github-runner USER=github-runner ./config.sh --url \"$GITHUB_URL\" --token \"$GITHUB_TOKEN\" --name \"$RUNNER_NAME\" --labels \"$RUNNER_LABELS\" --work \"${RUNNER_WORKDIR:-_work}\" --replace"
 
 # Allow running inside container as root if necessary
 export RUNNER_ALLOW_RUNASROOT=1
@@ -81,7 +60,7 @@ else
         true
     else
         echo "Error: config command as user 'github-runner' failed. Not retrying as root to avoid duplicate registration attempts."
-        echo "Please check GITHUB_URL/GITHUB_TOKEN and re-run with FORCE_RECONFIGURE=1 if necessary."
+        echo "Please check GITHUB_URL/GITHUB_TOKEN."
         exit 1
     fi
 fi
