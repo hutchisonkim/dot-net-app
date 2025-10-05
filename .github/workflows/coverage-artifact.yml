@@ -100,4 +100,19 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add badges/coverage.svg || true
           git commit -m "chore: update coverage badge [skip ci]" || echo "no changes to commit"
-          git push origin HEAD:main || echo "push failed"
+          # Try to push using the provided GITHUB_TOKEN. Some orgs restrict the default token to read-only;
+          # in that case the push will fail. We still upload the badge as an artifact below so it can be
+          # downloaded and committed manually or via a PAT-based workflow.
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          if git push origin HEAD:main; then
+            echo "Badge pushed to main"
+          else
+            echo "Push failed (likely insufficient permissions). The badge will be uploaded as an artifact instead."
+          fi
+
+      - name: Upload badge artifact (for manual commit if push was blocked)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badge
+          path: badges/coverage.svg
+          if-no-files-found: warn
