@@ -1,4 +1,4 @@
-name: Coverage artifact
+name: Coverage Report
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   collect-coverage:
-    name: Run tests, collect coverage and upload artifact
+    name: Run tests, collect coverage, and upload report
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,100 +19,35 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
+      - name: Restore dependencies
         run: dotnet restore DotNetApp.sln
 
-      - name: Build
+      - name: Build project
         run: dotnet build DotNetApp.sln --configuration Release --no-restore
 
-      - name: Run tests and generate Cobertura coverage files
-        # coverlet.msbuild will write coverage files into TestResults folders
+      - name: Run tests and generate Cobertura coverage
         run: |
-          dotnet test DotNetApp.sln --configuration Release --no-build --verbosity minimal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+          dotnet test DotNetApp.sln \
+            --configuration Release \
+            --no-build \
+            --verbosity normal \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=cobertura \
+            /p:CoverletOutput=./TestResults/Coverage/
+        continue-on-error: false
 
-      - name: Aggregate coverage files (collect into artifacts/coverage-files)
-        shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/aggregate_coverage.ps1
-
-      - name: Upload coverage-files artifact
+      - name: Upload coverage report as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-files
-          path: artifacts/coverage-files
+          name: coverage-report
+          path: TestResults/Coverage/
           retention-days: 7
 
-  publish-badge:
-    name: Generate and publish coverage badge
-    needs: collect-coverage
-    runs-on: ubuntu-latest
-    if: github.actor != 'github-actions[bot]'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download coverage-files artifact
-        uses: actions/download-artifact@v4
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          name: coverage-files
-          path: ./artifacts/coverage-files
-
-      - name: Create badges folder
-        run: mkdir -p badges
-
-      - name: Generate coverage badge SVG
-        run: |
-          set -e
-          summary='./artifacts/coverage-files/coverage-summary.json'
-          if [ -f "$summary" ]; then
-            # coverage-summary.json may be an array (multiple reports) or a single object (one report).
-            # Use a jq expression that handles both shapes and falls back to "n/a" when missing.
-            pct=$(jq -r 'if type=="array" then .[0].lineRatePercent else .lineRatePercent end // "n/a"' "$summary")
-            if [ "$pct" = "n/a" ]; then pct=0; fi
-          else
-            pct=0
-          fi
-          # Simple SVG badge (green/yellow/red)
-          color="#4c1"
-          pct_int=$(printf "%d" "$pct")
-          if [ "$pct_int" -lt 50 ]; then color="#e05d44"; elif [ "$pct_int" -lt 80 ]; then color="#dfb317"; fi
-          cat > badges/coverage.svg <<EOF
-          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-            <linearGradient id="b" x2="0" y2="100%">
-              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-              <stop offset="1" stop-opacity=".1"/>
-            </linearGradient>
-            <rect rx="3" width="120" height="20" fill="#555"/>
-            <rect rx="3" x="60" width="60" height="20" fill="${color}"/>
-            <path fill="${color}" d="M60 0h4v20h-4z"/>
-            <rect rx="3" width="120" height="20" fill="url(#b)"/>
-            <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
-              <text x="30" y="14">coverage</text>
-              <text x="90" y="14">${pct}%</text>
-            </g>
-          </svg>
-          EOF
-
-      - name: Commit and push badge to main (skip CI)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add badges/coverage.svg || true
-          git commit -m "chore: update coverage badge [skip ci]" || echo "no changes to commit"
-          # Try to push using the provided GITHUB_TOKEN. Some orgs restrict the default token to read-only;
-          # in that case the push will fail. We still upload the badge as an artifact below so it can be
-          # downloaded and committed manually or via a PAT-based workflow.
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
-          if git push origin HEAD:main; then
-            echo "Badge pushed to main"
-          else
-            echo "Push failed (likely insufficient permissions). The badge will be uploaded as an artifact instead."
-          fi
-
-      - name: Upload badge artifact (for manual commit if push was blocked)
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-badge
-          path: badges/coverage.svg
-          if-no-files-found: warn
+          files: ./TestResults/Coverage/coverage.cobertura.xml
+          token: ${{ secrets.CODECOV_TOKEN }} # Required for private repos
+          flags: unittests
+          fail_ci_if_error: true
+          verbose: true
