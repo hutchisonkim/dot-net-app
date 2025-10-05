@@ -1,4 +1,4 @@
-name: Coverage Report
+name: Coverage Report & Badge
 
 on:
   push:
@@ -8,8 +8,16 @@ on:
 
 jobs:
   collect-coverage:
-    name: Run tests, collect coverage, and upload report
+    name: Run tests, collect coverage, and upload artifacts
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      actions: read
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.PAT_COVERAGE }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,32 +30,113 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore DotNetApp.sln
 
-      - name: Build project
+      - name: Build solution
         run: dotnet build DotNetApp.sln --configuration Release --no-restore
 
-      - name: Run tests and generate Cobertura coverage
+      - name: Run tests and generate Cobertura coverage files
         run: |
           dotnet test DotNetApp.sln \
             --configuration Release \
             --no-build \
-            --verbosity normal \
+            --verbosity minimal \
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=cobertura \
-            /p:CoverletOutput=./TestResults/Coverage/
-        continue-on-error: false
+            /p:CoverletOutput=TestResults/
 
-      - name: Upload coverage report as artifact
+      - name: Aggregate coverage files (collect into artifacts/coverage-files)
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/aggregate_coverage.ps1
+
+      - name: Upload coverage-files artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: TestResults/Coverage/
+          name: coverage-files
+          path: artifacts/coverage-files
           retention-days: 7
 
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v5
+  publish-badge:
+    name: Generate and publish coverage badge
+    needs: collect-coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # allows committing to the repo
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          files: ./TestResults/Coverage/coverage.cobertura.xml
-          token: ${{ secrets.CODECOV_TOKEN }} # Required for private repos
-          flags: unittests
-          fail_ci_if_error: true
-          verbose: true
+          fetch-depth: 0     # ensure full history for commits
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-files
+          path: ./artifacts/coverage-files
+
+      - name: Ensure jq is installed
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create badges folder
+        run: mkdir -p badges
+
+      - name: Generate coverage badge SVG
+        id: badge
+        run: |
+          set -e
+          summary='./artifacts/coverage-files/coverage-summary.json'
+
+          if [ -f "$summary" ]; then
+            pct=$(jq -r 'if type=="array" then .[0].lineRatePercent else .lineRatePercent end // 0' "$summary")
+          else
+            pct=0
+          fi
+
+          pct_int=$(printf "%.0f" "$pct")
+          if [ "$pct_int" -lt 50 ]; then color="#e05d44"
+          elif [ "$pct_int" -lt 80 ]; then color="#dfb317"
+          else color="#4c1"
+          fi
+
+          cat > badges/coverage.svg <<EOF
+          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
+            <linearGradient id="b" x2="0" y2="100%">
+              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+              <stop offset="1" stop-opacity=".1"/>
+            </linearGradient>
+            <rect rx="3" width="120" height="20" fill="#555"/>
+            <rect rx="3" x="60" width="60" height="20" fill="${color}"/>
+            <path fill="${color}" d="M60 0h4v20h-4z"/>
+            <rect rx="3" width="120" height="20" fill="url(#b)"/>
+            <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
+              <text x="30" y="14">coverage</text>
+              <text x="90" y="14">${pct_int}%</text>
+            </g>
+          </svg>
+          EOF
+
+          echo "pct=${pct_int}" >> $GITHUB_OUTPUT
+
+      - name: Commit and push badge (skip CI)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add badges/coverage.svg || true
+          git commit -m "chore: update coverage badge [skip ci]" || echo "no changes to commit"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          git push origin HEAD:main || echo "Push failed (read-only token or fork)."
+
+      - name: Upload badge artifact (fallback)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badge
+          path: badges/coverage.svg
+
+      - name: Add summary to workflow run
+        run: |
+          echo "### Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Line coverage:** ${{ steps.badge.outputs.pct }}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "![Coverage](badges/coverage.svg)" >> $GITHUB_STEP_SUMMARY
