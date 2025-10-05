@@ -1,0 +1,42 @@
+name: Coverage artifact
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  collect-coverage:
+    name: Run tests, collect coverage and upload artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore DotNetApp.sln
+
+      - name: Build
+        run: dotnet build DotNetApp.sln --configuration Release --no-restore
+
+      - name: Run tests and generate Cobertura coverage files
+        # coverlet.msbuild will write coverage files into TestResults folders
+        run: |
+          dotnet test DotNetApp.sln --configuration Release --no-build --verbosity minimal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+
+      - name: Aggregate coverage files (collect into artifacts/coverage-files)
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/aggregate_coverage.ps1
+
+      - name: Upload coverage-files artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-files
+          path: artifacts/coverage-files
+          retention-days: 7
