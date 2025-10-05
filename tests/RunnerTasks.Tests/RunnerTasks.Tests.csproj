@@ -15,6 +15,16 @@
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
       <PackageReference Include="Docker.DotNet" Version="3.125.2" />
+        <PackageReference Include="coverlet.collector" Version="3.2.0" />
+        <!-- Add coverlet.msbuild so we can explicitly instrument the RunnerTasks test assembly and product assemblies -->
+        <PackageReference Include="coverlet.msbuild" Version="3.2.0" />
   </ItemGroup>
+
+  <!-- Configure Coverlet to include the test assembly and DotNetApp product assemblies -->
+  <PropertyGroup>
+    <!-- Do not collect by default in CI unless requested; we'll enable via commandline flag when running locally -->
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+    <IncludeAssemblies>RunnerTasks.Tests;DotNetApp.*</IncludeAssemblies>
+  </PropertyGroup>
 
 </Project>
