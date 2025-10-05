@@ -45,7 +45,7 @@ namespace RunnerTasks.Tests
             return await RunProcessAsync("docker-compose", args, _workingDirectory, cancellationToken).ConfigureAwait(false);
         }
 
-        private static async Task<bool> RunProcessAsync(string fileName, string args, string workingDirectory, CancellationToken cancellationToken)
+        private async Task<bool> RunProcessAsync(string fileName, string args, string workingDirectory, CancellationToken cancellationToken)
         {
             var psi = new ProcessStartInfo
             {
@@ -58,33 +58,72 @@ namespace RunnerTasks.Tests
                 CreateNoWindow = true,
             };
 
-            using var proc = new Process { StartInfo = psi };
+            using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
             try
             {
                 proc.Start();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger?.LogError(ex, "Failed to start process {FileName} {Args}", fileName, args);
                 return false;
             }
 
-            var outputTask = proc.StandardOutput.ReadToEndAsync();
-            var errorTask = proc.StandardError.ReadToEndAsync();
-
-            while (!proc.HasExited)
+            // Stream stdout and stderr lines to the logger as they arrive.
+            var stdoutTask = Task.Run(async () =>
             {
-                if (cancellationToken.IsCancellationRequested)
+                try
                 {
-                    try { proc.Kill(); } catch { }
-                    cancellationToken.ThrowIfCancellationRequested();
+                    string? line;
+                    while ((line = await proc.StandardOutput.ReadLineAsync().ConfigureAwait(false)) != null)
+                    {
+                        _logger?.LogInformation("[docker-compose stdout] {Line}", line);
+                    }
                 }
-                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Error reading stdout");
+                }
+            }, cancellationToken);
+
+            var stderrTask = Task.Run(async () =>
+            {
+                try
+                {
+                    string? line;
+                    while ((line = await proc.StandardError.ReadLineAsync().ConfigureAwait(false)) != null)
+                    {
+                        _logger?.LogWarning("[docker-compose stderr] {Line}", line);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Error reading stderr");
+                }
+            }, cancellationToken);
+
+            try
+            {
+                while (!proc.WaitForExit(100))
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        try { proc.Kill(); } catch { }
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // already logged above; rethrow
+                throw;
             }
 
-            var output = await outputTask.ConfigureAwait(false);
-            var error = await errorTask.ConfigureAwait(false);
+            // Ensure readers finish
+            try { await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false); } catch { }
 
-            // For integration test purposes, consider exit code 0 as success.
+            _logger?.LogInformation("Process {FileName} {Args} exited with code {ExitCode}", fileName, args, proc.ExitCode);
+
             return proc.ExitCode == 0;
         }
     }
