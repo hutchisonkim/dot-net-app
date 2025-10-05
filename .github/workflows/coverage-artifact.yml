@@ -64,7 +64,9 @@ jobs:
           set -e
           summary='./artifacts/coverage-files/coverage-summary.json'
           if [ -f "$summary" ]; then
-            pct=$(jq -r '.[0].lineRatePercent // "n/a"' "$summary")
+            # coverage-summary.json may be an array (multiple reports) or a single object (one report).
+            # Use a jq expression that handles both shapes and falls back to "n/a" when missing.
+            pct=$(jq -r 'if type=="array" then .[0].lineRatePercent else .lineRatePercent end // "n/a"' "$summary")
             if [ "$pct" = "n/a" ]; then pct=0; fi
           else
             pct=0
