@@ -84,6 +84,17 @@ When running on `main`, the workflow now deploys the HTML coverage report to Git
 
 `https://<owner>.github.io/<repo>/index.html` (replace with actual owner/repo). If the site is not yet enabled, enable Pages (Source: GitHub Actions) in repository settings.
 
+Aggregating local coverage
+-------------------------
+If you run tests locally and want a single HTML report that combines coverage from multiple test projects, use the helper script:
+
+```powershell
+# From repository root
+pwsh .\scripts\aggregate_coverage.ps1
+```
+
+The script will search for `coverage.cobertura.xml` files created by running tests with coverlet (cobertura format) and will run ReportGenerator to produce `artifacts/coverage-report/index.html`.
+
 
 ## Generated API Client
 Contracts decorated with `[ApiContract]` and per-method `[Get]`, `[Post]`, `[Put]`, `[Delete]` generate typed clients at build via the `DotNetApp.CodeGen` source generator.
