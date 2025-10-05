@@ -14,15 +14,17 @@ namespace RunnerTasks.Tests
     Task CreateImageAsync(ImagesCreateParameters parameters, AuthConfig? authConfig, IProgress<JSONMessage> progress, CancellationToken cancellationToken);
         Task<CreateContainerResponse> CreateContainerAsync(CreateContainerParameters parameters, CancellationToken cancellationToken);
         Task<bool> StartContainerAsync(string id, ContainerStartParameters parameters, CancellationToken cancellationToken);
-        Task<Stream> GetContainerLogsAsync(string id, ContainerLogsParameters parameters, CancellationToken cancellationToken);
+    Task<dynamic> GetContainerLogsAsync(string id, ContainerLogsParameters parameters, CancellationToken cancellationToken);
         Task RemoveContainerAsync(string id, ContainerRemoveParameters parameters, CancellationToken cancellationToken);
         Task<ContainerExecCreateResponse> ExecCreateAsync(string containerId, ContainerExecCreateParameters parameters, CancellationToken cancellationToken);
-        Task<Stream> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken);
+    Task<dynamic> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken);
         Task<ContainerExecInspectResponse> InspectExecAsync(string execId, CancellationToken cancellationToken);
         Task<ContainerInspectResponse> InspectContainerAsync(string id, CancellationToken cancellationToken);
-        Task StopContainerAsync(string id, ContainerStopParameters parameters, CancellationToken cancellationToken);
+    Task StopContainerAsync(string id, ContainerStopParameters parameters, CancellationToken cancellationToken);
+    Task StopContainerAsync(string id, CancellationToken cancellationToken);
         Task CreateVolumeAsync(VolumesCreateParameters parameters, CancellationToken cancellationToken);
         Task RemoveVolumeAsync(string name, bool force, CancellationToken cancellationToken);
+        Task RemoveVolumeAsync(string name, bool force);
     }
 
     public class DockerClientWrapper : IDockerClientWrapper
@@ -54,7 +56,7 @@ namespace RunnerTasks.Tests
             return await _client.Containers.StartContainerAsync(id, parameters, cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<Stream> GetContainerLogsAsync(string id, ContainerLogsParameters parameters, CancellationToken cancellationToken)
+        public async Task<dynamic> GetContainerLogsAsync(string id, ContainerLogsParameters parameters, CancellationToken cancellationToken)
         {
             return await _client.Containers.GetContainerLogsAsync(id, parameters, cancellationToken).ConfigureAwait(false);
         }
@@ -69,7 +71,7 @@ namespace RunnerTasks.Tests
             return await _client.Containers.ExecCreateContainerAsync(containerId, parameters, cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<Stream> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken)
+        public async Task<dynamic> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken)
         {
             return await _client.Containers.StartAndAttachContainerExecAsync(execId, hijack, cancellationToken).ConfigureAwait(false);
         }
@@ -89,12 +91,22 @@ namespace RunnerTasks.Tests
             await _client.Containers.StopContainerAsync(id, parameters, cancellationToken).ConfigureAwait(false);
         }
 
+        public async Task StopContainerAsync(string id, CancellationToken cancellationToken)
+        {
+            await _client.Containers.StopContainerAsync(id, new ContainerStopParameters { WaitBeforeKillSeconds = 5 }, cancellationToken).ConfigureAwait(false);
+        }
+
         public async Task CreateVolumeAsync(VolumesCreateParameters parameters, CancellationToken cancellationToken)
         {
             await _client.Volumes.CreateAsync(parameters, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task RemoveVolumeAsync(string name, bool force, CancellationToken cancellationToken)
+        {
+            await _client.Volumes.RemoveAsync(name, force).ConfigureAwait(false);
+        }
+
+        public async Task RemoveVolumeAsync(string name, bool force)
         {
             await _client.Volumes.RemoveAsync(name, force).ConfigureAwait(false);
         }

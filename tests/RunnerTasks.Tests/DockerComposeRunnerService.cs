@@ -95,7 +95,7 @@ namespace RunnerTasks.Tests
 
                 using (var stream = _clientWrapper != null
                     ? await _clientWrapper.StartAndAttachExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false)
-                    : await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
+                    : (dynamic)await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
                 {
                     var buffer = new byte[1024];
                     try
@@ -259,7 +259,7 @@ namespace RunnerTasks.Tests
 
                 using var streamObj = _clientWrapper != null
                     ? await _clientWrapper.StartAndAttachExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false)
-                    : await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
+                    : (dynamic)await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
                 var buffer = new byte[1024];
                 try
                 {

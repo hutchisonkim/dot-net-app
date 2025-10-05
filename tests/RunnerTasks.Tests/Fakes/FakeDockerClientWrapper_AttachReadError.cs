@@ -10,10 +10,10 @@ namespace RunnerTasks.Tests.Fakes
     // StartAndAttachExec returns a stream that throws on ReadOutputAsync/ReadAsync to simulate attach read error
     public class FakeDockerClientWrapper_AttachReadError : FakeDockerClientWrapper
     {
-        public override Task<Stream> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken)
+        public override Task<dynamic> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken)
         {
             var stream = new ThrowingStream();
-            return Task.FromResult<Stream>(stream);
+            return Task.FromResult<dynamic>(stream);
         }
 
         private class ThrowingStream : Stream

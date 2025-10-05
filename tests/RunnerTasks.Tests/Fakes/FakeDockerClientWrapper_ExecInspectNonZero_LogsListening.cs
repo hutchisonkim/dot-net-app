@@ -14,10 +14,16 @@ namespace RunnerTasks.Tests.Fakes
             return Task.FromResult(new ContainerExecInspectResponse { ExitCode = 2 });
         }
 
-        public override Task<Stream> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken)
+        public override Task<dynamic> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken)
         {
             var ms = new MemoryStream(Encoding.UTF8.GetBytes("some log... Listening for Jobs ...done"));
-            return Task.FromResult<Stream>(ms);
+            return Task.FromResult<dynamic>(ms);
+        }
+
+        public override Task<dynamic> GetContainerLogsAsync(string id, ContainerLogsParameters parameters, CancellationToken cancellationToken)
+        {
+            var ms = new MemoryStream(Encoding.UTF8.GetBytes("container: Listening for Jobs\n"));
+            return Task.FromResult<dynamic>(ms);
         }
     }
 }

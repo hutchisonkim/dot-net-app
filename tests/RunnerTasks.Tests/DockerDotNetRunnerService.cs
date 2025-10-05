@@ -159,7 +159,7 @@ namespace RunnerTasks.Tests
             var logParams = new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = true, Tail = "all" };
             var stream = _clientWrapper != null
                 ? await _clientWrapper.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false)
-                : await _client.Containers.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false);
+                : (dynamic)await _client.Containers.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false);
 
             // Log directly from a read loop; support both Docker.DotNet multiplexed ReadOutputAsync and plain Stream ReadAsync
             _ = Task.Run(async () =>
@@ -181,7 +181,7 @@ namespace RunnerTasks.Tests
                             if (eof) break;
                             if (count > 0)
                             {
-                                try { var s = Encoding.UTF8.GetString(buffer, 0, count); _logger?.LogInformation("[container logs] {Line}", s.TrimEnd()); } catch { }
+                                try { var s = Encoding.UTF8.GetString(buffer, 0, count); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[container logs] {Line}", trimmed); } catch { }
                             }
                         }
                     }
@@ -191,7 +191,7 @@ namespace RunnerTasks.Tests
                         {
                             int read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
                             if (read == 0) break;
-                            try { var s = Encoding.UTF8.GetString(buffer, 0, read); _logger?.LogInformation("[container logs] {Line}", s.TrimEnd()); } catch { }
+                            try { var s = Encoding.UTF8.GetString(buffer, 0, read); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[container logs] {Line}", trimmed); } catch { }
                         }
                     }
                 }
@@ -274,7 +274,7 @@ namespace RunnerTasks.Tests
 
                 using (var stream = _clientWrapper != null
                     ? await _clientWrapper.StartAndAttachExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false)
-                    : await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
+                    : (dynamic)await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
                 {
                     var buffer = new byte[1024];
                     try
@@ -282,10 +282,13 @@ namespace RunnerTasks.Tests
                         while (true)
                         {
                             var res = await stream.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
-                            if (res.EOF) break;
-                            if (res.Count > 0)
+                            bool eof = false; int cnt = 0;
+                            try { eof = (bool)res.EOF; } catch { }
+                            try { cnt = (int)res.Count; } catch { try { cnt = (int)((long)res.Count); } catch { } }
+                            if (eof) break;
+                            if (cnt > 0)
                             {
-                                try { var s = Encoding.UTF8.GetString(buffer, 0, res.Count); _logger?.LogInformation("[configure exec] {Line}", s.TrimEnd()); } catch { }
+                                try { var s = Encoding.UTF8.GetString(buffer, 0, cnt); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[configure exec] {Line}", trimmed); } catch { }
                             }
                         }
                     }
@@ -316,7 +319,7 @@ namespace RunnerTasks.Tests
                 // Attach to the start exec so we can surface startup errors quickly and stream logs
                 using (var startStreamObj = _clientWrapper != null
                     ? await _clientWrapper.StartAndAttachExecAsync(startExec.ID, false, cancellationToken).ConfigureAwait(false)
-                    : await _client.Containers.StartAndAttachContainerExecAsync(startExec.ID, false, cancellationToken).ConfigureAwait(false))
+                    : (dynamic)await _client.Containers.StartAndAttachContainerExecAsync(startExec.ID, false, cancellationToken).ConfigureAwait(false))
                 {
                     var buffer = new byte[1024];
                     var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -336,7 +339,7 @@ namespace RunnerTasks.Tests
                                     try { eof = (bool)res.EOF; } catch { }
                                     try { count = (int)res.Count; } catch { try { count = (int)((long)res.Count); } catch { } }
                                     if (eof) break;
-                                    if (count > 0) { try { var s = Encoding.UTF8.GetString(buffer, 0, count); _logger?.LogInformation("[start exec] {Line}", s.TrimEnd()); } catch { } }
+                                    if (count > 0) { try { var s = Encoding.UTF8.GetString(buffer, 0, count); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[start exec] {Line}", trimmed); } catch { } }
                                 }
                             }
                             else
@@ -346,7 +349,7 @@ namespace RunnerTasks.Tests
                                     var read = await dstart.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
                                     int r = (int)read;
                                     if (r == 0) break;
-                                    try { var s = Encoding.UTF8.GetString(buffer, 0, r); _logger?.LogInformation("[start exec] {Line}", s.TrimEnd()); } catch { }
+                                    try { var s = Encoding.UTF8.GetString(buffer, 0, r); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[start exec] {Line}", trimmed); } catch { }
                                 }
                             }
                         }
@@ -412,7 +415,7 @@ namespace RunnerTasks.Tests
                             if (count > 0)
                             {
                                 var s = Encoding.UTF8.GetString(buffer, 0, count);
-                                _logger?.LogInformation("[container logs] {Line}", s.TrimEnd());
+                                { var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[container logs] {Line}", trimmed); }
                                 if (s.IndexOf("Listening for Jobs", StringComparison.OrdinalIgnoreCase) >= 0)
                                 {
                                     foundListening = true;
@@ -435,7 +438,7 @@ namespace RunnerTasks.Tests
                             if (r > 0)
                             {
                                 var s = Encoding.UTF8.GetString(buffer, 0, r);
-                                _logger?.LogInformation("[container logs] {Line}", s.TrimEnd());
+                                { var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[container logs] {Line}", trimmed); }
                                 if (s.IndexOf("Listening for Jobs", StringComparison.OrdinalIgnoreCase) >= 0)
                                 {
                                     foundListening = true;
@@ -536,13 +539,13 @@ namespace RunnerTasks.Tests
                         var res = await d.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken);
                         if ((bool)res.EOF) break;
                         var count = (int)res.Count;
-                        if (count > 0) _logger?.LogInformation("[oneoff] {Line}", System.Text.Encoding.UTF8.GetString(buffer, 0, count));
+                                if (count > 0) { var msg = System.Text.Encoding.UTF8.GetString(buffer, 0, count); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[oneoff] {Line}", msg); }
                     }
                     else
                     {
                         var read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
                         if (read == 0) break;
-                        _logger?.LogInformation("[oneoff] {Line}", System.Text.Encoding.UTF8.GetString(buffer, 0, read));
+                        { var msg = System.Text.Encoding.UTF8.GetString(buffer, 0, read); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[oneoff] {Line}", msg); }
                     }
                 }
 
@@ -639,7 +642,7 @@ namespace RunnerTasks.Tests
 
                 using var streamObj = _clientWrapper != null
                     ? await _clientWrapper.StartAndAttachExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false)
-                    : await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
+                    : (dynamic)await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
 
                 var buffer = new byte[1024];
                 try
@@ -658,7 +661,7 @@ namespace RunnerTasks.Tests
                             if (count > 0)
                             {
                                 var s = Encoding.UTF8.GetString(buffer, 0, count);
-                                _logger?.LogInformation("[unregister exec] {Line}", s.TrimEnd());
+                                { var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[unregister exec] {Line}", trimmed); }
                             }
                             if (eof) break;
                         }
@@ -668,7 +671,7 @@ namespace RunnerTasks.Tests
                             int r = (int)read;
                             if (r == 0) break;
                             var s = Encoding.UTF8.GetString(buffer, 0, r);
-                            _logger?.LogInformation("[unregister exec] {Line}", s.TrimEnd());
+                            { var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[unregister exec] {Line}", trimmed); }
                         }
                     }
                 }
@@ -725,6 +728,13 @@ namespace RunnerTasks.Tests
         internal void Test_SetImageTag(string? tag)
         {
             _imageTagInUse = tag;
+        }
+
+        internal void Test_SetLogWaitTimeout(TimeSpan t)
+        {
+            // allow tests to shorten the waiting period
+            // reflection-friendly helper
+            typeof(DockerDotNetRunnerService).GetField("_logWaitTimeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.SetValue(this, t);
         }
     }
 
