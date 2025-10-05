@@ -199,10 +199,49 @@ namespace RunnerTasks.Tests
             await Assert.ThrowsAsync<System.Threading.Tasks.TaskCanceledException>(() => task);
         }
 
-        [Fact(Skip = "Integration test placeholder - set RUN_INTEGRATION=1 to run")]
+        [Fact]
         public async Task Integration_StartsDockerComposeAndRegistersRunner()
         {
-            await Task.CompletedTask;
+            // If RUN_INTEGRATION=1, run the real docker-compose integration. Otherwise run a mock-based integration
+            // so the test passes in environments without Docker.
+            if (string.Equals(Environment.GetEnvironmentVariable("RUN_INTEGRATION"), "1", StringComparison.OrdinalIgnoreCase))
+            {
+                var workingDir = System.IO.Path.GetFullPath("github-self-hosted-runner-docker");
+                var svc = new DockerComposeRunnerService(workingDir, new TestLogger<DockerComposeRunnerService>());
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+                var started = await svc.StartContainersAsync(new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app" }, cts.Token);
+                Assert.True(started, "docker-compose up failed");
+
+                // Registration may require a token; if not provided via env, skip the registration step.
+                var regToken = Environment.GetEnvironmentVariable("RUNNER_REG_TOKEN");
+                if (!string.IsNullOrEmpty(regToken))
+                {
+                    var registered = await svc.RegisterAsync(regToken, "hutchisonkim/dot-net-app", "https://github.com", cts.Token);
+                    Assert.True(registered, "configure-runner.sh failed");
+                }
+
+                var stopped = await svc.StopContainersAsync(cts.Token);
+                Assert.True(stopped, "docker-compose down failed");
+            }
+            else
+            {
+                // Mock-based integration: validate orchestration wiring using FakeRunnerService
+                var fake = new FakeRunnerService(new[] { true });
+                var testLogger = new TestLogger<RunnerManager>();
+                var manager = new RunnerManager(fake, testLogger);
+
+                var env = new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app" };
+                var ok = await manager.OrchestrateStartAsync("token", "hutchisonkim/dot-net-app", "https://github.com", env, maxRetries: 1, baseDelayMs: 1);
+                Assert.True(ok, "OrchestrateStartAsync should succeed with FakeRunnerService");
+                Assert.Equal(1, fake.RegisterCallCount);
+                Assert.Equal(1, fake.StartCallCount);
+
+                var stopped = await manager.OrchestrateStopAsync();
+                Assert.True(stopped);
+                Assert.Equal(1, fake.StopCallCount);
+            }
         }
     }
 }
