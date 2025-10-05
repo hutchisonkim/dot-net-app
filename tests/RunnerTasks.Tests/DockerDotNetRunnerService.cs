@@ -123,13 +123,13 @@ namespace RunnerTasks.Tests
                 }
                 else
                 {
-                    _logger?.LogWarning("No image found via Docker.DotNet; falling back to docker CLI lookup");
-                    return await RunDockerCliContainerAsync(envVars, cancellationToken).ConfigureAwait(false);
+                        _logger?.LogWarning("No image found via Docker.DotNet; attempting programmatic docker create/start lookup");
+                        return await RunDockerCliContainerAsync(envVars, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Docker.DotNet path failed; falling back to docker CLI");
+                _logger?.LogWarning(ex, "Docker.DotNet path failed; attempting programmatic docker fallback");
                 return await RunDockerCliContainerAsync(envVars, cancellationToken).ConfigureAwait(false);
             }
 
@@ -188,8 +188,10 @@ namespace RunnerTasks.Tests
             {
                 _logger?.LogWarning("No image available to run registration via Docker.DotNet; falling back to docker CLI");
                 // Fallback: use docker CLI to run configure-runner.sh inside a container
-                var args = $"run --rm -e GITHUB_TOKEN={token} -e GITHUB_URL={githubUrl} -e GITHUB_REPOSITORY={ownerRepo} github-self-hosted-runner-docker-github-runner:latest /usr/local/bin/configure-runner.sh";
-                return await RunProcessAsync("docker", args, _workingDirectory, cancellationToken).ConfigureAwait(false);
+                    // Run a one-off container programmatically to execute the configure script
+                    return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
+                        new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
+                        new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
             }
 
             // Exec configure script inside the running container (created by StartContainersAsync)
@@ -411,68 +413,126 @@ namespace RunnerTasks.Tests
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Registration exec path failed; falling back to CLI");
-                var args = $"run --rm -e GITHUB_TOKEN={token} -e GITHUB_URL={githubUrl} -e GITHUB_REPOSITORY={ownerRepo} github-self-hosted-runner-docker-github-runner:latest /usr/local/bin/configure-runner.sh";
-                return await RunProcessAsync("docker", args, _workingDirectory, cancellationToken).ConfigureAwait(false);
+                    return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
+                        new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
+                        new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
             }
         }
 
         private async Task<bool> RunDockerCliContainerAsync(string[] envVars, CancellationToken cancellationToken)
         {
-            // Find a likely image via `docker images` and run it.
+            // Programmatic replacement for the CLI fallback: find an image with 'github-runner' in the tag and create/start a container
             try
             {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "docker",
-                    Arguments = "images --format \"{{.Repository}}:{{.Tag}}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    WorkingDirectory = _workingDirectory
-                };
-
-                using var proc = System.Diagnostics.Process.Start(psi)!;
-                var outText = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-                proc.WaitForExit();
-                var lines = outText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var images = await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                var found = images.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => t.IndexOf("github-runner", StringComparison.OrdinalIgnoreCase) >= 0));
                 string? image = null;
-                foreach (var l in lines)
-                {
-                    if (l.IndexOf("github-runner", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        image = l.Trim();
-                        break;
-                    }
-                }
-
+                if (found != null) image = (found.RepoTags ?? Array.Empty<string>()).FirstOrDefault();
                 if (image == null)
                 {
-                    _logger?.LogError("Could not locate a github-runner image via docker images");
+                    _logger?.LogError("Could not locate a github-runner image via Docker.DotNet image list");
                     return false;
                 }
 
                 var name = $"runner-test-{Guid.NewGuid():N}";
-                var envArgs = string.Empty;
-                if (envVars != null)
+
+                var createParams = new CreateContainerParameters
                 {
-                    foreach (var e in envVars)
-                    {
-                        envArgs += " -e " + e;
-                    }
+                    Image = image,
+                    Name = name,
+                    Cmd = new[] { "tail", "-f", "/dev/null" },
+                    Env = envVars?.ToList() ?? new System.Collections.Generic.List<string>(),
+                    HostConfig = new HostConfig { AutoRemove = false }
+                };
+
+                var created = await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
+                _containerId = created.ID;
+                var started = await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
+                if (!started)
+                {
+                    try { await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                    _containerId = null;
+                    return false;
                 }
 
-                var runArgs = $"run -d --name {name} {envArgs} {image}";
-                var started = await RunProcessAsync("docker", runArgs, _workingDirectory, cancellationToken).ConfigureAwait(false);
-                if (started)
-                {
-                    _containerId = name;
-                }
-                return started;
+                return true;
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "docker CLI fallback failed");
+                _logger?.LogError(ex, "programmatic docker fallback failed");
+                return false;
+            }
+        }
+
+        private async Task<bool> RunOneOffContainerAsync(string image, string[]? env, string[] cmd, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Ensure image exists (try to pull if not present)
+                try
+                {
+                    var imgs = await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                    var found = imgs.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => string.Equals(t, image, StringComparison.OrdinalIgnoreCase)));
+                    if (found == null)
+                    {
+                        // parse image:tag
+                        var parts = image.Split(':');
+                        var fromImage = parts[0];
+                        var tag = parts.Length > 1 ? parts[1] : "latest";
+                        await _client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = fromImage, Tag = tag }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch { }
+
+                var name = $"oneoff-{Guid.NewGuid():N}";
+                var createParams = new CreateContainerParameters
+                {
+                    Image = image,
+                    Name = name,
+                    Cmd = cmd,
+                    Env = env?.ToList() ?? new System.Collections.Generic.List<string>(),
+                    HostConfig = new HostConfig { AutoRemove = true }
+                };
+
+                var created = await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
+                var started = await _client.Containers.StartContainerAsync(created.ID, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
+                if (!started)
+                {
+                    try { await _client.Containers.RemoveContainerAsync(created.ID, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                    return false;
+                }
+
+                // Attach to logs until complete
+                using var stream = await _client.Containers.GetContainerLogsAsync(created.ID, new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = false, Tail = "all" }, cancellationToken).ConfigureAwait(false);
+                var buffer = new byte[4096];
+                while (true)
+                {
+                    var type = stream.GetType();
+                    var hasReadOutput = type.GetMethod("ReadOutputAsync", new[] { typeof(byte[]), typeof(int), typeof(int), typeof(CancellationToken) }) != null;
+                    if (hasReadOutput)
+                    {
+                        dynamic d = stream;
+                        var res = await d.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken);
+                        if ((bool)res.EOF) break;
+                        var count = (int)res.Count;
+                        if (count > 0) _logger?.LogInformation("[oneoff] {Line}", System.Text.Encoding.UTF8.GetString(buffer, 0, count));
+                    }
+                    else
+                    {
+                        var read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                        if (read == 0) break;
+                        _logger?.LogInformation("[oneoff] {Line}", System.Text.Encoding.UTF8.GetString(buffer, 0, read));
+                    }
+                }
+
+                // Remove container if still present (AutoRemove may handle it)
+                try { await _client.Containers.RemoveContainerAsync(created.ID, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "RunOneOffContainerAsync failed");
                 return false;
             }
         }
