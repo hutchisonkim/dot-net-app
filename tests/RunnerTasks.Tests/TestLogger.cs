@@ -5,7 +5,15 @@ using Microsoft.Extensions.Logging;
 
 namespace RunnerTasks.Tests
 {
-    public class TestLogger<T> : ILogger<T>
+    public interface ITestLogger
+    {
+        IReadOnlyList<object> Logs { get; }
+        bool Contains(Microsoft.Extensions.Logging.LogLevel level, string substring);
+        IEnumerable<string> GetLastMessages(int count);
+        IEnumerable<Dictionary<string, object?>> GetStructuredEntries();
+    }
+
+    public class TestLogger<T> : ILogger<T>, ITestLogger
     {
         private readonly List<LogEntry> _logs = new List<LogEntry>();
     private readonly Queue<string> _rolling = new Queue<string>();
@@ -16,7 +24,8 @@ namespace RunnerTasks.Tests
             _rollingCapacity = rollingCapacity;
         }
 
-        public IReadOnlyList<LogEntry> Logs => _logs;
+    IReadOnlyList<object> ITestLogger.Logs => _logs;
+    public IReadOnlyList<LogEntry> Logs => _logs;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {

@@ -10,6 +10,12 @@ namespace RunnerTasks.Tests
 {
     public class RunnerManagerTests
     {
+        private readonly Xunit.Abstractions.ITestOutputHelper _output;
+
+        public RunnerManagerTests(Xunit.Abstractions.ITestOutputHelper output)
+        {
+            _output = output;
+        }
         [Fact]
         public async Task Test_RetryLogic_SucceedsAfterRetries()
         {
@@ -200,7 +206,7 @@ namespace RunnerTasks.Tests
         }
 
         [Fact]
-        public async Task Integration_StartsDockerComposeAndRegistersRunner()
+    public async Task Integration_StartsDockerComposeAndRegistersRunner()
         {
             // If RUN_INTEGRATION=1, run the real docker-compose integration. Otherwise run a mock-based integration
             // so the test passes in environments without Docker.
@@ -234,12 +240,20 @@ namespace RunnerTasks.Tests
 
                 var env = new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app" };
                 var ok = await manager.OrchestrateStartAsync("token", "hutchisonkim/dot-net-app", "https://github.com", env, maxRetries: 1, baseDelayMs: 1);
-                Assert.True(ok, "OrchestrateStartAsync should succeed with FakeRunnerService");
+                if (!ok)
+                {
+                    TestAssert.FailWithLogs("OrchestrateStartAsync failed with FakeRunnerService", _output, testLogger);
+                }
+
                 Assert.Equal(1, fake.RegisterCallCount);
                 Assert.Equal(1, fake.StartCallCount);
 
                 var stopped = await manager.OrchestrateStopAsync();
-                Assert.True(stopped);
+                if (!stopped)
+                {
+                    TestAssert.FailWithLogs("OrchestrateStopAsync failed with FakeRunnerService", _output, testLogger);
+                }
+
                 Assert.Equal(1, fake.StopCallCount);
             }
         }
