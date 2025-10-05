@@ -240,21 +240,13 @@ namespace RunnerTasks.Tests
 
                 var env = new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app" };
                 var ok = await manager.OrchestrateStartAsync("token", "hutchisonkim/dot-net-app", "https://github.com", env, maxRetries: 1, baseDelayMs: 1);
-                if (!ok)
-                {
-                    TestAssert.FailWithLogs("OrchestrateStartAsync failed with FakeRunnerService", _output, testLogger);
-                }
-
-                Assert.Equal(1, fake.RegisterCallCount);
-                Assert.Equal(1, fake.StartCallCount);
+                AssertWithLogs.True(ok, "OrchestrateStartAsync should succeed with FakeRunnerService", _output, testLogger);
+                AssertWithLogs.Equal(1, fake.RegisterCallCount, "RegisterCallCount mismatch", _output, testLogger);
+                AssertWithLogs.Equal(1, fake.StartCallCount, "StartCallCount mismatch", _output, testLogger);
 
                 var stopped = await manager.OrchestrateStopAsync();
-                if (!stopped)
-                {
-                    TestAssert.FailWithLogs("OrchestrateStopAsync failed with FakeRunnerService", _output, testLogger);
-                }
-
-                Assert.Equal(1, fake.StopCallCount);
+                AssertWithLogs.True(stopped, "OrchestrateStopAsync should succeed with FakeRunnerService", _output, testLogger);
+                AssertWithLogs.Equal(1, fake.StopCallCount, "StopCallCount mismatch", _output, testLogger);
             }
         }
     }
