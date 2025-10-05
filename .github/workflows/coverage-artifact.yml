@@ -117,7 +117,7 @@ jobs:
           echo "pct=${pct_int}" >> $GITHUB_OUTPUT
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
           path: badges
 
