@@ -16,7 +16,7 @@
 Set-StrictMode -Version Latest
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path | Split-Path -Parent
- $coverageFiles = Get-ChildItem -Path $root -Recurse -Filter "coverage.cobertura.xml" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+ $coverageFiles = @(Get-ChildItem -Path $root -Recurse -Filter "coverage.cobertura.xml" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)
 if (-not $coverageFiles) {
     Write-Host "No coverage.cobertura.xml files found. Run tests with coverlet first (e.g. dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura)" -ForegroundColor Yellow
     exit 0
@@ -78,20 +78,5 @@ foreach ($file in $coverageFiles) {
 $summaryPath = Join-Path $reportDir 'coverage-summary.json'
 $summary | ConvertTo-Json -Depth 5 | Set-Content -Path $summaryPath -Encoding UTF8
 
-Write-Host "Copied $($coverageFiles.Count) coverage file(s) to: $reportDir"
+Write-Host "Copied $($summary.Count) coverage file(s) to: $reportDir"
 Write-Host "Summary written to: $summaryPath"
-
-$ciExample = @'
-Next steps (examples):
-- Azure Pipelines: use PublishCodeCoverageResults@1 to publish cobertura results. Example:
-
-- task: PublishCodeCoverageResults@1
-  inputs:
-    codeCoverageTool: 'Cobertura'
-    summaryFileLocation: '$(System.DefaultWorkingDirectory)/artifacts/coverage-files/**/coverage.cobertura.xml'
-    reportDirectory: '$(Build.ArtifactStagingDirectory)/coverage-report'
-
-- GitHub Actions: upload artifacts and process them in subsequent jobs (no vendor HTML required).
-'@
-
-Write-Host $ciExample
