@@ -81,57 +81,97 @@ namespace RunnerTasks.Tests
             Assert.Equal(1, fake.StopCallCount);
         }
 
-        private static Task<bool> SearchVolumesForMarkerAsync(string volumePrefix, string marker, TimeSpan timeout)
+        private static async Task<bool> SearchVolumesForMarkerAsync(string volumePrefix, string marker, TimeSpan timeout)
         {
-            return Task.Run(() =>
+            var dockerUri = Environment.OSVersion.Platform == PlatformID.Win32NT
+                ? new Uri("npipe://./pipe/docker_engine")
+                : new Uri("unix:///var/run/docker.sock");
+
+            using var client = new Docker.DotNet.DockerClientConfiguration(dockerUri).CreateClient();
+
+            // Docker.DotNet v3.x exposes ListAsync with a single parameter; it returns a VolumesListResponse
+            // Docker.DotNet's Volumes.ListAsync in this package version takes a CancellationToken
+            var volsList = await client.Volumes.ListAsync(CancellationToken.None).ConfigureAwait(false);
+            var matches = (volsList.Volumes ?? Array.Empty<Docker.DotNet.Models.VolumeResponse>()).Where(v => v.Name != null && v.Name.StartsWith(volumePrefix, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (matches.Length == 0) return false;
+
+            foreach (var vol in matches)
             {
-                try
+                var containerName = $"runner-logs-scan-{Guid.NewGuid():N}";
+                var createParams = new Docker.DotNet.Models.CreateContainerParameters
                 {
-                    var psi = new ProcessStartInfo
+                    Image = "alpine:latest",
+                    Name = containerName,
+                    Cmd = new[] { "sh", "-c", $"grep -I -R \"{marker}\" /data/_diag || true" },
+                    HostConfig = new Docker.DotNet.Models.HostConfig
                     {
-                        FileName = "docker",
-                        Arguments = "volume ls --format \"{{.Name}}\"",
-                        RedirectStandardOutput = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-
-                    using var p = Process.Start(psi)!;
-                    var outText = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit();
-                    var vols = outText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Where(v => v.StartsWith(volumePrefix, StringComparison.OrdinalIgnoreCase)).ToArray();
-
-                    foreach (var v in vols)
-                    {
-                        // Run an ephemeral container to grep the _diag files
-                        var args = $"run --rm -v {v}:/data alpine sh -c \"grep -I -R \"{marker}\" /data/_diag || true\"";
-                        var psi2 = new ProcessStartInfo
+                        AutoRemove = true,
+                        Mounts = new System.Collections.Generic.List<Docker.DotNet.Models.Mount>
                         {
-                            FileName = "docker",
-                            Arguments = args,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        };
-
-                        using var p2 = Process.Start(psi2)!;
-                        var out2 = p2.StandardOutput.ReadToEnd();
-                        p2.WaitForExit((int)timeout.TotalMilliseconds);
-                        if (!string.IsNullOrEmpty(out2) && out2.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            return true;
+                            new Docker.DotNet.Models.Mount { Type = "volume", Source = vol.Name, Target = "/data" }
                         }
                     }
+                };
 
-                    return false;
+                try
+                {
+                    // Ensure image exists (pull if necessary)
+                    try
+                    {
+                        await client.Images.CreateImageAsync(new Docker.DotNet.Models.ImagesCreateParameters { FromImage = "alpine", Tag = "latest" }, null, new Progress<Docker.DotNet.Models.JSONMessage>());
+                    }
+                    catch { /* ignore pull failures - image may exist locally */ }
+
+                    var created = await client.Containers.CreateContainerAsync(createParams).ConfigureAwait(false);
+                    var started = await client.Containers.StartContainerAsync(created.ID, new Docker.DotNet.Models.ContainerStartParameters()).ConfigureAwait(false);
+                    if (!started)
+                    {
+                        try { await client.Containers.RemoveContainerAsync(created.ID, new Docker.DotNet.Models.ContainerRemoveParameters { Force = true }).ConfigureAwait(false); } catch { }
+                        continue;
+                    }
+
+                    // Attach and stream logs
+                    using var stream = await client.Containers.GetContainerLogsAsync(created.ID, new Docker.DotNet.Models.ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = false, Tail = "all" });
+                    var buffer = new byte[4096];
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var output = new System.Text.StringBuilder();
+                    while (sw.Elapsed < timeout)
+                    {
+                        var type = stream.GetType();
+                        var hasReadOutput = type.GetMethod("ReadOutputAsync", new[] { typeof(byte[]), typeof(int), typeof(int), typeof(CancellationToken) }) != null;
+                        if (hasReadOutput)
+                        {
+                            dynamic d = stream;
+                            var res = await d.ReadOutputAsync(buffer, 0, buffer.Length, CancellationToken.None);
+                            int count = 0; bool eof = false;
+                            try { count = (int)res.Count; } catch { try { count = (int)((long)res.Count); } catch { } }
+                            try { eof = (bool)res.EOF; } catch { }
+                            if (count > 0)
+                            {
+                                output.Append(System.Text.Encoding.UTF8.GetString(buffer, 0, count));
+                            }
+                            if (eof) break;
+                        }
+                        else
+                        {
+                            var read = await stream.ReadAsync(buffer, 0, buffer.Length, CancellationToken.None).ConfigureAwait(false);
+                            if (read > 0) output.Append(System.Text.Encoding.UTF8.GetString(buffer, 0, read));
+                            else break;
+                        }
+                        await Task.Delay(50).ConfigureAwait(false);
+                    }
+
+                    var outStr = output.ToString();
+                    try { await client.Containers.RemoveContainerAsync(created.ID, new Docker.DotNet.Models.ContainerRemoveParameters { Force = true }).ConfigureAwait(false); } catch { }
+                    if (!string.IsNullOrEmpty(outStr) && outStr.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0) return true;
                 }
                 catch
                 {
-                    return false;
+                    // continue to next volume
                 }
-            });
+            }
+
+            return false;
         }
     }
 }
