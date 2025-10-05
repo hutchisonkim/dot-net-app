@@ -1,5 +1,7 @@
 # DotNetApp
 
+![Coverage](./badges/coverage.svg)
+
 ## Local CI Acceleration / Self-Hosted Runner (WSL)
 
 You can speed up iterative CI test runs by installing a Linux (Ubuntu) GitHub Actions runner inside WSL on your Windows machine.
