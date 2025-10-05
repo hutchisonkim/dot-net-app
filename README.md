@@ -95,6 +95,10 @@ pwsh .\scripts\aggregate_coverage.ps1
 
 The script will search for `coverage.cobertura.xml` files created by running tests with coverlet (cobertura format) and will run ReportGenerator to produce `artifacts/coverage-report/index.html`.
 
+Local dotnet tools
+------------------
+The repository includes a dotnet tool manifest at `.config/dotnet-tools.json` which pins `reportgenerator` as a repo-local tool. The aggregation script will automatically run `dotnet tool restore` to ensure the tool is available and then invoke it with `dotnet tool run reportgenerator`.
+
 
 ## Generated API Client
 Contracts decorated with `[ApiContract]` and per-method `[Get]`, `[Post]`, `[Put]`, `[Delete]` generate typed clients at build via the `DotNetApp.CodeGen` source generator.

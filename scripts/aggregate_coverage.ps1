@@ -21,13 +21,9 @@ if (-not $coverageFiles) {
 Write-Host "Found coverage files:`n" -NoNewline
 $coverageFiles | ForEach-Object { Write-Host " - $_" }
 
-# Ensure reportgenerator dotnet tool is installed
-$toolName = 'dotnet-reportgenerator-globaltool'
-$toolCheck = & dotnet tool list -g 2>$null | Select-String $toolName
-if (-not $toolCheck) {
-    Write-Host "Installing $toolName as a global tool (user-level)..."
-    & dotnet tool install -g $toolName | Out-Null
-}
+# Restore repo-local dotnet tools (uses .config/dotnet-tools.json)
+Write-Host "Restoring repo-local dotnet tools (this will install tools for this repo only)..."
+& dotnet tool restore | Out-Null
 
 $reportDir = Join-Path $root "artifacts\coverage-report"
 if (Test-Path $reportDir) { Remove-Item $reportDir -Recurse -Force }
@@ -36,7 +32,7 @@ New-Item -ItemType Directory -Path $reportDir | Out-Null
 # Build the -reports argument as a semicolon-separated list
 $reportsArg = ($coverageFiles -join ";")
 
-Write-Host "Running ReportGenerator..."
-& reportgenerator -reports:$reportsArg -targetdir:$reportDir -reporttypes:HtmlInline_AzurePipelines | Out-Null
+Write-Host "Running ReportGenerator (via 'dotnet tool run reportgenerator')..."
+& dotnet tool run reportgenerator -reports:$reportsArg -targetdir:$reportDir -reporttypes:HtmlInline_AzurePipelines | Out-Null
 
 Write-Host "Coverage report created at: $reportDir\index.html"
