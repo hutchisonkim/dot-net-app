@@ -75,7 +75,8 @@ namespace RunnerTasks.Tests
                     _createdVolumeName = volumeName;
                     try
                     {
-                        await _client.Volumes.CreateAsync(new VolumesCreateParameters { Name = volumeName }, cancellationToken).ConfigureAwait(false);
+                        if (_clientWrapper != null) await _clientWrapper.CreateVolumeAsync(new VolumesCreateParameters { Name = volumeName }, cancellationToken).ConfigureAwait(false);
+                        else await _client.Volumes.CreateAsync(new VolumesCreateParameters { Name = volumeName }, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -122,8 +123,10 @@ namespace RunnerTasks.Tests
                         var sw = System.Diagnostics.Stopwatch.StartNew();
                         while (sw.Elapsed < _containerStartTimeout)
                         {
-                            var inspect = await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
-                            if (inspect.State != null && inspect.State.Running)
+                                var inspect = _clientWrapper != null
+                                    ? await _clientWrapper.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false)
+                                    : await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                                if (inspect.State != null && inspect.State.Running)
                             {
                                 break;
                             }
@@ -246,16 +249,27 @@ namespace RunnerTasks.Tests
                     "--ephemeral"
                 };
 
-                var execCreate = await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
-                {
-                    AttachStdout = true,
-                    AttachStderr = true,
-                    User = "github-runner",
-                    Cmd = configArgs.ToArray(),
-                    Env = envList
-                }, cancellationToken).ConfigureAwait(false);
+                var execCreate = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(_containerId, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        User = "github-runner",
+                        Cmd = configArgs.ToArray(),
+                        Env = envList
+                    }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        User = "github-runner",
+                        Cmd = configArgs.ToArray(),
+                        Env = envList
+                    }, cancellationToken).ConfigureAwait(false);
 
-                using (var stream = await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
+                using (var stream = _clientWrapper != null
+                    ? await _clientWrapper.StartAndAttachExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
                 {
                     var buffer = new byte[1024];
                     try
@@ -278,16 +292,26 @@ namespace RunnerTasks.Tests
                 }
 
                 // Exec the runner process (run.sh) directly as github-runner to start the listener
-                var startExec = await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
-                {
-                    AttachStdout = true,
-                    AttachStderr = true,
-                    User = "github-runner",
-                    Cmd = new[] { "/actions-runner/run.sh" }
-                }, cancellationToken).ConfigureAwait(false);
+                var startExec = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(_containerId, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        User = "github-runner",
+                        Cmd = new[] { "/actions-runner/run.sh" }
+                    }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        User = "github-runner",
+                        Cmd = new[] { "/actions-runner/run.sh" }
+                    }, cancellationToken).ConfigureAwait(false);
 
                 // Attach to the start exec so we can surface startup errors quickly and stream logs
-                using (var startStreamObj = await _client.Containers.StartAndAttachContainerExecAsync(startExec.ID, false, cancellationToken).ConfigureAwait(false))
+                using (var startStreamObj = _clientWrapper != null
+                    ? await _clientWrapper.StartAndAttachExecAsync(startExec.ID, false, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartAndAttachContainerExecAsync(startExec.ID, false, cancellationToken).ConfigureAwait(false))
                 {
                     var buffer = new byte[1024];
                     var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -336,7 +360,9 @@ namespace RunnerTasks.Tests
                 // Inspect the start exec result to detect immediate failures (non-zero exit code) and monitor container logs for 'Listening for Jobs'
                 try
                 {
-                    var execInspect = await _client.Containers.InspectContainerExecAsync(startExec.ID, cancellationToken).ConfigureAwait(false);
+                    var execInspect = _clientWrapper != null
+                        ? await _clientWrapper.InspectExecAsync(startExec.ID, cancellationToken).ConfigureAwait(false)
+                        : await _client.Containers.InspectContainerExecAsync(startExec.ID, cancellationToken).ConfigureAwait(false);
                     if (execInspect != null)
                     {
                         try
@@ -361,7 +387,9 @@ namespace RunnerTasks.Tests
                 // Monitor container logs for 'Listening for Jobs' to confirm runner started
                 var foundListening = false;
                 var tailParams = new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = true, Tail = "all" };
-                using (var logsObj = await _client.Containers.GetContainerLogsAsync(_containerId, tailParams, cancellationToken).ConfigureAwait(false))
+                using (var logsObj = _clientWrapper != null
+                    ? await _clientWrapper.GetContainerLogsAsync(_containerId, tailParams, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.GetContainerLogsAsync(_containerId, tailParams, cancellationToken).ConfigureAwait(false))
                 {
                     var buffer = new byte[1024];
                     var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -438,7 +466,9 @@ namespace RunnerTasks.Tests
             // Programmatic replacement for the CLI fallback: find an image with 'github-runner' in the tag and create/start a container
             try
             {
-                var images = await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                var images = _clientWrapper != null
+                    ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
                 var found = images.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => t.IndexOf("github-runner", StringComparison.OrdinalIgnoreCase) >= 0));
                 string? image = null;
                 if (found != null) image = (found.RepoTags ?? Array.Empty<string>()).FirstOrDefault();
@@ -696,62 +726,80 @@ namespace RunnerTasks.Tests
 
             try
             {
-                var exec = await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
+                var execParams = new ContainerExecCreateParameters
                 {
                     AttachStdout = true,
                     AttachStderr = true,
                     User = "github-runner",
                     Cmd = new[] { "/actions-runner/config.sh", "remove", "--unattended", "--token", _lastRegistrationToken },
                     Env = new System.Collections.Generic.List<string> { $"GITHUB_TOKEN={_lastRegistrationToken}" }
-                }, cancellationToken).ConfigureAwait(false);
+                };
 
-                using var streamObj = await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
+                ContainerExecCreateResponse exec;
+                if (_clientWrapper != null)
+                {
+                    exec = await _clientWrapper.ExecCreateAsync(_containerId, execParams, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    exec = await _client.Containers.ExecCreateContainerAsync(_containerId, execParams, cancellationToken).ConfigureAwait(false);
+                }
+
+                using var streamObj = _clientWrapper != null
+                    ? await _clientWrapper.StartAndAttachExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
+
                 var buffer = new byte[1024];
                 try
                 {
-                    var t = Task.Run(async () =>
+                    while (true)
                     {
-                        try
+                        var type = streamObj.GetType();
+                        var hasReadOutput = type.GetMethod("ReadOutputAsync", new[] { typeof(byte[]), typeof(int), typeof(int), typeof(CancellationToken) }) != null;
+                        dynamic dstream = streamObj;
+                        if (hasReadOutput)
                         {
-                            var type = streamObj.GetType();
-                            var hasReadOutput = type.GetMethod("ReadOutputAsync", new[] { typeof(byte[]), typeof(int), typeof(int), typeof(CancellationToken) }) != null;
-                            dynamic dstream = streamObj;
-                            if (hasReadOutput)
+                            var res = await dstream.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                            bool eof = false; int count = 0;
+                            try { eof = (bool)res.EOF; } catch { }
+                            try { count = (int)res.Count; } catch { try { count = (int)((long)res.Count); } catch { } }
+                            if (count > 0)
                             {
-                                while (true)
-                                {
-                                    var res = await dstream.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken);
-                                    int count = 0; bool eof = false;
-                                    try { count = (int)res.Count; } catch { try { count = (int)((long)res.Count); } catch { } }
-                                    try { eof = (bool)res.EOF; } catch { }
-                                    if (count > 0)
-                                    {
-                                        var s = Encoding.UTF8.GetString(buffer, 0, count);
-                                        _logger?.LogInformation("[unregister exec] {Line}", s.TrimEnd());
-                                    }
-                                    if (eof) break;
-                                }
+                                var s = Encoding.UTF8.GetString(buffer, 0, count);
+                                _logger?.LogInformation("[unregister exec] {Line}", s.TrimEnd());
                             }
-                            else
-                            {
-                                while (true)
-                                {
-                                    var read = await dstream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
-                                    int r = (int)read;
-                                    if (r == 0) break;
-                                    var s = Encoding.UTF8.GetString(buffer, 0, r);
-                                    _logger?.LogInformation("[unregister exec] {Line}", s.TrimEnd());
-                                }
-                            }
+                            if (eof) break;
                         }
-                        catch (OperationCanceledException) { }
-                        catch (Exception ex)
+                        else
                         {
-                            _logger?.LogWarning(ex, "Error while streaming unregister exec output");
+                            var read = await dstream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                            int r = (int)read;
+                            if (r == 0) break;
+                            var s = Encoding.UTF8.GetString(buffer, 0, r);
+                            _logger?.LogInformation("[unregister exec] {Line}", s.TrimEnd());
                         }
-                    }, cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Error streaming unregister exec");
+                }
 
-                    await Task.WhenAny(t, Task.Delay(5000, cancellationToken)).ConfigureAwait(false);
+                // Try to stop the container after unregister
+                try
+                {
+                    if (_clientWrapper != null)
+                    {
+                        await _clientWrapper.StopContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await _client.Containers.StopContainerAsync(_containerId, new ContainerStopParameters { WaitBeforeKillSeconds = 5 }, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    _logger?.LogInformation("Stopped container {Id}", _containerId);
+                    _containerId = null;
                 }
                 catch (Exception ex)
                 {

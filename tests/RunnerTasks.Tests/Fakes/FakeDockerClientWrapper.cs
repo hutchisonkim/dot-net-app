@@ -47,5 +47,41 @@ namespace RunnerTasks.Tests.Fakes
         {
             return Task.CompletedTask;
         }
+
+        public Task<ContainerExecCreateResponse> ExecCreateAsync(string containerId, ContainerExecCreateParameters parameters, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new ContainerExecCreateResponse { ID = "exec-" + Guid.NewGuid().ToString("N") });
+        }
+
+        public Task<Stream> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken)
+        {
+            var ms = new MemoryStream(Encoding.UTF8.GetBytes("exec output"));
+            return Task.FromResult<Stream>(ms);
+        }
+
+        public Task<ContainerExecInspectResponse> InspectExecAsync(string execId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new ContainerExecInspectResponse { ExitCode = 0 });
+        }
+
+        public Task<ContainerInspectResponse> InspectContainerAsync(string id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new ContainerInspectResponse { State = new ContainerState { Running = true } });
+        }
+
+        public Task StopContainerAsync(string id, ContainerStopParameters parameters, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task CreateVolumeAsync(VolumesCreateParameters parameters, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveVolumeAsync(string name, bool force, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
