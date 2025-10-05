@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Moq;
+using RunnerTasks;
 
 // Following MSDN guidance: Arrange/Act/Assert, small focused tests, one behavior per test.
 

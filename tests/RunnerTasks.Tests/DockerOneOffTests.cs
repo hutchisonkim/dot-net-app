@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using RunnerTasks.Tests.Fakes;
+using RunnerTasks;
 using Xunit;
 
 namespace RunnerTasks.Tests

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
-namespace RunnerTasks.Tests
+namespace RunnerTasks
 {
     /// <summary>
     /// Lightweight Docker.DotNet implementation: finds a docker image (built by docker-compose), creates a container
@@ -20,14 +20,14 @@ namespace RunnerTasks.Tests
     {
         private readonly string _workingDirectory;
         private readonly ILogger<DockerDotNetRunnerService>? _logger;
-    private readonly DockerClient _client;
-    private readonly IDockerClientWrapper? _clientWrapper;
-    private string? _imageTagInUse;
-    private string? _containerId;
-    private string? _createdVolumeName;
-    private readonly TimeSpan _containerStartTimeout = TimeSpan.FromSeconds(10);
-    private readonly TimeSpan _logWaitTimeout = TimeSpan.FromSeconds(120);
-    private string? _lastRegistrationToken;
+        private readonly DockerClient _client;
+        private readonly IDockerClientWrapper? _clientWrapper;
+    private string? _imageTagInUse = null;
+    private string? _containerId = null;
+    private string? _createdVolumeName = null;
+        private readonly TimeSpan _containerStartTimeout = TimeSpan.FromSeconds(10);
+        private readonly TimeSpan _logWaitTimeout = TimeSpan.FromSeconds(120);
+        private string? _lastRegistrationToken;
 
         public DockerDotNetRunnerService(string workingDirectory, ILogger<DockerDotNetRunnerService>? logger = null)
         {
@@ -114,7 +114,7 @@ namespace RunnerTasks.Tests
                     var started = _clientWrapper != null
                         ? await _clientWrapper.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
                         : await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
-                        if (!started)
+                    if (!started)
                     {
                         _logger?.LogError("Failed to start container {Id}", _containerId);
                         // cleanup created resources
@@ -129,10 +129,10 @@ namespace RunnerTasks.Tests
                         var sw = System.Diagnostics.Stopwatch.StartNew();
                         while (sw.Elapsed < _containerStartTimeout)
                         {
-                                var inspect = _clientWrapper != null
-                                    ? await _clientWrapper.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false)
-                                    : await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
-                                if (inspect.State != null && inspect.State.Running)
+                            var inspect = _clientWrapper != null
+                                ? await _clientWrapper.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false)
+                                : await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                            if (inspect.State != null && inspect.State.Running)
                             {
                                 break;
                             }
@@ -213,10 +213,10 @@ namespace RunnerTasks.Tests
             {
                 _logger?.LogWarning("No image available to run registration via Docker.DotNet; falling back to docker CLI");
                 // Fallback: use docker CLI to run configure-runner.sh inside a container
-                    // Run a one-off container programmatically to execute the configure script
-                    return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
-                        new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
-                        new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
+                // Run a one-off container programmatically to execute the configure script
+                return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
+                    new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
+                    new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
             }
 
             // Exec configure script inside the running container (created by StartContainersAsync)
@@ -226,34 +226,34 @@ namespace RunnerTasks.Tests
                 return false;
             }
 
-                var runnerUrl = (githubUrl ?? "").TrimEnd('/') + "/" + ownerRepo;
-                var runnerName = "runner-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                var envList = new System.Collections.Generic.List<string>
-                {
-                    $"GITHUB_TOKEN={token}",
-                    $"GITHUB_URL={githubUrl}",
-                    $"GITHUB_REPOSITORY={ownerRepo}",
-                    $"RUNNER_LABELS={string.Join(',', System.Array.Empty<string>())}"
-                };
+            var runnerUrl = (githubUrl ?? "").TrimEnd('/') + "/" + ownerRepo;
+            var runnerName = "runner-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+            var envList = new System.Collections.Generic.List<string>
+            {
+                $"GITHUB_TOKEN={token}",
+                $"GITHUB_URL={githubUrl}",
+                $"GITHUB_REPOSITORY={ownerRepo}",
+                $"RUNNER_LABELS={string.Join(',', System.Array.Empty<string>())}"
+            };
 
-                var configArgs = new System.Collections.Generic.List<string>
-                {
-                    "/actions-runner/config.sh",
-                    "--url",
-                    runnerUrl,
-                    "--token",
-                    token,
-                    "--name",
-                    runnerName,
-                    "--labels",
-                    Environment.GetEnvironmentVariable("RUNNER_LABELS") ?? "",
-                    "--work",
-                    "_work",
-                    "--ephemeral"
-                };
+            var configArgs = new System.Collections.Generic.List<string>
+            {
+                "/actions-runner/config.sh",
+                "--url",
+                runnerUrl,
+                "--token",
+                token,
+                "--name",
+                runnerName,
+                "--labels",
+                Environment.GetEnvironmentVariable("RUNNER_LABELS") ?? "",
+                "--work",
+                "_work",
+                "--ephemeral"
+            };
 
-                try
-                {
+            try
+            {
                 var execCreate = _clientWrapper != null
                     ? await _clientWrapper.ExecCreateAsync(_containerId, new ContainerExecCreateParameters
                     {
@@ -469,7 +469,7 @@ namespace RunnerTasks.Tests
             }
         }
 
-    public async Task<bool> RunOneOffContainerAsync(string image, string[]? env, string[] cmd, CancellationToken cancellationToken)
+        public async Task<bool> RunOneOffContainerAsync(string image, string[]? env, string[] cmd, CancellationToken cancellationToken)
         {
             try
             {
@@ -539,7 +539,7 @@ namespace RunnerTasks.Tests
                         var res = await d.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken);
                         if ((bool)res.EOF) break;
                         var count = (int)res.Count;
-                                if (count > 0) { var msg = System.Text.Encoding.UTF8.GetString(buffer, 0, count); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[oneoff] {Line}", msg); }
+                        if (count > 0) { var msg = System.Text.Encoding.UTF8.GetString(buffer, 0, count); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[oneoff] {Line}", msg); }
                     }
                     else
                     {
@@ -561,7 +561,6 @@ namespace RunnerTasks.Tests
             }
         }
 
-    
 
         public async Task<bool> StopContainersAsync(CancellationToken cancellationToken)
         {
@@ -713,24 +712,24 @@ namespace RunnerTasks.Tests
             return true;
         }
 
-        // Test helpers: allow tests in the same assembly to set internal state without reflection
-        internal void Test_SetInternalState(string? containerId, string? lastRegistrationToken)
+        // Test helpers: allow tests to set internal state without reflection
+        public void Test_SetInternalState(string? containerId, string? lastRegistrationToken)
         {
             _containerId = containerId;
             _lastRegistrationToken = lastRegistrationToken;
         }
 
-        internal (string? containerId, string? lastRegistrationToken) Test_GetInternalState()
+        public (string? containerId, string? lastRegistrationToken) Test_GetInternalState()
         {
             return (_containerId, _lastRegistrationToken);
         }
 
-        internal void Test_SetImageTag(string? tag)
+        public void Test_SetImageTag(string? tag)
         {
             _imageTagInUse = tag;
         }
 
-        internal void Test_SetLogWaitTimeout(TimeSpan t)
+        public void Test_SetLogWaitTimeout(TimeSpan t)
         {
             // allow tests to shorten the waiting period
             // reflection-friendly helper

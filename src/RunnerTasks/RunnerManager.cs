@@ -1,11 +1,10 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace RunnerTasks.Tests
+namespace RunnerTasks
 {
-    using System.Threading;
-
     public interface IRunnerService
     {
         Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken);

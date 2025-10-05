@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet.Models;
 using RunnerTasks.Tests.Fakes;
+using RunnerTasks;
 using Xunit;
 
 namespace RunnerTasks.Tests

@@ -6,22 +6,22 @@ using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
-namespace RunnerTasks.Tests
+namespace RunnerTasks
 {
     public interface IDockerClientWrapper
     {
         Task<IList<ImagesListResponse>> ListImagesAsync(ImagesListParameters parameters, CancellationToken cancellationToken);
-    Task CreateImageAsync(ImagesCreateParameters parameters, AuthConfig? authConfig, IProgress<JSONMessage> progress, CancellationToken cancellationToken);
+        Task CreateImageAsync(ImagesCreateParameters parameters, AuthConfig? authConfig, IProgress<JSONMessage> progress, CancellationToken cancellationToken);
         Task<CreateContainerResponse> CreateContainerAsync(CreateContainerParameters parameters, CancellationToken cancellationToken);
         Task<bool> StartContainerAsync(string id, ContainerStartParameters parameters, CancellationToken cancellationToken);
-    Task<dynamic> GetContainerLogsAsync(string id, ContainerLogsParameters parameters, CancellationToken cancellationToken);
+        Task<dynamic> GetContainerLogsAsync(string id, ContainerLogsParameters parameters, CancellationToken cancellationToken);
         Task RemoveContainerAsync(string id, ContainerRemoveParameters parameters, CancellationToken cancellationToken);
         Task<ContainerExecCreateResponse> ExecCreateAsync(string containerId, ContainerExecCreateParameters parameters, CancellationToken cancellationToken);
-    Task<dynamic> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken);
+        Task<dynamic> StartAndAttachExecAsync(string execId, bool hijack, CancellationToken cancellationToken);
         Task<ContainerExecInspectResponse> InspectExecAsync(string execId, CancellationToken cancellationToken);
         Task<ContainerInspectResponse> InspectContainerAsync(string id, CancellationToken cancellationToken);
-    Task StopContainerAsync(string id, ContainerStopParameters parameters, CancellationToken cancellationToken);
-    Task StopContainerAsync(string id, CancellationToken cancellationToken);
+        Task StopContainerAsync(string id, ContainerStopParameters parameters, CancellationToken cancellationToken);
+        Task StopContainerAsync(string id, CancellationToken cancellationToken);
         Task CreateVolumeAsync(VolumesCreateParameters parameters, CancellationToken cancellationToken);
         Task RemoveVolumeAsync(string name, bool force, CancellationToken cancellationToken);
         Task RemoveVolumeAsync(string name, bool force);

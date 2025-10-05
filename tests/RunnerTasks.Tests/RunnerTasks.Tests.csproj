@@ -20,6 +20,10 @@
         <PackageReference Include="coverlet.msbuild" Version="3.2.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RunnerTasks\RunnerTasks.csproj" />
+  </ItemGroup>
+
   <!-- Configure Coverlet to include the test assembly and DotNetApp product assemblies -->
   <PropertyGroup>
     <!-- Do not collect by default in CI unless requested; we'll enable via commandline flag when running locally -->
