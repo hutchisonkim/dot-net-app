@@ -27,7 +27,7 @@ namespace RunnerTasks.Tests
         private const string VolumeName = "runner_data";
         private const string ImageName = "github-self-hosted-runner-docker-github-runner:latest";
 
-        public DockerComposeRunnerService(string workingDirectory, ILogger<DockerComposeRunnerService>? logger = null)
+        public DockerComposeRunnerService(string workingDirectory, ILogger<DockerComposeRunnerService>? logger = null, IDockerClientWrapper? clientWrapper = null)
         {
             _workingDirectory = workingDirectory ?? throw new ArgumentNullException(nameof(workingDirectory));
             _logger = logger;
@@ -36,7 +36,7 @@ namespace RunnerTasks.Tests
                 ? new Uri("npipe://./pipe/docker_engine")
                 : new Uri("unix:///var/run/docker.sock");
             _client = new DockerClientConfiguration(dockerUri).CreateClient();
-            _clientWrapper = new DockerClientWrapper(_client);
+            _clientWrapper = clientWrapper ?? new DockerClientWrapper(_client);
         }
 
         public async Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken)

@@ -146,14 +146,14 @@ namespace RunnerTasks.Tests
                 }
                 else
                 {
-                        _logger?.LogWarning("No image found via Docker.DotNet; attempting programmatic docker create/start lookup");
-                        return await RunDockerCliContainerAsync(envVars, cancellationToken).ConfigureAwait(false);
+                    _logger?.LogWarning("No image found via Docker.DotNet; cannot continue without docker image");
+                    return false;
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Docker.DotNet path failed; attempting programmatic docker fallback");
-                return await RunDockerCliContainerAsync(envVars, cancellationToken).ConfigureAwait(false);
+                _logger?.LogWarning(ex, "Docker.DotNet path failed; aborting StartContainersAsync");
+                return false;
             }
 
             var logParams = new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = true, Tail = "all" };
@@ -226,10 +226,6 @@ namespace RunnerTasks.Tests
                 return false;
             }
 
-            try
-            {
-                // Exec the runner's config.sh directly inside the container as the github-runner user.
-                // We set environment variables similar to the wrapper script and pass explicit args to config.sh.
                 var runnerUrl = (githubUrl ?? "").TrimEnd('/') + "/" + ownerRepo;
                 var runnerName = "runner-" + Guid.NewGuid().ToString("N").Substring(0, 8);
                 var envList = new System.Collections.Generic.List<string>
@@ -250,13 +246,14 @@ namespace RunnerTasks.Tests
                     "--name",
                     runnerName,
                     "--labels",
-                    // allow RUNNER_LABELS to come from env if present in the container env; otherwise leave blank
                     Environment.GetEnvironmentVariable("RUNNER_LABELS") ?? "",
                     "--work",
                     "_work",
                     "--ephemeral"
                 };
 
+                try
+                {
                 var execCreate = _clientWrapper != null
                     ? await _clientWrapper.ExecCreateAsync(_containerId, new ContainerExecCreateParameters
                     {
@@ -462,61 +459,10 @@ namespace RunnerTasks.Tests
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Registration exec path failed; falling back to CLI");
-                    return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
-                        new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
-                        new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        private async Task<bool> RunDockerCliContainerAsync(string[] envVars, CancellationToken cancellationToken)
-        {
-            // Programmatic replacement for the CLI fallback: find an image with 'github-runner' in the tag and create/start a container
-            try
-            {
-                var images = _clientWrapper != null
-                    ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
-                    : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
-                var found = images.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => t.IndexOf("github-runner", StringComparison.OrdinalIgnoreCase) >= 0));
-                string? image = null;
-                if (found != null) image = (found.RepoTags ?? Array.Empty<string>()).FirstOrDefault();
-                if (image == null)
-                {
-                    _logger?.LogError("Could not locate a github-runner image via Docker.DotNet image list");
-                    return false;
-                }
-
-                var name = $"runner-test-{Guid.NewGuid():N}";
-
-                var createParams = new CreateContainerParameters
-                {
-                    Image = image,
-                    Name = name,
-                    Cmd = new[] { "tail", "-f", "/dev/null" },
-                    Env = envVars?.ToList() ?? new System.Collections.Generic.List<string>(),
-                    HostConfig = new HostConfig { AutoRemove = false }
-                };
-
-                var created = _clientWrapper != null
-                    ? await _clientWrapper.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false)
-                    : await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
-                _containerId = created.ID;
-                var started = _clientWrapper != null
-                    ? await _clientWrapper.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
-                    : await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
-                if (!started)
-                {
-                    try { if (_clientWrapper != null) await _clientWrapper.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); else await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
-                    _containerId = null;
-                    return false;
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "programmatic docker fallback failed");
-                return false;
+                _logger?.LogWarning(ex, "Registration exec path failed; attempting one-off container");
+                return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
+                    new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
+                    new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -612,74 +558,7 @@ namespace RunnerTasks.Tests
             }
         }
 
-    private Task<bool> RunProcessAsync(string fileName, string args, string workingDirectory, CancellationToken cancellationToken)
-        {
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = args,
-                WorkingDirectory = workingDirectory,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using var proc = new System.Diagnostics.Process { StartInfo = psi, EnableRaisingEvents = true };
-            try
-            {
-                proc.Start();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to start process {FileName} {Args}", fileName, args);
-                return Task.FromResult(false);
-            }
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    string? line;
-                    while ((line = await proc.StandardOutput.ReadLineAsync().ConfigureAwait(false)) != null)
-                    {
-                        _logger?.LogInformation("[proc stdout] {Line}", line);
-                    }
-                }
-                catch { }
-            }, cancellationToken);
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    string? line;
-                    while ((line = await proc.StandardError.ReadLineAsync().ConfigureAwait(false)) != null)
-                    {
-                        _logger?.LogWarning("[proc stderr] {Line}", line);
-                    }
-                }
-                catch { }
-            }, cancellationToken);
-
-            try
-            {
-                while (!proc.WaitForExit(100))
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        try { proc.Kill(); } catch { }
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-
-            return Task.FromResult(proc.ExitCode == 0);
-        }
+    
 
         public async Task<bool> StopContainersAsync(CancellationToken cancellationToken)
         {

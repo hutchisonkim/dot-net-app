@@ -12,6 +12,7 @@ namespace RunnerTasks.Tests.Fakes
     {
         public IList<ImagesListResponse> Images { get; } = new List<ImagesListResponse>();
         public List<string> CreatedContainers { get; } = new List<string>();
+        public bool StopCalled { get; private set; }
 
         public Task CreateImageAsync(ImagesCreateParameters parameters, AuthConfig? authConfig, IProgress<JSONMessage> progress, CancellationToken cancellationToken)
         {
@@ -48,7 +49,7 @@ namespace RunnerTasks.Tests.Fakes
             return Task.CompletedTask;
         }
 
-        public Task<ContainerExecCreateResponse> ExecCreateAsync(string containerId, ContainerExecCreateParameters parameters, CancellationToken cancellationToken)
+        public virtual Task<ContainerExecCreateResponse> ExecCreateAsync(string containerId, ContainerExecCreateParameters parameters, CancellationToken cancellationToken)
         {
             return Task.FromResult(new ContainerExecCreateResponse { ID = "exec-" + Guid.NewGuid().ToString("N") });
         }
@@ -71,6 +72,7 @@ namespace RunnerTasks.Tests.Fakes
 
         public Task StopContainerAsync(string id, ContainerStopParameters parameters, CancellationToken cancellationToken)
         {
+            StopCalled = true;
             return Task.CompletedTask;
         }
 
