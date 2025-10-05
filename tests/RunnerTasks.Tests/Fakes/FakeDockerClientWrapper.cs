@@ -13,6 +13,7 @@ namespace RunnerTasks.Tests.Fakes
         public IList<ImagesListResponse> Images { get; } = new List<ImagesListResponse>();
         public List<string> CreatedContainers { get; } = new List<string>();
         public bool StopCalled { get; private set; }
+        public string? LastRemovedVolume { get; private set; }
 
     public virtual Task CreateImageAsync(ImagesCreateParameters parameters, AuthConfig? authConfig, IProgress<JSONMessage> progress, CancellationToken cancellationToken)
         {
@@ -91,6 +92,7 @@ namespace RunnerTasks.Tests.Fakes
 
         public virtual Task RemoveVolumeAsync(string name, bool force)
         {
+            LastRemovedVolume = name;
             return Task.CompletedTask;
         }
 

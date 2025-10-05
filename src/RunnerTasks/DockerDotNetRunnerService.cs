@@ -578,7 +578,15 @@ namespace RunnerTasks
 
             try
             {
-                await _client.Containers.StopContainerAsync(_containerId, new ContainerStopParameters { WaitBeforeKillSeconds = 5 }, cancellationToken).ConfigureAwait(false);
+                if (_clientWrapper != null)
+                {
+                    // use the wrapper when present so tests can inject fakes
+                    await _clientWrapper.StopContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _client.Containers.StopContainerAsync(_containerId, new ContainerStopParameters { WaitBeforeKillSeconds = 5 }, cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (DockerApiException)
             {
@@ -727,6 +735,12 @@ namespace RunnerTasks
         public void Test_SetImageTag(string? tag)
         {
             _imageTagInUse = tag;
+        }
+
+        // Test helper: allow tests to set the created volume name so StopContainersAsync attempts removal
+        public void Test_SetCreatedVolumeName(string? name)
+        {
+            _createdVolumeName = name;
         }
 
         public void Test_SetLogWaitTimeout(TimeSpan t)
