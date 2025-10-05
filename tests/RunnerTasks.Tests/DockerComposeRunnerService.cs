@@ -21,7 +21,8 @@ namespace RunnerTasks.Tests
     {
         private readonly string _workingDirectory;
         private readonly ILogger<DockerComposeRunnerService>? _logger;
-        private readonly DockerClient _client;
+    private readonly DockerClient _client;
+    private readonly IDockerClientWrapper? _clientWrapper;
         private string? _containerId;
         private const string VolumeName = "runner_data";
         private const string ImageName = "github-self-hosted-runner-docker-github-runner:latest";
@@ -35,6 +36,7 @@ namespace RunnerTasks.Tests
                 ? new Uri("npipe://./pipe/docker_engine")
                 : new Uri("unix:///var/run/docker.sock");
             _client = new DockerClientConfiguration(dockerUri).CreateClient();
+            _clientWrapper = new DockerClientWrapper(_client);
         }
 
         public async Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken)
@@ -73,16 +75,27 @@ namespace RunnerTasks.Tests
                     "--ephemeral"
                 };
 
-                var execCreate = await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
+                var execCreate = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(_containerId, new ContainerExecCreateParameters
                 {
                     AttachStdout = true,
                     AttachStderr = true,
                     User = "github-runner",
                     Cmd = configArgs,
                     Env = envList
-                }, cancellationToken).ConfigureAwait(false);
+                    }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        User = "github-runner",
+                        Cmd = configArgs,
+                        Env = envList
+                    }, cancellationToken).ConfigureAwait(false);
 
-                using (var stream = await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
+                using (var stream = _clientWrapper != null
+                    ? await _clientWrapper.StartAndAttachExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false))
                 {
                     var buffer = new byte[1024];
                     try
@@ -119,21 +132,25 @@ namespace RunnerTasks.Tests
                 // Ensure volume exists
                 try
                 {
-                    await _client.Volumes.CreateAsync(new VolumesCreateParameters { Name = VolumeName }, cancellationToken).ConfigureAwait(false);
+                    if (_clientWrapper != null) await _clientWrapper.CreateVolumeAsync(new VolumesCreateParameters { Name = VolumeName }, cancellationToken).ConfigureAwait(false);
+                    else await _client.Volumes.CreateAsync(new VolumesCreateParameters { Name = VolumeName }, cancellationToken).ConfigureAwait(false);
                 }
                 catch { }
 
                 // Ensure image exists; if missing, try to pull
                 try
                 {
-                    var images = await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                    var images = _clientWrapper != null
+                        ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
+                        : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
                     var found = images.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => string.Equals(t, ImageName, StringComparison.OrdinalIgnoreCase)));
                     if (found == null)
                     {
                         // Try pull
                         try
                         {
-                            await _client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = "github-self-hosted-runner-docker-github-runner", Tag = "latest" }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                            if (_clientWrapper != null) await _clientWrapper.CreateImageAsync(new ImagesCreateParameters { FromImage = "github-self-hosted-runner-docker-github-runner", Tag = "latest" }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                            else await _client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = "github-self-hosted-runner-docker-github-runner", Tag = "latest" }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
                         }
                         catch { }
                     }
@@ -160,12 +177,16 @@ namespace RunnerTasks.Tests
                     }
                 };
 
-                var created = await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
+                var created = _clientWrapper != null
+                    ? await _clientWrapper.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
                 _containerId = created.ID;
-                var started = await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
+                var started = _clientWrapper != null
+                    ? await _clientWrapper.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
                 if (!started)
                 {
-                    try { await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                    try { if (_clientWrapper != null) await _clientWrapper.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); else await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
                     _containerId = null;
                     return false;
                 }
@@ -174,7 +195,9 @@ namespace RunnerTasks.Tests
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 while (sw.Elapsed < TimeSpan.FromSeconds(10))
                 {
-                    var inspect = await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                    var inspect = _clientWrapper != null
+                        ? await _clientWrapper.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false)
+                        : await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
                     if (inspect.State != null && inspect.State.Running) break;
                     await Task.Delay(200, cancellationToken).ConfigureAwait(false);
                 }
@@ -194,11 +217,12 @@ namespace RunnerTasks.Tests
             {
                 try
                 {
-                    await _client.Containers.StopContainerAsync(_containerId, new ContainerStopParameters { WaitBeforeKillSeconds = 5 }, cancellationToken).ConfigureAwait(false);
+                    if (_clientWrapper != null) await _clientWrapper.StopContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                    else await _client.Containers.StopContainerAsync(_containerId, new ContainerStopParameters { WaitBeforeKillSeconds = 5 }, cancellationToken).ConfigureAwait(false);
                 }
                 catch { }
 
-                try { await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                try { if (_clientWrapper != null) await _clientWrapper.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); else await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
                 _containerId = null;
             }
 
@@ -217,15 +241,25 @@ namespace RunnerTasks.Tests
 
             try
             {
-                var exec = await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
-                {
-                    AttachStdout = true,
-                    AttachStderr = true,
-                    User = "github-runner",
-                    Cmd = new[] { "/actions-runner/config.sh", "remove", "--unattended" }
-                }, cancellationToken).ConfigureAwait(false);
+                var exec = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(_containerId, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        User = "github-runner",
+                        Cmd = new[] { "/actions-runner/config.sh", "remove", "--unattended" }
+                    }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(_containerId, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        User = "github-runner",
+                        Cmd = new[] { "/actions-runner/config.sh", "remove", "--unattended" }
+                    }, cancellationToken).ConfigureAwait(false);
 
-                using var streamObj = await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
+                using var streamObj = _clientWrapper != null
+                    ? await _clientWrapper.StartAndAttachExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartAndAttachContainerExecAsync(exec.ID, false, cancellationToken).ConfigureAwait(false);
                 var buffer = new byte[1024];
                 try
                 {

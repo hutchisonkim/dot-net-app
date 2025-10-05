@@ -63,7 +63,9 @@ namespace RunnerTasks.Tests
             try
             {
                 _logger?.LogInformation("Searching for image matching {Guess}", guess);
-                var images = await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                var images = _clientWrapper != null
+                    ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
                 var found = images.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => t.StartsWith(guess, StringComparison.OrdinalIgnoreCase) || t.StartsWith(guessAlt, StringComparison.OrdinalIgnoreCase) || t.Contains("github-runner", StringComparison.OrdinalIgnoreCase)));
                 if (found != null)
                 {
@@ -104,11 +106,15 @@ namespace RunnerTasks.Tests
                         }
                     };
 
-                    var created = await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
+                    var created = _clientWrapper != null
+                        ? await _clientWrapper.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false)
+                        : await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
                     _containerId = created.ID;
 
-                    var started = await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
-                    if (!started)
+                    var started = _clientWrapper != null
+                        ? await _clientWrapper.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
+                        : await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
+                        if (!started)
                     {
                         _logger?.LogError("Failed to start container {Id}", _containerId);
                         // cleanup created resources
@@ -151,7 +157,9 @@ namespace RunnerTasks.Tests
             }
 
             var logParams = new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = true, Tail = "all" };
-            var stream = await _client.Containers.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false);
+            var stream = _clientWrapper != null
+                ? await _clientWrapper.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false)
+                : await _client.Containers.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false);
 
             // Log directly from a read loop; support both Docker.DotNet multiplexed ReadOutputAsync and plain Stream ReadAsync
             _ = Task.Run(async () =>
@@ -489,12 +497,16 @@ namespace RunnerTasks.Tests
                     HostConfig = new HostConfig { AutoRemove = false }
                 };
 
-                var created = await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
+                var created = _clientWrapper != null
+                    ? await _clientWrapper.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
                 _containerId = created.ID;
-                var started = await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
+                var started = _clientWrapper != null
+                    ? await _clientWrapper.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
                 if (!started)
                 {
-                    try { await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                    try { if (_clientWrapper != null) await _clientWrapper.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); else await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
                     _containerId = null;
                     return false;
                 }
@@ -705,7 +717,8 @@ namespace RunnerTasks.Tests
             {
                 try
                 {
-                    await _client.Volumes.RemoveAsync(_createdVolumeName, true).ConfigureAwait(false);
+                    if (_clientWrapper != null) await _clientWrapper.RemoveVolumeAsync(_createdVolumeName, true).ConfigureAwait(false);
+                    else await _client.Volumes.RemoveAsync(_createdVolumeName, true).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
