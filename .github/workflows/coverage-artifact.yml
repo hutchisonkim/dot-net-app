@@ -12,11 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
+      contents: read
       actions: read
-
-    env:
-      GITHUB_TOKEN: ${{ secrets.PAT_COVERAGE }}
 
     steps:
       - name: Checkout repository
@@ -58,9 +55,11 @@ jobs:
     name: Generate and publish coverage badge
     needs: collect-coverage
     runs-on: ubuntu-latest
+    # Permissions required to publish to GitHub Pages via the deploy action
     permissions:
-      contents: write       # allows committing to the repo
-      actions: read
+      pages: write
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -117,22 +116,13 @@ jobs:
 
           echo "pct=${pct_int}" >> $GITHUB_OUTPUT
 
-      - name: Commit and push badge (skip CI)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add badges/coverage.svg || true
-          git commit -m "chore: update coverage badge [skip ci]" || echo "no changes to commit"
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
-          git push origin HEAD:main || echo "Push failed (read-only token or fork)."
-
-      - name: Upload badge artifact (fallback)
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          name: coverage-badge
-          path: badges/coverage.svg
+          path: badges
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
 
       - name: Add summary to workflow run
         run: |
