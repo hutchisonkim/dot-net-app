@@ -709,6 +709,23 @@ namespace RunnerTasks.Tests
 
             return true;
         }
+
+        // Test helpers: allow tests in the same assembly to set internal state without reflection
+        internal void Test_SetInternalState(string? containerId, string? lastRegistrationToken)
+        {
+            _containerId = containerId;
+            _lastRegistrationToken = lastRegistrationToken;
+        }
+
+        internal (string? containerId, string? lastRegistrationToken) Test_GetInternalState()
+        {
+            return (_containerId, _lastRegistrationToken);
+        }
+
+        internal void Test_SetImageTag(string? tag)
+        {
+            _imageTagInUse = tag;
+        }
     }
 
 }

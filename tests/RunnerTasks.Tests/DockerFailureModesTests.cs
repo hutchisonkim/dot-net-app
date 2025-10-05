@@ -21,8 +21,8 @@ namespace RunnerTasks.Tests
 
             // Set private fields so RegisterAsync execs into existing container
             var cid = (await fake.CreateContainerAsync(new CreateContainerParameters { Image = "img" }, CancellationToken.None)).ID;
-            typeof(DockerDotNetRunnerService).GetField("_containerId", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(svc, cid);
-            typeof(DockerDotNetRunnerService).GetField("_imageTagInUse", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(svc, "img:latest");
+            svc.Test_SetInternalState(cid, null);
+            svc.Test_SetImageTag("img:latest");
 
             var ok = await svc.RegisterAsync("token", "owner/repo", "https://github.com", CancellationToken.None);
 
@@ -38,8 +38,37 @@ namespace RunnerTasks.Tests
             var svc = new DockerDotNetRunnerService(".", fake, logger);
 
             var cid = (await fake.CreateContainerAsync(new CreateContainerParameters { Image = "img" }, CancellationToken.None)).ID;
-            typeof(DockerDotNetRunnerService).GetField("_containerId", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(svc, cid);
-            typeof(DockerDotNetRunnerService).GetField("_imageTagInUse", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(svc, "img:latest");
+            svc.Test_SetInternalState(cid, null);
+            svc.Test_SetImageTag("img:latest");
+        }
+
+        [Fact]
+        public async Task RegisterAsync_AttachReadError_LogsAndReturnsFalse()
+        {
+            var fake = new RunnerTasks.Tests.Fakes.FakeDockerClientWrapper_AttachReadError();
+            var logger = new TestLogger<DockerDotNetRunnerService>();
+            var svc = new DockerDotNetRunnerService(".", fake, logger);
+
+            var cid = (await fake.CreateContainerAsync(new CreateContainerParameters { Image = "img" }, CancellationToken.None)).ID;
+            svc.Test_SetInternalState(cid, null);
+            svc.Test_SetImageTag("img:latest");
+
+            var ok = await svc.RegisterAsync("token", "owner/repo", "https://github.com", CancellationToken.None);
+
+            Assert.False(ok);
+            Assert.True(logger.Contains(Microsoft.Extensions.Logging.LogLevel.Debug, "Error streaming start exec output") || logger.Contains(Microsoft.Extensions.Logging.LogLevel.Warning, "run.sh exec returned non-zero exit code"));
+        }
+
+        [Fact]
+        public async Task RegisterAsync_AttachEof_ReturnsFalseAndLogsMissingListening()
+        {
+            var fake = new RunnerTasks.Tests.Fakes.FakeDockerClientWrapper_AttachEof();
+            var logger = new TestLogger<DockerDotNetRunnerService>();
+            var svc = new DockerDotNetRunnerService(".", fake, logger);
+
+            var cid = (await fake.CreateContainerAsync(new CreateContainerParameters { Image = "img" }, CancellationToken.None)).ID;
+            svc.Test_SetInternalState(cid, null);
+            svc.Test_SetImageTag("img:latest");
 
             var ok = await svc.RegisterAsync("token", "owner/repo", "https://github.com", CancellationToken.None);
 
