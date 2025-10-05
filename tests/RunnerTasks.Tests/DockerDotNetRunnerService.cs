@@ -20,7 +20,8 @@ namespace RunnerTasks.Tests
     {
         private readonly string _workingDirectory;
         private readonly ILogger<DockerDotNetRunnerService>? _logger;
-        private readonly DockerClient _client;
+    private readonly DockerClient _client;
+    private readonly IDockerClientWrapper? _clientWrapper;
     private string? _imageTagInUse;
     private string? _containerId;
     private string? _createdVolumeName;
@@ -38,6 +39,19 @@ namespace RunnerTasks.Tests
                 : new Uri("unix:///var/run/docker.sock");
 
             _client = new DockerClientConfiguration(dockerUri).CreateClient();
+            _clientWrapper = new DockerClientWrapper(_client);
+        }
+
+        // For tests: allow injecting a custom wrapper
+        public DockerDotNetRunnerService(string workingDirectory, IDockerClientWrapper clientWrapper, ILogger<DockerDotNetRunnerService>? logger = null)
+        {
+            _workingDirectory = workingDirectory ?? throw new ArgumentNullException(nameof(workingDirectory));
+            _logger = logger;
+            var dockerUri = Environment.OSVersion.Platform == PlatformID.Win32NT
+                ? new Uri("npipe://./pipe/docker_engine")
+                : new Uri("unix:///var/run/docker.sock");
+            _client = new DockerClientConfiguration(dockerUri).CreateClient();
+            _clientWrapper = clientWrapper ?? throw new ArgumentNullException(nameof(clientWrapper));
         }
 
         public async Task<bool> StartContainersAsync(string[] envVars, CancellationToken cancellationToken)
@@ -464,14 +478,16 @@ namespace RunnerTasks.Tests
             }
         }
 
-        private async Task<bool> RunOneOffContainerAsync(string image, string[]? env, string[] cmd, CancellationToken cancellationToken)
+    public async Task<bool> RunOneOffContainerAsync(string image, string[]? env, string[] cmd, CancellationToken cancellationToken)
         {
             try
             {
                 // Ensure image exists (try to pull if not present)
                 try
                 {
-                    var imgs = await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                    var imgs = _clientWrapper != null
+                        ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
+                        : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
                     var found = imgs.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => string.Equals(t, image, StringComparison.OrdinalIgnoreCase)));
                     if (found == null)
                     {
@@ -479,7 +495,18 @@ namespace RunnerTasks.Tests
                         var parts = image.Split(':');
                         var fromImage = parts[0];
                         var tag = parts.Length > 1 ? parts[1] : "latest";
-                        await _client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = fromImage, Tag = tag }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                        try
+                        {
+                            if (_clientWrapper != null)
+                            {
+                                await _clientWrapper.CreateImageAsync(new ImagesCreateParameters { FromImage = fromImage, Tag = tag }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                await _client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = fromImage, Tag = tag }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                            }
+                        }
+                        catch { }
                     }
                 }
                 catch { }
@@ -494,8 +521,12 @@ namespace RunnerTasks.Tests
                     HostConfig = new HostConfig { AutoRemove = true }
                 };
 
-                var created = await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
-                var started = await _client.Containers.StartContainerAsync(created.ID, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
+                var created = _clientWrapper != null
+                    ? await _clientWrapper.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
+                var started = _clientWrapper != null
+                    ? await _clientWrapper.StartContainerAsync(created.ID, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.StartContainerAsync(created.ID, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
                 if (!started)
                 {
                     try { await _client.Containers.RemoveContainerAsync(created.ID, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
@@ -503,7 +534,9 @@ namespace RunnerTasks.Tests
                 }
 
                 // Attach to logs until complete
-                using var stream = await _client.Containers.GetContainerLogsAsync(created.ID, new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = false, Tail = "all" }, cancellationToken).ConfigureAwait(false);
+                using var stream = _clientWrapper != null
+                    ? await _clientWrapper.GetContainerLogsAsync(created.ID, new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = false, Tail = "all" }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.GetContainerLogsAsync(created.ID, new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = false, Tail = "all" }, cancellationToken).ConfigureAwait(false);
                 var buffer = new byte[4096];
                 while (true)
                 {
@@ -526,7 +559,7 @@ namespace RunnerTasks.Tests
                 }
 
                 // Remove container if still present (AutoRemove may handle it)
-                try { await _client.Containers.RemoveContainerAsync(created.ID, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                try { if (_clientWrapper != null) await _clientWrapper.RemoveContainerAsync(created.ID, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); else await _client.Containers.RemoveContainerAsync(created.ID, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
 
                 return true;
             }
