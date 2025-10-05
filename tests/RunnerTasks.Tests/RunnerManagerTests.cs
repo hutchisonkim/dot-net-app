@@ -16,6 +16,31 @@ namespace RunnerTasks.Tests
         {
             _output = output;
         }
+
+        [Fact]
+        public async Task LogFeatures_SmokeTest()
+        {
+            // Arrange: create a fake service that fails once then succeeds to trigger retry logs
+            var fake = new FakeRunnerService(new[] { false, true });
+            var testLogger = new TestLogger<RunnerManager>(rollingCapacity: 50);
+            var manager = new RunnerManager(fake, testLogger);
+
+            // Act
+            var ok = await manager.StartWithRetriesAsync("t", "owner/repo", "https://github.com", maxRetries: 3, baseDelayMs: 1);
+
+            // Dump recent logs to the test output for inspection
+            _output.WriteLine($"StartWithRetries result: {ok}");
+            _output.WriteLine("--- Recent logs ---");
+            foreach (var line in testLogger.GetLastMessages(20))
+            {
+                _output.WriteLine(line);
+            }
+            _output.WriteLine("--- End logs ---");
+
+            // Assert
+            Assert.True(ok);
+            Assert.Equal(2, fake.RegisterCallCount);
+        }
         [Fact]
         public async Task Test_RetryLogic_SucceedsAfterRetries()
         {
