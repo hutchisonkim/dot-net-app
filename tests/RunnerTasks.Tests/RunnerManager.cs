@@ -11,6 +11,7 @@ namespace RunnerTasks.Tests
         Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken);
         Task<bool> StartContainersAsync(string[] envVars, CancellationToken cancellationToken);
         Task<bool> StopContainersAsync(CancellationToken cancellationToken);
+        Task<bool> UnregisterAsync(CancellationToken cancellationToken);
     }
 
     public class RunnerManager
@@ -112,6 +113,19 @@ namespace RunnerTasks.Tests
             return started;
         }
 
-        public Task<bool> OrchestrateStopAsync(CancellationToken cancellationToken = default) => StopRunnerStackAsync(cancellationToken);
+        public async Task<bool> OrchestrateStopAsync(CancellationToken cancellationToken = default)
+        {
+            // First try to unregister gracefully, then stop containers
+            try
+            {
+                await _service.UnregisterAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "UnregisterAsync threw an exception; proceeding to stop containers");
+            }
+
+            return await StopRunnerStackAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 }

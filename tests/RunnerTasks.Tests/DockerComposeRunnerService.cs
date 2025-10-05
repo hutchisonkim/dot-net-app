@@ -45,6 +45,14 @@ namespace RunnerTasks.Tests
             return await RunProcessAsync("docker-compose", args, _workingDirectory, cancellationToken).ConfigureAwait(false);
         }
 
+        public async Task<bool> UnregisterAsync(CancellationToken cancellationToken)
+        {
+            // Run the remove-runner.sh script inside a one-off container to unregister the runner
+            var args = "run --rm github-runner /usr/local/bin/remove-runner.sh";
+            _logger?.LogInformation("Unregistering runner via docker-compose in {Dir}", _workingDirectory);
+            return await RunProcessAsync("docker-compose", args, _workingDirectory, cancellationToken).ConfigureAwait(false);
+        }
+
         private async Task<bool> RunProcessAsync(string fileName, string args, string workingDirectory, CancellationToken cancellationToken)
         {
             var psi = new ProcessStartInfo

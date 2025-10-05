@@ -10,6 +10,7 @@ namespace RunnerTasks.Tests
         public int RegisterCallCount { get; private set; } = 0;
         public int StartCallCount { get; private set; } = 0;
         public int StopCallCount { get; private set; } = 0;
+        public int UnregisterCallCount { get; private set; } = 0;
     public string[] LastStartedEnv { get; private set; } = Array.Empty<string>();
 
         public FakeRunnerService(IEnumerable<bool> registerResults)
@@ -39,6 +40,13 @@ namespace RunnerTasks.Tests
         public Task<bool> StopContainersAsync(System.Threading.CancellationToken cancellationToken)
         {
             StopCallCount++;
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> UnregisterAsync(System.Threading.CancellationToken cancellationToken)
+        {
+            UnregisterCallCount++;
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(true);
         }
