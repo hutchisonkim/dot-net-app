@@ -150,7 +150,7 @@ Ensure-Tool "dotnet" "dotnet CLI"
 # ---------------------------
 # Confirm deletion if output repo exists
 # ---------------------------
-if (Test-Path $LibRepoPath -and -not $DryRun) {
+if ((Test-Path $LibRepoPath) -and (-not $DryRun)) {
     $confirmDel = Read-Host "Output repo '$LibRepoPath' exists. Proceed and delete it? (y/N)"
     if ($confirmDel.ToLower() -ne "y") { Write-Host "Aborted."; exit 1 }
 }
