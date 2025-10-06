@@ -82,11 +82,20 @@ jobs:
       - name: Generate coverage badge SVG
         id: badge
         run: |
-          set -e
+          # Fail fast but treat unset vars as errors
+          set -euo pipefail
           summary='./artifacts/coverage-files/coverage-summary.json'
 
+          # Extract raw value (could be a number or a string like "n/a")
           if [ -f "$summary" ]; then
-            pct=$(jq -r 'if type=="array" then .[0].lineRatePercent else .lineRatePercent end // 0' "$summary")
+            raw=$(jq -r 'if type=="array" then .[0].lineRatePercent else .lineRatePercent end // "0"' "$summary")
+          else
+            raw="0"
+          fi
+
+          # If raw is not a plain number (e.g. "n/a"), fall back to 0
+          if printf '%s\n' "$raw" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+            pct="$raw"
           else
             pct=0
           fi
