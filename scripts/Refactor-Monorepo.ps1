@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Extracts the RunnerTasks library from the monorepo into its own repo, preserving git history.
+Extracts the RunnerTasks library from the monorepo into its own repo, preserving git history using git subtree.
 
 .PARAMETER SourceRoot
 The root path of the monorepo.
@@ -25,7 +25,7 @@ param(
 # ---------------------------
 # Library config
 # ---------------------------
-$LibPaths   = @("src\RunnerTasks", "tests\RunnerTasks.Tests")
+$LibPaths = @("src\RunnerTasks", "tests\RunnerTasks.Tests")
 $LibRepoName = "dotnet-gha-runner-tasks"
 $LibRepoPath = $OutputRepo
 
@@ -50,59 +50,21 @@ function Ensure-Tool($name, $friendly) {
     if (-not (Test-Tool $name)) { throw "$friendly is required but not found on PATH." } 
 }
 
+function Safe-RemoveDir([string]$path) {
+    if (Test-Path $path) { 
+        Write-Warning "$path exists — removing."; 
+        Remove-Item -Recurse -Force $path -ErrorAction SilentlyContinue 
+    }
+}
+
 function Resolve-ExistingPaths([string[]]$candidates, [string]$root) {
     $existing = @()
     foreach ($pattern in $candidates) {
         $fullPattern = Join-Path $root $pattern
         $paths = Get-ChildItem -Path $fullPattern -ErrorAction SilentlyContinue -Recurse:$false
-        foreach ($p in $paths) { 
-            $existing += $p.FullName.Substring($root.Length).TrimStart('\','/').Replace('\','/') 
-        }
+        foreach ($p in $paths) { $existing += $p.FullName.Substring($root.Length).TrimStart('\','/') }
     }
     $existing | Sort-Object -Unique
-}
-
-function Safe-RemoveDir([string]$path) {
-    if (Test-Path $path) { Write-Warning "$path exists — removing."; Remove-Item -Recurse -Force $path -ErrorAction SilentlyContinue }
-}
-
-function New-FilteredRepo([string]$sourceRoot, [string]$repoPath, [string[]]$pathsToKeep, [string]$repoName) {
-    $tempDir = Join-Path $env:TEMP ("runnertasks-split-" + [guid]::NewGuid().ToString())
-
-    if ($DryRun) {
-        Write-Host "[DryRun] Would create temp clone at $tempDir"
-        Write-Host "[DryRun] Would run git filter-repo for paths:"
-        $pathsToKeep | ForEach-Object { Write-Host "  - $_" }
-        Write-Host "[DryRun] Would move filtered repo to $repoPath"
-        return
-    }
-
-    Push-Location $sourceRoot
-    try {
-        $rootGit = git rev-parse --show-toplevel 2>$null
-        if (-not $rootGit) { throw "SourceRoot must be inside a Git repo." }
-    } finally { Pop-Location }
-
-    git clone --no-local --quiet "$rootGit" "$tempDir" | Out-Null
-    Push-Location $tempDir
-    try {
-        $args = @("--force")
-        foreach ($p in $pathsToKeep) { $args += @("--path",$p) }
-
-        git filter-repo @args
-        git checkout -B main | Out-Null
-        git remote remove origin 2>$null
-
-        if (Test-Path $repoPath) { Safe-RemoveDir $repoPath }
-        New-Item -ItemType Directory -Force -Path $repoPath | Out-Null
-
-        # Move everything except .git
-        Get-ChildItem -Force | Where-Object { $_.Name -ne ".git" } | Move-Item -Destination $repoPath -Force
-
-    } finally { 
-        Pop-Location
-        Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue 
-    }
 }
 
 function Apply-Renames([string]$repoPath) {
@@ -122,14 +84,14 @@ function Apply-Renames([string]$repoPath) {
     Push-Location $repoPath
     try {
         foreach ($kv in $RenameMap.GetEnumerator()) {
-            $old = $kv.Key
-            $new = $kv.Value
+            $old = $kv.Key -replace "\\","/"
+            $new = $kv.Value -replace "\\","/"
             if (Test-Path $old) {
                 $newDir = Split-Path $new -Parent
                 if ($newDir -and -not (Test-Path $newDir)) { New-Item -ItemType Directory -Force -Path $newDir | Out-Null }
                 git mv -f $old $new | Out-Null
             } else {
-                Write-Warning "Path '$old' does not exist after filter-repo; skipping rename."
+                Write-Warning "Path '$old' does not exist; skipping rename."
             }
         }
         git add . | Out-Null
@@ -137,11 +99,61 @@ function Apply-Renames([string]$repoPath) {
     } finally { Pop-Location }
 }
 
+function Extract-With-Subtree([string]$sourceRoot, [string]$repoPath, [string[]]$paths) {
+    $branchName = "split-runnertasks"
+
+    if ($DryRun) {
+        Write-Host "[DryRun] Would create subtree branch '$branchName' for paths:"
+        $paths | ForEach-Object { Write-Host "  - $_" }
+        Write-Host "[DryRun] Would create new repo at '$repoPath'"
+        Write-Host "[DryRun] Would pull subtree branch into new repo"
+        return
+    }
+
+    Push-Location $sourceRoot
+    try {
+        Write-Host "Creating subtree branch '$branchName'..."
+        # Merge all library paths into one temporary branch
+        $tempBranches = @()
+        foreach ($path in $paths) {
+            $tmpBranch = "split-temp-" + ($path -replace "[\\/]", "-")
+            git subtree split -P $path -b $tmpBranch | Out-Null
+            $tempBranches += $tmpBranch
+        }
+
+        git checkout --orphan $branchName | Out-Null
+        git reset --hard | Out-Null
+
+        foreach ($tb in $tempBranches) {
+            git merge --allow-unrelated-histories $tb -m "Merge $tb into $branchName" | Out-Null
+        }
+
+        foreach ($tb in $tempBranches) { git branch -D $tb | Out-Null }
+    } finally { Pop-Location }
+
+    # Create new repo
+    if (Test-Path $repoPath) { Safe-RemoveDir $repoPath }
+    New-Item -ItemType Directory -Force -Path $repoPath | Out-Null
+    Push-Location $repoPath
+    try {
+        git init | Out-Null
+        git pull $sourceRoot $branchName
+    } finally { Pop-Location }
+}
+
 # ---------------------------
 # Prerequisites
 # ---------------------------
-Ensure-Tool "git" "git"
-if (-not (Test-Tool "git-filter-repo" "--help")) { throw "git-filter-repo is required but not found on PATH." }
+Ensure-Tool "git"
+Ensure-Tool "dotnet" "dotnet CLI"
+
+# ---------------------------
+# Confirm deletion if output repo exists
+# ---------------------------
+if (Test-Path $LibRepoPath -and -not $DryRun) {
+    $confirmDel = Read-Host "Output repo '$LibRepoPath' exists. Proceed and delete it? (y/N)"
+    if ($confirmDel.ToLower() -ne "y") { Write-Host "Aborted."; exit 1 }
+}
 
 # ---------------------------
 # Resolve library paths
@@ -172,8 +184,8 @@ if (-not $DryRun) {
 # ---------------------------
 # Execute extraction
 # ---------------------------
-Write-Host "Using git filter-repo to preserve history..."
-New-FilteredRepo -sourceRoot $SourceRoot -repoPath $LibRepoPath -pathsToKeep $resolvedLib -repoName $LibRepoName
+Extract-With-Subtree -sourceRoot $SourceRoot -repoPath $LibRepoPath -paths $resolvedLib
+
 Apply-Renames -repoPath $LibRepoPath
 
 Write-Host "✅ dotnet-gha-runner-tasks extraction complete."
