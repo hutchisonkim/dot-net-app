@@ -30,18 +30,23 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Echo start
-        run: echo "Starting coverage workflow"
-
       - name: Run tests with coverage
         run: |
           dotnet test --collect:"XPlat Code Coverage" --results-directory ./TestResults
 
-      - name: Generate simple HTML report
+      - name: Generate enhanced HTML coverage report
         run: |
           xml=$(cat ./TestResults/**/coverage.cobertura.xml)
-          rate=$(echo "$xml" | grep -oP 'line-rate="\K[0-9.]+' | head -n 1)
-          percent=$(awk "BEGIN {print $rate * 100}")
+
+          line_rate=$(echo "$xml" | grep -oP 'line-rate="\K[0-9.]+' | head -n 1)
+          branch_rate=$(echo "$xml" | grep -oP 'branch-rate="\K[0-9.]+' | head -n 1)
+          lines_covered=$(echo "$xml" | grep -oP 'lines-covered="\K[0-9]+' | head -n 1)
+          lines_valid=$(echo "$xml" | grep -oP 'lines-valid="\K[0-9]+' | head -n 1)
+          class_count=$(echo "$xml" | grep -c "<class ")
+
+          line_percent=$(awk "BEGIN {printf \"%.2f\", $line_rate * 100}")
+          branch_percent=$(awk "BEGIN {printf \"%.2f\", $branch_rate * 100}")
+
           mkdir -p ./coverage-report
           cat > ./coverage-report/index.html <<HTML
           <!doctype html>
@@ -51,16 +56,38 @@ jobs:
             <meta name="viewport" content="width=device-width,initial-scale=1" />
             <title>Coverage Report</title>
             <style>
-              body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:2rem}
-              .bar{height:20px;background:#ddd;border-radius:10px;overflow:hidden}
-              .fill{height:100%;background:#4caf50;width:${percent}%}
+              body { font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial; margin: 2rem; color: #222; }
+              h1 { margin-bottom: 0.5rem; }
+              .metric { margin-bottom: 1.2rem; }
+              .label { font-weight: bold; display: inline-block; width: 150px; }
+              .bar { height: 18px; background: #ddd; border-radius: 9px; overflow: hidden; width: 300px; display: inline-block; vertical-align: middle; margin-left: 0.5rem; }
+              .fill { height: 100%; background: #4caf50; }
+              .small { color: #666; font-size: 0.9em; }
+              hr { margin: 2rem 0; border: none; border-top: 1px solid #ccc; }
             </style>
           </head>
           <body>
             <h1>Coverage Report</h1>
-            <p>Line coverage: <strong>${percent}%</strong></p>
-            <div class="bar"><div class="fill"></div></div>
-            <p>Generated automatically from Cobertura XML.</p>
+            <div class="metric">
+              <span class="label">Line coverage:</span>
+              <span>${line_percent}%</span>
+              <div class="bar"><div class="fill" style="width:${line_percent}%"></div></div>
+            </div>
+            <div class="metric">
+              <span class="label">Branch coverage:</span>
+              <span>${branch_percent}%</span>
+              <div class="bar"><div class="fill" style="width:${branch_percent}%"></div></div>
+            </div>
+            <div class="metric">
+              <span class="label">Lines covered:</span>
+              <span>${lines_covered} / ${lines_valid}</span>
+            </div>
+            <div class="metric">
+              <span class="label">Classes analyzed:</span>
+              <span>${class_count}</span>
+            </div>
+            <hr />
+            <p class="small">Generated automatically from <code>coverage.cobertura.xml</code> using native tooling.</p>
           </body>
           </html>
           HTML
