@@ -49,7 +49,7 @@ function Ensure-Tool($name, $friendly) {
 function Safe-RemoveDir([string]$path) {
     if (Test-Path $path) { 
         Write-Warning "$path exists — removing."
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
