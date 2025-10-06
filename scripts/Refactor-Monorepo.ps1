@@ -111,6 +111,11 @@ if (-not $DryRun) {
     try {
         git init | Out-Null
         git checkout -b main | Out-Null
+
+        # <-- Add initial commit so subtree add works
+        New-Item -ItemType File -Name ".gitkeep" | Out-Null
+        git add .gitkeep
+        git commit -m "Initial commit" | Out-Null
     } finally { Pop-Location }
 } else { Write-Host "[DryRun] Would create new repo at $OutputRepo and checkout main" }
 
