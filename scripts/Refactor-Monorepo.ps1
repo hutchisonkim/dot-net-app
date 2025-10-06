@@ -60,16 +60,16 @@ function Safe-RemoveDir([string]$path) {
 function Resolve-ExistingPaths([string[]]$candidates, [string]$root) {
     $existing = @()
     foreach ($pattern in $candidates) {
-        $fullPattern = Join-Path $root $pattern
-        $paths = Get-ChildItem -Path $fullPattern -Directory -ErrorAction SilentlyContinue -Recurse:$false
-        foreach ($p in $paths) { 
-            if ($p.Name -notin @("obj","bin")) {
-                $existing += $p.FullName.Substring($root.Length).TrimStart('\','/')
-            }
+        $fullPath = Join-Path $root $pattern
+        if (Test-Path $fullPath) {
+            $existing += $pattern -replace '\\','/'  # return relative path from root
+        } else {
+            Write-Warning "Path '$fullPath' does not exist; skipping."
         }
     }
     $existing | Sort-Object -Unique
 }
+
 
 function Apply-Renames([string]$repoPath) {
     if ($DryRun) {
