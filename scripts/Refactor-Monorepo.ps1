@@ -1,23 +1,23 @@
 <#
 .SYNOPSIS
-Extracts the RunnerTasks library from the monorepo into its own repo, preserving git history using git subtree.
+Extracts the RunnerTasks library from a monorepo into its own repository, preserving git history.
 
 .PARAMETER SourceRoot
-The root path of the monorepo.
+Root path of the monorepo.
 
 .PARAMETER OutputRepo
-The directory where the new repo will be created.
+Directory for the new repository.
 
 .PARAMETER DryRun
-If set, prints actions without performing them.
+Prints actions without performing them.
 
 .PARAMETER Verbose
-If set, prints detailed progress.
+Prints detailed progress.
 #>
 
 param(
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
-    [string]$OutputRepo = (Join-Path ((Split-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path -Parent)) "dotnet-gha-runner-tasks"),
+    [string]$OutputRepo = (Split-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path -Parent) + "\dotnet-gha-runner-tasks",
     [switch]$DryRun,
     [switch]$Verbose
 )
@@ -25,30 +25,30 @@ param(
 # ---------------------------
 # Library config
 # ---------------------------
-$LibPaths = @("src/RunnerTasks", "tests/RunnerTasks.Tests")
+$LibPaths = @("src\RunnerTasks", "tests\RunnerTasks.Tests")
 $RenameMap = @{
-    "src/RunnerTasks" = "src/GitHub.RunnerTasks"
+    "src/RunnerTasks"         = "src/GitHub.RunnerTasks"
     "tests/RunnerTasks.Tests" = "tests/GitHub.RunnerTasks.Tests"
 }
 
 # ---------------------------
-# Helper functions
+# Helpers
 # ---------------------------
 function Test-Tool($name, $args="--version") {
-    try {
+    try { 
         Start-Process -FilePath $name -ArgumentList $args -NoNewWindow -PassThru -Wait `
             -RedirectStandardOutput "$env:TEMP\tool_$name.out" -RedirectStandardError "$env:TEMP\tool_$name.err" | Out-Null
         return $true
     } catch { return $false }
 }
 
-function Ensure-Tool($name, $friendly) {
-    if (-not (Test-Tool $name)) { throw "$friendly is required but not found on PATH." }
+function Ensure-Tool($name, $friendly) { 
+    if (-not (Test-Tool $name)) { throw "$friendly is required but not found on PATH." } 
 }
 
 function Safe-RemoveDir([string]$path) {
-    if (Test-Path $path) {
-        Write-Warning "$path exists — removing completely."
+    if (Test-Path $path) { 
+        Write-Warning "$path exists — removing."
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
@@ -57,7 +57,7 @@ function Resolve-ExistingPaths([string[]]$candidates, [string]$root) {
     $existing = @()
     foreach ($p in $candidates) {
         $fullPath = Join-Path $root $p
-        if (Test-Path $fullPath) { $existing += $p -replace '\\','/' }
+        if (Test-Path $fullPath) { $existing += $p -replace '\\','/' } 
         else { Write-Warning "Path '$fullPath' does not exist; skipping." }
     }
     return $existing | Sort-Object -Unique
@@ -100,20 +100,16 @@ if (-not $DryRun) {
         git tag -a $tagName -m "Snapshot before extracting RunnerTasks" 2>$null
         Write-Host "✅ Created pre-split tag $tagName"
     } finally { Pop-Location }
-} else {
-    Write-Host "[DryRun] Would create pre-split tag"
-}
+} else { Write-Host "[DryRun] Would create pre-split tag" }
 
 # ---------------------------
 # Create new empty repo
 # ---------------------------
-if ($DryRun) {
-    Write-Host "[DryRun] Would create new repo at $OutputRepo"
-} else {
+if (-not $DryRun) {
     New-Item -ItemType Directory -Force -Path $OutputRepo | Out-Null
     Push-Location $OutputRepo
     try { git init | Out-Null } finally { Pop-Location }
-}
+} else { Write-Host "[DryRun] Would create new repo at $OutputRepo" }
 
 # ---------------------------
 # Extract each library path using git subtree
@@ -128,19 +124,23 @@ foreach ($path in $resolvedLib) {
         continue
     }
 
-    # Step 1: Create subtree branch in monorepo
+    # Create subtree split branch
     Push-Location $SourceRoot
     try {
         Write-Host "Creating subtree split branch for '$path' → '$branchName'..."
-        git branch -D $branchName 2>$null | Out-Null
+        git branch -D $branchName 2>$null
         git subtree split -P $path -b $branchName | Out-Null
     } finally { Pop-Location }
 
-    # Step 2: Add subtree to new repo
+    # Add subtree to output repo
     Push-Location $OutputRepo
     try {
+        Write-Host "Ensuring clean working tree..."
+        git reset --hard | Out-Null
+        git clean -fdx | Out-Null
+
         Write-Host "Adding subtree branch '$branchName' to new repo under '$prefix/'..."
-        git remote add temp-origin $SourceRoot 2>$null | Out-Null
+        git remote add temp-origin $SourceRoot | Out-Null
         git fetch temp-origin $branchName | Out-Null
         git subtree add --prefix=$prefix temp-origin/$branchName -m "Add $path subtree" | Out-Null
         git remote remove temp-origin | Out-Null
