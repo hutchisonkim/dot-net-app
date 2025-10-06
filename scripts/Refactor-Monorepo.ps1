@@ -25,10 +25,10 @@ param(
 # ---------------------------
 # Library config
 # ---------------------------
-$LibPaths = @("src\RunnerTasks","tests\RunnerTasks.Tests")
+$LibPaths = @("src\RunnerTasks", "tests\RunnerTasks.Tests")
 $LibRepoPath = $OutputRepo
 
-# Rename map to determine final location in the new repo
+# Map original paths → target folder in new repo
 $RenameMap = @{
     "src/RunnerTasks"         = "src/GitHub.RunnerTasks"
     "tests/RunnerTasks.Tests" = "tests/GitHub.RunnerTasks.Tests"
@@ -52,7 +52,7 @@ function Ensure-Tool($name, $friendly) {
 function Safe-RemoveDir([string]$path) {
     if (Test-Path $path) { 
         Write-Warning "$path exists — removing."; 
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $path
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue 
     }
 }
 
@@ -60,10 +60,56 @@ function Resolve-ExistingPaths([string[]]$candidates, [string]$root) {
     $existing = @()
     foreach ($pattern in $candidates) {
         $fullPath = Join-Path $root $pattern
-        if (Test-Path $fullPath) { $existing += $pattern -replace '\\','/' }
-        else { Write-Warning "Path '$fullPath' does not exist; skipping." }
+        if (Test-Path $fullPath) {
+            $existing += $pattern -replace '\\','/'  # relative path
+        } else {
+            Write-Warning "Path '$fullPath' does not exist; skipping."
+        }
     }
-    return $existing | Sort-Object -Unique
+    $existing | Sort-Object -Unique
+}
+
+function Create-SplitBranch([string]$sourceRoot, [string]$path) {
+    $branchName = "split-" + ($path -replace "[\\/]", "-")
+    if ($Verbose) { Write-Host "Creating subtree split branch for '$path' → '$branchName'..." }
+
+    Push-Location $sourceRoot
+    try {
+        git branch -D $branchName 2>$null | Out-Null  # delete if exists
+        git subtree split -P $path -b $branchName | Out-Null
+    } finally { Pop-Location }
+    return $branchName
+}
+
+function Extract-To-NewRepo() {
+    if ($DryRun) {
+        Write-Host "[DryRun] Would create new repo at '$LibRepoPath'"
+        foreach ($kv in $RenameMap.GetEnumerator()) {
+            Write-Host "[DryRun] Would add subtree '$($kv.Key)' → '$($kv.Value)/'"
+        }
+        return
+    }
+
+    # Remove existing output repo
+    if (Test-Path $LibRepoPath) { Safe-RemoveDir $LibRepoPath }
+    New-Item -ItemType Directory -Force -Path $LibRepoPath | Out-Null
+    Push-Location $LibRepoPath
+    try {
+        git init | Out-Null
+
+        foreach ($kv in $RenameMap.GetEnumerator()) {
+            $sourcePath = $kv.Key
+            $targetPrefix = $kv.Value -replace '\\','/'
+
+            $splitBranch = "split-" + ($sourcePath -replace "[\\/]", "-")
+            Write-Host "Pulling subtree branch '$splitBranch' into new repo with prefix '$targetPrefix/'..."
+
+            git fetch $SourceRoot $splitBranch | Out-Null
+            git merge --allow-unrelated-histories -s ours --no-commit FETCH_HEAD | Out-Null
+            git read-tree --prefix=$targetPrefix/ -u FETCH_HEAD | Out-Null
+            git commit -m "Add subtree '$sourcePath' → '$targetPrefix/'" | Out-Null
+        }
+    } finally { Pop-Location }
 }
 
 # ---------------------------
@@ -100,55 +146,22 @@ if (-not $DryRun) {
 # ---------------------------
 if (-not $DryRun) {
     Push-Location $SourceRoot
-    try { 
-        git tag -a "split-runnertasks-before-$(Get-Date -Format 'yyyyMMdd')" -m "Snapshot before extracting RunnerTasks" 2>$null
-        Write-Host "✅ Created pre-split tag"
-    } finally { Pop-Location }
+    try { git tag -a "split-runnertasks-before-$(Get-Date -Format 'yyyyMMdd')" -m "Snapshot before extracting RunnerTasks" 2>$null; Write-Host "✅ Created pre-split tag" }
+    finally { Pop-Location }
 } else {
     Write-Host "[DryRun] Would create pre-split tag"
 }
 
 # ---------------------------
-# Create new repo
+# Create split branches
 # ---------------------------
-if (-not $DryRun) {
-    Safe-RemoveDir $LibRepoPath
-    New-Item -ItemType Directory -Force -Path $LibRepoPath | Out-Null
-    Push-Location $LibRepoPath
-    try { git init | Out-Null } finally { Pop-Location }
-} else {
-    Write-Host "[DryRun] Would initialize new repo at $LibRepoPath"
+foreach ($path in $resolvedLib) {
+    Create-SplitBranch -sourceRoot $SourceRoot -path $path
 }
 
 # ---------------------------
-# Extract each library path with prefix
+# Extract into new repo
 # ---------------------------
-foreach ($kv in $RenameMap.GetEnumerator()) {
-    $sourcePath = $kv.Key
-    $targetPrefix = $kv.Value
-
-    $tmpBranch = "split-" + ($sourcePath -replace "[\\/]", "-")
-    if ($DryRun) {
-        Write-Host "[DryRun] Would create subtree split for '$sourcePath' → branch '$tmpBranch'"
-        Write-Host "[DryRun] Would pull branch '$tmpBranch' into new repo with prefix '$targetPrefix/'"
-        continue
-    }
-
-    Push-Location $SourceRoot
-    try {
-        Write-Host "Creating subtree split branch for '$sourcePath' → '$tmpBranch'..."
-        git subtree split -P $sourcePath -b $tmpBranch | Out-Null
-    } finally { Pop-Location }
-
-    Push-Location $LibRepoPath
-    try {
-        Write-Host "Pulling subtree branch '$tmpBranch' into new repo with prefix '$targetPrefix/'..."
-        git pull $SourceRoot $tmpBranch --allow-unrelated-histories --prefix "$targetPrefix/" | Out-Null
-    } finally { Pop-Location }
-
-    # Delete temporary branch in monorepo
-    Push-Location $SourceRoot
-    try { git branch -D $tmpBranch | Out-Null } finally { Pop-Location }
-}
+Extract-To-NewRepo
 
 Write-Host "✅ dotnet-gha-runner-tasks extraction complete."
