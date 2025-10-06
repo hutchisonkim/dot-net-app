@@ -5,24 +5,6 @@ $outDir = Join-Path $PSScriptRoot '..\coverage-report'
 if (-not (Test-Path $summaryPath)) { Write-Host "coverage-summary.json not found at $summaryPath"; exit 1 }
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
 
-# Prefer python3 if available
-try {
-  $py = Get-Command python3 -ErrorAction SilentlyContinue
-} catch { $py = $null }
-if ($py) {
-  # Ensure python3 actually runs (the Microsoft Store shim may exist but not be functional in CI)
-  try {
-    & python3 -c "import sys; print(1)" > $null 2>&1
-    if ($LASTEXITCODE -eq 0) {
-      & python3 "$PSScriptRoot\generate_coverage_html.py"
-      exit $LASTEXITCODE
-    } else {
-      Write-Host 'python3 present but not runnable; falling back to PowerShell generator'
-    }
-  } catch {
-    Write-Host 'python3 present but failed to execute; falling back to PowerShell generator'
-  }
-}
 
 # PowerShell fallback
 $json = Get-Content -Raw -Path $summaryPath | ConvertFrom-Json
