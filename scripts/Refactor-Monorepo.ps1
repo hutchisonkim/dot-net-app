@@ -62,14 +62,22 @@ function Resolve-ExistingPaths([string[]]$candidates, [string]$root) {
     foreach ($pattern in $candidates) {
         $fullPath = Join-Path $root $pattern
         if (Test-Path $fullPath) {
-            $existing += $pattern -replace '\\','/'  # return relative path from root
+            # Only include the parent folder itself, not its children
+            # Skip bin/obj folders
+            $children = Get-ChildItem -Path $fullPath -Directory -ErrorAction SilentlyContinue |
+                        Where-Object { $_.Name -notin "bin","obj" }
+            if ($children.Count -gt 0) {
+                # keep parent path
+                $existing += $pattern -replace '\\','/'
+            } else {
+                $existing += $pattern -replace '\\','/'  # still include even if empty
+            }
         } else {
             Write-Warning "Path '$fullPath' does not exist; skipping."
         }
     }
     $existing | Sort-Object -Unique
 }
-
 
 function Apply-Renames([string]$repoPath) {
     if ($DryRun) {
