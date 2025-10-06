@@ -103,33 +103,49 @@ function Apply-Renames([string]$repoPath) {
 }
 
 function Extract-With-Subtree([string]$sourceRoot, [string]$repoPath, [string[]]$paths) {
+    $branchName = "split-runnertasks"
+
     if ($DryRun) {
-        Write-Host "[DryRun] Would create new repo at '$repoPath' from paths:"
+        Write-Host "[DryRun] Would create combined subtree branch '$branchName' from paths:"
         $paths | ForEach-Object { Write-Host "  - $_" }
+        Write-Host "[DryRun] Would create new repo at '$repoPath'"
         return
     }
 
-    # Remove existing repo if present
-    if (Test-Path $repoPath) { Safe-RemoveDir $repoPath }
-    New-Item -ItemType Directory -Force -Path $repoPath | Out-Null
-
     Push-Location $sourceRoot
     try {
+        # Delete existing temp branch if present
+        git branch -D $branchName 2>$null
+
+        $tempBranches = @()
         foreach ($path in $paths) {
-            $tmpBranch = "split-" + ($path -replace "[\\/]", "-")
-            Write-Host "Creating subtree split branch for '$path' → '$tmpBranch'..."
+            $tmpBranch = "split-temp-" + ($path -replace "[\\/]", "-")
+            Write-Host "Creating subtree split for '$path' → '$tmpBranch'..."
             git subtree split -P $path -b $tmpBranch | Out-Null
-
-            Push-Location $repoPath
-            try {
-                git init | Out-Null
-                git pull $sourceRoot $tmpBranch
-            } finally { Pop-Location }
-
-            git branch -D $tmpBranch | Out-Null
+            $tempBranches += $tmpBranch
         }
+
+        # Create orphan branch and merge all temp branches
+        git checkout --orphan $branchName | Out-Null
+        git reset --hard | Out-Null
+
+        foreach ($tb in $tempBranches) {
+            git merge --allow-unrelated-histories $tb -m "Merge $tb into $branchName" | Out-Null
+        }
+
+        foreach ($tb in $tempBranches) { git branch -D $tb | Out-Null }
+    } finally { Pop-Location }
+
+    # Create new repo and pull combined branch
+    if (Test-Path $repoPath) { Safe-RemoveDir $repoPath }
+    New-Item -ItemType Directory -Force -Path $repoPath | Out-Null
+    Push-Location $repoPath
+    try {
+        git init | Out-Null
+        git pull $sourceRoot $branchName
     } finally { Pop-Location }
 }
+
 
 # ---------------------------
 # Prerequisites
