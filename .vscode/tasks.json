@@ -2,56 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "dispatch-and-stream:no-e2e",
-      "type": "shell",
-      "detail": "Alias task with simple label to run scripts\\dispatch_and_stream.ps1 (exact shell command)",
-      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\dispatch_and_stream.ps1 -WorkflowFile ci-selfhosted-robust.yml -Ref main -Repo hutchisonkim/dot-net-app -PollIntervalSeconds 2 -TimeoutMinutes 10 -StreamLiveLogs",
-      "options": {
-        "cwd": "${workspaceFolder}",
-        "env": {
-          "GITHUB_REPOSITORY": "${input:ownerRepo}",
-          "TEST_FILTER": "TestCategory!=E2E"
-        }
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": false
-      },
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "dispatch-and-stream:only-e2e",
-      "type": "shell",
-      "detail": "Alias task with simple label to run scripts\\dispatch_and_stream.ps1 (exact shell command)",
-      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\dispatch_and_stream.ps1 -WorkflowFile ci-selfhosted-robust.yml -Ref main -Repo hutchisonkim/dot-net-app -PollIntervalSeconds 2 -TimeoutMinutes 10 -StreamLiveLogs",
-      "options": {
-        "cwd": "${workspaceFolder}",
-        "env": {
-          "GITHUB_REPOSITORY": "${input:ownerRepo}",
-          "TEST_FILTER": "TestCategory=E2E"
-        }
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": false
-      },
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "Start GitHub self-hosted runner",
       "type": "shell",
       "detail": "Prompts for owner/repo and runner token, then starts the docker-compose stack in github-self-hosted-runner-docker",
