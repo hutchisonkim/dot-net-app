@@ -1,98 +1,169 @@
 <#
 .SYNOPSIS
-    Refactors a .NET monorepo by splitting projects into separate subfolders,
-    updating namespaces, .csproj names, and .sln references.
+Extracts the RunnerTasks library from the monorepo into its own repo, preserving git history.
 
-.DESCRIPTION
-    This script:
-      1. Moves each project in the given solution into its own folder (repo-style).
-      2. Renames namespaces and file contents to match new paths.
-      3. Updates .csproj, .sln, and Directory.Build.props references accordingly.
-      4. Runs in -WhatIf mode by default for safety.
+.PARAMETER SourceRoot
+The root path of the monorepo.
 
-.PARAMETER SolutionPath
-    Path to the .sln file of your main monorepo (e.g. ./DotNetApp.sln)
+.PARAMETER OutputRoot
+The directory where the new repo will be created.
+
+.PARAMETER DryRun
+If set, prints actions without performing them.
+
+.PARAMETER Verbose
+If set, prints detailed progress.
 #>
 
-param (
-    [Parameter(Mandatory = $true)]
-    [string]$SolutionPath,
-
-    [switch]$Force
+param(
+    [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
+    [string]$OutputRoot = (Split-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path -Parent),
+    [switch]$DryRun,
+    [switch]$Verbose
 )
 
-$ErrorActionPreference = "Stop"
-$root = Split-Path $SolutionPath -Parent
-$solutionName = [IO.Path]::GetFileNameWithoutExtension($SolutionPath)
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$nsRoot = $solutionName
+# ---------------------------
+# Library config
+# ---------------------------
+$LibPaths   = @("src\RunnerTasks", "tests\RunnerTasks.Tests")
+$LibRepoName = "dotnet-gha-runner-tasks"
+$LibRepoPath = Join-Path $OutputRoot $LibRepoName
 
-Write-Host "📦 Starting monorepo refactor for '$solutionName'" -ForegroundColor Cyan
-Write-Host "Root: $root" -ForegroundColor DarkGray
-
-# --- Find all .csproj files
-$projects = Get-ChildItem -Path $root -Recurse -Filter *.csproj | Where-Object {
-    $_.FullName -notmatch "__backup_"
+# Rename map for clarity in the new repo
+$RenameMap = @{
+    "src/RunnerTasks"         = "src/GitHub.RunnerTasks"
+    "tests/RunnerTasks.Tests" = "tests/GitHub.RunnerTasks.Tests"
 }
 
-Write-Host "🧩 Found $($projects.Count) projects" -ForegroundColor Cyan
-
-foreach ($proj in $projects) {
-    $projName = [IO.Path]::GetFileNameWithoutExtension($proj.Name)
-    $projDir  = Split-Path $proj.FullName -Parent
-    $newDir   = Join-Path $root $projName
-    $newPath  = Join-Path $newDir "$projName.csproj"
-
-    Write-Host "`n--- Processing: $projName ---" -ForegroundColor Yellow
-    Write-Host "  From: $projDir"
-    Write-Host "  To:   $newDir"
-
-    # Create new folder
-    if (-not (Test-Path $newDir)) {
-        New-Item -ItemType Directory -Path $newDir -WhatIf:(!$Force)
-    }
-
-    # Move files into it
-    Get-ChildItem $projDir -File | ForEach-Object {
-        Move-Item $_.FullName (Join-Path $newDir $_.Name) -WhatIf:(!$Force)
-    }
-
-    # --- Update namespaces in all .cs files
-    $csFiles = Get-ChildItem $newDir -Recurse -Include *.cs
-    foreach ($file in $csFiles) {
-        (Get-Content $file.FullName) | ForEach-Object {
-            $_ -replace "namespace\s+$nsRoot(\.\w+)?", "namespace $nsRoot.$projName`$1"
-        } | Set-Content -Path $file.FullName -WhatIf:(!$Force)
-    }
-
-    # --- Update csproj name inside the file
-    (Get-Content $newPath) | ForEach-Object {
-        $_ -replace "<RootNamespace>$nsRoot.*?</RootNamespace>", "<RootNamespace>$nsRoot.$projName</RootNamespace>"
-        $_ -replace "<AssemblyName>$nsRoot.*?</AssemblyName>", "<AssemblyName>$nsRoot.$projName</AssemblyName>"
-    } | Set-Content -Path $newPath -WhatIf:(!$Force)
-
-    # --- Update .sln references (move path)
-    (Get-Content $SolutionPath) | ForEach-Object {
-        $_ -replace [regex]::Escape($proj.FullName), $newPath
-    } | Set-Content -Path $SolutionPath -WhatIf:(!$Force)
+# ---------------------------
+# Helpers
+# ---------------------------
+function Test-Tool($name, $args="--version") {
+    try { Start-Process -FilePath $name -ArgumentList $args -NoNewWindow -PassThru -Wait -RedirectStandardOutput "$env:TEMP\tool_$name.out" -RedirectStandardError "$env:TEMP\tool_$name.err"; return $true } catch { return $false }
 }
 
-# --- Update solution folder references
-Write-Host "`n🔧 Cleaning up and updating solution references..."
-$slndir = Split-Path $SolutionPath -Parent
-(Get-Content $SolutionPath) | ForEach-Object {
-    $_ -replace "\\", "/"
-} | Set-Content -Path $SolutionPath -WhatIf:(!$Force)
+function Ensure-Tool($name, $friendly) { if (-not (Test-Tool $name)) { throw "$friendly is required but not found on PATH." } }
 
-# --- Optionally tag a snapshot
-if (-not $Force) {
-    Write-Host "`n💡 (dry-run) Would tag snapshot as: split-before-$timestamp"
-    Write-Host "    Run with -Force to apply and 'git tag split-before-$timestamp -m \"Monorepo split snapshot\"'"
+function Resolve-ExistingPaths([string[]]$candidates, [string]$root) {
+    $existing = @()
+    foreach ($pattern in $candidates) {
+        $fullPattern = Join-Path $root $pattern
+        $paths = Get-ChildItem -Path $fullPattern -ErrorAction SilentlyContinue -Recurse:$false
+        foreach ($p in $paths) { $existing += $p.FullName.Substring($root.Length).TrimStart('\','/') }
+    }
+    $existing | Sort-Object -Unique
+}
+
+function Safe-RemoveDir([string]$path) {
+    if (Test-Path $path) { Write-Warning "$path exists — removing."; Remove-Item -Recurse -Force $path -ErrorAction SilentlyContinue }
+}
+
+function New-FilteredRepo([string]$sourceRoot, [string]$repoPath, [string[]]$pathsToKeep, [string]$repoName) {
+    $tempDir = Join-Path $env:TEMP ("split-" + [guid]::NewGuid().ToString())
+    Push-Location $sourceRoot
+    try {
+        $rootGit = git rev-parse --show-toplevel 2>$null
+        if (-not $rootGit) { throw "SourceRoot must be inside a Git repo." }
+    } finally { Pop-Location }
+
+    git clone --no-local --quiet "$rootGit" "$tempDir" | Out-Null
+    Push-Location $tempDir
+    try {
+        $args = @("--force")
+        foreach ($p in $pathsToKeep) { $args += @("--path",$p -replace "\\","/") }
+
+        if ($DryRun) { Write-Host "[DryRun] Would run: git filter-repo $($args -join ' ') in $tempDir" }
+        else {
+            git filter-repo @args
+            git checkout -B main | Out-Null
+            git remote remove origin 2>$null
+        }
+
+        if (-not (Test-Path $repoPath)) { if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $repoPath | Out-Null } }
+        else { if (-not $DryRun) { Safe-RemoveDir $repoPath } }
+
+        if ($DryRun) { Write-Host "[DryRun] Would move filtered repo to: $repoPath" }
+        else { Get-ChildItem -Force | Move-Item -Destination $repoPath -Force }
+
+        if (-not $DryRun) {
+            Push-Location $repoPath
+            try {
+                $csprojs = Get-ChildItem -Recurse -Filter *.csproj -ErrorAction SilentlyContinue
+                if ($csprojs -and -not (Get-ChildItem -Filter *.sln -ErrorAction SilentlyContinue)) {
+                    dotnet new sln -n $repoName | Out-Null
+                    foreach ($p in $csprojs) { dotnet sln add $p.FullName | Out-Null }
+                }
+                git add . | Out-Null
+                if (-not (git rev-parse HEAD 2>$null)) { git commit -m "Initial import ($repoName)" | Out-Null }
+            } finally { Pop-Location }
+        }
+    } finally { Pop-Location; if (-not $DryRun -and (Test-Path $tempDir)) { Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue } }
+}
+
+function Apply-Renames([string]$repoPath) {
+    Push-Location $repoPath
+    try {
+        foreach ($kv in $RenameMap.GetEnumerator()) {
+            $old = $kv.Key -replace "\\","/"
+            $new = $kv.Value -replace "\\","/"
+            if (Test-Path $old) {
+                if ($DryRun) { Write-Host "[DryRun] Would rename '$old' → '$new'" }
+                else {
+                    $newDir = Split-Path $new -Parent
+                    if ($newDir -and -not (Test-Path $newDir)) { New-Item -ItemType Directory -Force -Path $newDir | Out-Null }
+                    git mv -f $old $new | Out-Null
+                }
+            }
+        }
+        if (-not $DryRun) { git add . | Out-Null; git commit -m "Refactor: renamed folders for clarity" | Out-Null }
+    } finally { Pop-Location }
+}
+
+# ---------------------------
+# Prerequisites
+# ---------------------------
+Ensure-Tool "git" "git"
+Ensure-Tool "dotnet" "dotnet CLI"
+$hasFilterRepo = Test-Tool "git" "filter-repo -h"
+
+# ---------------------------
+# Resolve library paths
+# ---------------------------
+$resolvedLib = Resolve-ExistingPaths $LibPaths $SourceRoot
+
+Write-Host "Library paths to extract:"
+$resolvedLib | ForEach-Object { Write-Host "  - $_" }
+
+# ---------------------------
+# Confirm before destructive action
+# ---------------------------
+if (-not $DryRun) {
+    $confirm = Read-Host "Proceed with extracting dotnet-gha-runner-tasks? (y/N)"
+    if ($confirm.ToLower() -ne "y") { Write-Host "Aborted."; exit 1 }
+}
+
+# ---------------------------
+# Tag monorepo before split
+# ---------------------------
+if (-not $DryRun) {
+    Push-Location $SourceRoot
+    try { git tag -a "split-runnertasks-before-$(Get-Date -Format 'yyyyMMdd')" -m "Snapshot before extracting RunnerTasks" 2>$null; Write-Host "✅ Created pre-split tag" }
+    finally { Pop-Location }
 } else {
-    git add .
-    git commit -m "Refactor: split monorepo structure into per-project folders"
-    git tag "split-before-$timestamp" -m "Monorepo split snapshot"
+    Write-Host "[DryRun] Would create pre-split tag"
 }
 
-Write-Host "`n✅ Done. Review changes and test build integrity." -ForegroundColor Green
-Write-Host "   To apply for real: rerun with -Force"
+# ---------------------------
+# Execute extraction
+# ---------------------------
+if ($hasFilterRepo) {
+    Write-Host "Using git filter-repo to preserve history..."
+    New-FilteredRepo -sourceRoot $SourceRoot -repoPath $LibRepoPath -pathsToKeep $resolvedLib -repoName $LibRepoName
+    Apply-Renames -repoPath $LibRepoPath
+} else {
+    Write-Warning "git filter-repo not found; history will NOT be preserved."
+    New-CopiedRepo -sourceRoot $SourceRoot -repoPath $LibRepoPath -pathsToCopy $resolvedLib -repoName $LibRepoName
+    Apply-Renames -repoPath $LibRepoPath
+}
+
+Write-Host "✅ dotnet-gha-runner-tasks extraction complete."
