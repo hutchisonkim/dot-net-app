@@ -40,6 +40,9 @@ jobs:
       - name: Generate enhanced HTML coverage report
         run: pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/generate_coverage_html.ps1
 
+      - name: Generate SVG coverage summary
+        run: pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/generate_coverage_svg.ps1
+
       - name: Upload coverage report as Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
