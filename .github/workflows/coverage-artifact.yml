@@ -36,10 +36,23 @@ jobs:
       - name: Run tests with coverage
         run: |
           dotnet test --collect:"XPlat Code Coverage" --results-directory ./TestResults
-          reportgenerator \
-            -reports:./TestResults/**/coverage.cobertura.xml \
-            -targetdir:./coverage-report \
-            -reporttypes:Html
+          mkdir -p ./coverage-report
+          cat > ./coverage-report/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width,initial-scale=1" />
+              <title>Coverage Report (placeholder)</title>
+              <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:2rem}</style>
+            </head>
+            <body>
+              <h1>Coverage Report (placeholder)</h1>
+              <p>This is a temporary placeholder HTML. Coverage XML files were written to <code>./TestResults</code>.</p>
+              <p>Replace this with a real report generator invocation when ready.</p>
+            </body>
+          </html>
+          HTML
 
       - name: Upload coverage report as Pages artifact
         uses: actions/upload-pages-artifact@v3
