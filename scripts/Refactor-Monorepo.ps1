@@ -143,7 +143,7 @@ foreach ($kv in $RenameMap.GetEnumerator()) {
     Push-Location $LibRepoPath
     try {
         Write-Host "Pulling subtree branch '$tmpBranch' into new repo with prefix '$targetPrefix/'..."
-        git pull $SourceRoot $tmpBranch --allow-unrelated-histories --prefix="$targetPrefix/" | Out-Null
+        git pull $SourceRoot $tmpBranch --allow-unrelated-histories --prefix "$targetPrefix/" | Out-Null
     } finally { Pop-Location }
 
     # Delete temporary branch in monorepo
