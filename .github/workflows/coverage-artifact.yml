@@ -5,12 +5,19 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Test filter to use when running tests (optional)'
+        required: false
+        default: ''
 
 jobs:
   collect-coverage:
     name: Run tests, collect coverage, and upload artifacts
     runs-on: ubuntu-latest
+    env:
+      TEST_FILTER: ${{ github.event.inputs.test_filter }}
 
     permissions:
       contents: read
