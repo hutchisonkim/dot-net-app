@@ -101,21 +101,36 @@ function New-FilteredRepo([string]$sourceRoot, [string]$repoPath, [string[]]$pat
 }
 
 function Apply-Renames([string]$repoPath) {
+    # In DryRun mode we don't expect the repo path to exist — report what would happen and exit early.
+    if ($DryRun) {
+        Write-Host "[DryRun] Would apply renames in: $repoPath"
+        foreach ($kv in $RenameMap.GetEnumerator()) {
+            $old = $kv.Key -replace "\\","/"
+            $new = $kv.Value -replace "\\","/"
+            Write-Host "[DryRun] Would rename '$old' → '$new'"
+        }
+        return
+    }
+
+    if (-not (Test-Path $repoPath)) {
+        Write-Warning "Repo path '$repoPath' does not exist; skipping rename step."
+        return
+    }
+
     Push-Location $repoPath
     try {
         foreach ($kv in $RenameMap.GetEnumerator()) {
             $old = $kv.Key -replace "\\","/"
             $new = $kv.Value -replace "\\","/"
             if (Test-Path $old) {
-                if ($DryRun) { Write-Host "[DryRun] Would rename '$old' → '$new'" }
-                else {
-                    $newDir = Split-Path $new -Parent
-                    if ($newDir -and -not (Test-Path $newDir)) { New-Item -ItemType Directory -Force -Path $newDir | Out-Null }
-                    git mv -f $old $new | Out-Null
-                }
+                $newDir = Split-Path $new -Parent
+                if ($newDir -and -not (Test-Path $newDir)) { New-Item -ItemType Directory -Force -Path $newDir | Out-Null }
+                git mv -f $old $new | Out-Null
             }
         }
-        if (-not $DryRun) { git add . | Out-Null; git commit -m "Refactor: renamed folders for clarity" | Out-Null }
+        git add . | Out-Null
+        # Commit if there are changes to commit
+        try { git commit -m "Refactor: renamed folders for clarity" | Out-Null } catch { }
     } finally { Pop-Location }
 }
 
