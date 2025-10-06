@@ -17,7 +17,7 @@ Prints detailed progress.
 
 param(
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
-    [string]$OutputRepo = (Split-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path -Parent) + "\dotnet-gha-runner-tasks",
+    [string]$OutputRepo = (Join-Path (Split-Path $SourceRoot -Parent) "dotnet-gha-runner-tasks"),
     [switch]$DryRun,
     [switch]$Verbose
 )
@@ -103,13 +103,16 @@ if (-not $DryRun) {
 } else { Write-Host "[DryRun] Would create pre-split tag" }
 
 # ---------------------------
-# Create new empty repo
+# Create new empty repo with main branch
 # ---------------------------
 if (-not $DryRun) {
     New-Item -ItemType Directory -Force -Path $OutputRepo | Out-Null
     Push-Location $OutputRepo
-    try { git init | Out-Null } finally { Pop-Location }
-} else { Write-Host "[DryRun] Would create new repo at $OutputRepo" }
+    try {
+        git init | Out-Null
+        git checkout -b main | Out-Null
+    } finally { Pop-Location }
+} else { Write-Host "[DryRun] Would create new repo at $OutputRepo and checkout main" }
 
 # ---------------------------
 # Extract each library path using git subtree
@@ -124,7 +127,7 @@ foreach ($path in $resolvedLib) {
         continue
     }
 
-    # Create subtree split branch
+    # Create subtree split branch in monorepo
     Push-Location $SourceRoot
     try {
         Write-Host "Creating subtree split branch for '$path' → '$branchName'..."
