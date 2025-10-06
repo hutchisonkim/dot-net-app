@@ -56,6 +56,7 @@ foreach ($file in $coverageFiles) {
 
   # try to read cobertura line-rate attribute if present
   $lineRatePercent = $null
+  $branchRatePercent = $null
   try {
     $xml = [xml](Get-Content -Path $file -Raw)
     if ($xml -and $xml.coverage) {
@@ -71,9 +72,65 @@ foreach ($file in $coverageFiles) {
       } catch {
         # ignore parse/cast errors
       }
+      # branch-rate attribute
+      try {
+        $bAttr = $null
+        try { $bAttr = $xml.coverage.GetAttribute('branch-rate') } catch { }
+        if (-not $bAttr) { $bAttr = $xml.coverage.'@branch-rate' }
+        if ($bAttr -ne $null -and $bAttr -ne '') {
+          $bVal = [double]$bAttr
+          $branchRatePercent = [math]::Round($bVal * 100, 2)
+        }
+      } catch { }
+      # numeric counts
+      try {
+        $linesCovered = 0
+        $linesValid = 0
+        $branchesCovered = 0
+        $branchesValid = 0
+        $lc = $xml.coverage.GetAttribute('lines-covered')
+        if (-not $lc) { $lc = $xml.coverage.'@lines-covered' }
+        if ($lc) { $linesCovered = [int]$lc }
+        $lv = $xml.coverage.GetAttribute('lines-valid')
+        if (-not $lv) { $lv = $xml.coverage.'@lines-valid' }
+        if ($lv) { $linesValid = [int]$lv }
+        $bc = $xml.coverage.GetAttribute('branches-covered')
+        if (-not $bc) { $bc = $xml.coverage.'@branches-covered' }
+        if ($bc) { $branchesCovered = [int]$bc }
+        $bv = $xml.coverage.GetAttribute('branches-valid')
+        if (-not $bv) { $bv = $xml.coverage.'@branches-valid' }
+        if ($bv) { $branchesValid = [int]$bv }
+      } catch { }
     }
   } catch {
     # ignore parse errors
+  }
+
+  # compute method coverage: percentage of methods with line-rate > 0
+  $methodRatePercent = $null
+  try {
+    if ($xml) {
+      $methods = @($xml.SelectNodes('//method'))
+      if ($methods -and $methods.Count -gt 0) {
+        $totalMethods = $methods.Count
+        $covered = 0
+        foreach ($m in $methods) {
+          $mAttr = $null
+          try { $mAttr = $m.GetAttribute('line-rate') } catch { }
+          if (-not $mAttr) { $mAttr = $m.'@line-rate' }
+          try {
+            if ($mAttr -ne $null -and $mAttr -ne '') {
+              if ([double]$mAttr -gt 0) { $covered++ }
+            }
+          } catch { }
+        }
+        $methodRatePercent = [math]::Round((($covered / $totalMethods) * 100), 2)
+      } else {
+        $methodRatePercent = 0
+      }
+    }
+  } catch {
+    $methodRatePercent = 0
   }
 
   $summary += [pscustomobject]@{
@@ -81,12 +138,38 @@ foreach ($file in $coverageFiles) {
     dest = $destPath
     # ensure a numeric value (0) when line-rate is not present to make downstream tooling simpler
     lineRatePercent = if ($lineRatePercent -ne $null) { $lineRatePercent } else { 0 }
+    branchRatePercent = if ($branchRatePercent -ne $null) { $branchRatePercent } else { 0 }
+    methodRatePercent = if ($methodRatePercent -ne $null) { $methodRatePercent } else { 0 }
+    linesCovered = if ($linesCovered) { $linesCovered } else { 0 }
+    linesValid = if ($linesValid) { $linesValid } else { 0 }
+    branchesCovered = if ($branchesCovered) { $branchesCovered } else { 0 }
+    branchesValid = if ($branchesValid) { $branchesValid } else { 0 }
   }
 }
 
 # Save a JSON summary to the artifacts folder
 $summaryPath = Join-Path $reportDir 'coverage-summary.json'
-$summary | ConvertTo-Json -Depth 5 | Set-Content -Path $summaryPath -Encoding UTF8
+$summaryObj = [pscustomobject]@{
+  files = $summary
+  averages = @{ }
+}
+
+# compute averages across files
+$count = $summary.Count
+if ($count -gt 0) {
+  $avgLines = ([math]::Round((($summary | Measure-Object -Property lineRatePercent -Sum).Sum / $count), 2))
+  $avgBranches = ([math]::Round((($summary | Measure-Object -Property branchRatePercent -Sum).Sum / $count), 2))
+  $avgMethods = ([math]::Round((($summary | Measure-Object -Property methodRatePercent -Sum).Sum / $count), 2))
+} else {
+  $avgLines = 0; $avgBranches = 0; $avgMethods = 0
+}
+$summaryObj.averages = [pscustomobject]@{
+  lineRatePercent = $avgLines
+  branchRatePercent = $avgBranches
+  methodRatePercent = $avgMethods
+}
+
+$summaryObj | ConvertTo-Json -Depth 6 | Set-Content -Path $summaryPath -Encoding UTF8
 
 Write-Host "Copied $($summary.Count) coverage file(s) to: $reportDir"
 Write-Host "Summary written to: $summaryPath"
