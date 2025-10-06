@@ -36,21 +36,32 @@ jobs:
       - name: Run tests with coverage
         run: |
           dotnet test --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: Generate simple HTML report
+        run: |
+          xml=$(cat ./TestResults/**/coverage.cobertura.xml)
+          rate=$(echo "$xml" | grep -oP 'line-rate="\K[0-9.]+' | head -n 1)
+          percent=$(awk "BEGIN {print $rate * 100}")
           mkdir -p ./coverage-report
-          cat > ./coverage-report/index.html <<'HTML'
+          cat > ./coverage-report/index.html <<HTML
           <!doctype html>
           <html lang="en">
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width,initial-scale=1" />
-              <title>Coverage Report (placeholder)</title>
-              <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:2rem}</style>
-            </head>
-            <body>
-              <h1>Coverage Report (placeholder)</h1>
-              <p>This is a temporary placeholder HTML. Coverage XML files were written to <code>./TestResults</code>.</p>
-              <p>Replace this with a real report generator invocation when ready.</p>
-            </body>
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            <title>Coverage Report</title>
+            <style>
+              body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:2rem}
+              .bar{height:20px;background:#ddd;border-radius:10px;overflow:hidden}
+              .fill{height:100%;background:#4caf50;width:${percent}%}
+            </style>
+          </head>
+          <body>
+            <h1>Coverage Report</h1>
+            <p>Line coverage: <strong>${percent}%</strong></p>
+            <div class="bar"><div class="fill"></div></div>
+            <p>Generated automatically from Cobertura XML.</p>
+          </body>
           </html>
           HTML
 
