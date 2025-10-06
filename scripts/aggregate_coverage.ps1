@@ -108,6 +108,8 @@ foreach ($file in $coverageFiles) {
 
   # compute method coverage: percentage of methods with line-rate > 0
   $methodRatePercent = $null
+  $methodsCovered = 0
+  $methodsValid = 0
   try {
     if ($xml) {
       $methods = @($xml.SelectNodes('//method'))
@@ -125,12 +127,18 @@ foreach ($file in $coverageFiles) {
           } catch { }
         }
         $methodRatePercent = [math]::Round((($covered / $totalMethods) * 100), 2)
+        $methodsCovered = $covered
+        $methodsValid = $totalMethods
       } else {
         $methodRatePercent = 0
+        $methodsCovered = 0
+        $methodsValid = 0
       }
     }
   } catch {
     $methodRatePercent = 0
+    $methodsCovered = 0
+    $methodsValid = 0
   }
 
   $summary += [pscustomobject]@{
@@ -144,6 +152,8 @@ foreach ($file in $coverageFiles) {
     linesValid = if ($linesValid) { $linesValid } else { 0 }
     branchesCovered = if ($branchesCovered) { $branchesCovered } else { 0 }
     branchesValid = if ($branchesValid) { $branchesValid } else { 0 }
+    methodsCovered = if ($methodsCovered) { $methodsCovered } else { 0 }
+    methodsValid = if ($methodsValid) { $methodsValid } else { 0 }
   }
 }
 

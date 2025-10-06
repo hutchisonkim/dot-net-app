@@ -26,6 +26,13 @@ if (-not $total_branches_valid) { $total_branches_valid = 0 }
 if ($total_lines_valid -gt 0) { $line_cov = [math]::Round((($total_lines_covered / $total_lines_valid) * 100), 2) } else { $line_cov = $averages.lineRatePercent }
 if ($total_branches_valid -gt 0) { $branch_cov = [math]::Round((($total_branches_covered / $total_branches_valid) * 100), 2) } else { $branch_cov = $averages.branchRatePercent }
 
+$total_methods_covered = ($files | Measure-Object -Property methodsCovered -Sum).Sum
+if (-not $total_methods_covered) { $total_methods_covered = 0 }
+$total_methods_valid = ($files | Measure-Object -Property methodsValid -Sum).Sum
+if (-not $total_methods_valid) { $total_methods_valid = 0 }
+
+if ($total_methods_valid -gt 0) { $method_cov = [math]::Round((($total_methods_covered / $total_methods_valid) * 100), 2) } else { $method_cov = $averages.methodRatePercent }
+
 $html = @"
 <!doctype html>
 <html lang="en">
@@ -81,6 +88,20 @@ $html = @"
     <span class="label">Branch coverage:</span>
     <span>$branch_cov`%</span>
     <div class="bar"><div class="fill" style="width:$branch_cov%"></div></div>
+  </div>
+
+  <div class="metric">
+    <span class="label">Covered methods:</span>
+    <span>$total_methods_covered</span>
+  </div>
+  <div class="metric">
+    <span class="label">Total methods:</span>
+    <span>$total_methods_valid</span>
+  </div>
+  <div class="metric">
+    <span class="label">Method coverage:</span>
+    <span>$method_cov`%</span>
+    <div class="bar"><div class="fill" style="width:$method_cov%"></div></div>
   </div>
 
   <hr />
