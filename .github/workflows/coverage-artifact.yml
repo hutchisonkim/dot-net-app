@@ -1,4 +1,4 @@
-name: Coverage Report & Badge
+name: Test and Publish Coverage
 
 on:
   push:
@@ -6,144 +6,54 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      test_filter:
-        description: 'Test filter to use when running tests (optional)'
-        required: false
-        default: ''
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  DOTNET_VERSION: 8.0.x
 
 jobs:
-  collect-coverage:
-    name: Run tests, collect coverage, and upload artifacts
+  test-and-report:
     runs-on: ubuntu-latest
-    env:
-      TEST_FILTER: ${{ github.event.inputs.test_filter }}
-
-    permissions:
-      contents: read
-      actions: read
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore dependencies
-        run: dotnet restore DotNetApp.sln
+        run: dotnet restore
 
-      - name: Build solution
-        run: dotnet build DotNetApp.sln --configuration Release --no-restore
+      - name: Echo start
+        run: echo "Starting coverage workflow"
 
-      - name: Run tests and generate Cobertura coverage files
+      - name: Run tests with coverage
         run: |
-          dotnet test DotNetApp.sln \
-            --configuration Release \
-            --no-build \
-            --verbosity minimal \
-            /p:CollectCoverage=true \
-            /p:CoverletOutputFormat=cobertura \
-            /p:CoverletOutput=TestResults/
+          dotnet test --collect:"XPlat Code Coverage" --results-directory ./TestResults
+          reportgenerator \
+            -reports:./TestResults/**/coverage.cobertura.xml \
+            -targetdir:./coverage-report \
+            -reporttypes:Html
 
-      - name: Aggregate coverage files (collect into artifacts/coverage-files)
-        shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/aggregate_coverage.ps1
-
-      - name: Upload coverage-files artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-files
-          path: artifacts/coverage-files
-          retention-days: 7
-
-  publish-badge:
-    name: Generate and publish coverage badge
-    needs: collect-coverage
-    runs-on: ubuntu-latest
-    # Permissions required to publish to GitHub Pages via the deploy action
-    permissions:
-      pages: write
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0     # ensure full history for commits
-
-      - name: Download coverage artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-files
-          path: ./artifacts/coverage-files
-
-      - name: Ensure jq is installed
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Create badges folder
-        run: mkdir -p badges
-
-      - name: Generate coverage badge SVG
-        id: badge
-        run: |
-          # Fail fast but treat unset vars as errors
-          set -euo pipefail
-          summary='./artifacts/coverage-files/coverage-summary.json'
-
-          # Extract raw value (could be a number or a string like "n/a")
-          if [ -f "$summary" ]; then
-            raw=$(jq -r 'if type=="array" then .[0].lineRatePercent else .lineRatePercent end // "0"' "$summary")
-          else
-            raw="0"
-          fi
-
-          # If raw is not a plain number (e.g. "n/a"), fall back to 0
-          if printf '%s\n' "$raw" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-            pct="$raw"
-          else
-            pct=0
-          fi
-
-          pct_int=$(printf "%.0f" "$pct")
-          if [ "$pct_int" -lt 50 ]; then color="#e05d44"
-          elif [ "$pct_int" -lt 80 ]; then color="#dfb317"
-          else color="#4c1"
-          fi
-
-          cat > badges/coverage.svg <<EOF
-          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-            <linearGradient id="b" x2="0" y2="100%">
-              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-              <stop offset="1" stop-opacity=".1"/>
-            </linearGradient>
-            <rect rx="3" width="120" height="20" fill="#555"/>
-            <rect rx="3" x="60" width="60" height="20" fill="${color}"/>
-            <path fill="${color}" d="M60 0h4v20h-4z"/>
-            <rect rx="3" width="120" height="20" fill="url(#b)"/>
-            <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
-              <text x="30" y="14">coverage</text>
-              <text x="90" y="14">${pct_int}%</text>
-            </g>
-          </svg>
-          EOF
-
-          echo "pct=${pct_int}" >> $GITHUB_OUTPUT
-
-      - name: Upload Pages artifact
+      - name: Upload coverage report as Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: badges
+          path: ./coverage-report
 
+  deploy:
+    needs: test-and-report
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v2
-
-      - name: Add summary to workflow run
-        run: |
-          echo "### Coverage Summary" >> $GITHUB_STEP_SUMMARY
-          echo "**Line coverage:** ${{ steps.badge.outputs.pct }}%" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "![Coverage](badges/coverage.svg)" >> $GITHUB_STEP_SUMMARY
+        id: deployment
+        uses: actions/deploy-pages@v4
