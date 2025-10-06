@@ -39,17 +39,25 @@ $RenameMap = @{
 # Helpers
 # ---------------------------
 function Test-Tool($name, $args="--version") {
-    try { Start-Process -FilePath $name -ArgumentList $args -NoNewWindow -PassThru -Wait -RedirectStandardOutput "$env:TEMP\tool_$name.out" -RedirectStandardError "$env:TEMP\tool_$name.err"; return $true } catch { return $false }
+    try { 
+        Start-Process -FilePath $name -ArgumentList $args -NoNewWindow -PassThru -Wait `
+            -RedirectStandardOutput "$env:TEMP\tool_$name.out" -RedirectStandardError "$env:TEMP\tool_$name.err" | Out-Null
+        return $true
+    } catch { return $false }
 }
 
-function Ensure-Tool($name, $friendly) { if (-not (Test-Tool $name)) { throw "$friendly is required but not found on PATH." } }
+function Ensure-Tool($name, $friendly) { 
+    if (-not (Test-Tool $name)) { throw "$friendly is required but not found on PATH." } 
+}
 
 function Resolve-ExistingPaths([string[]]$candidates, [string]$root) {
     $existing = @()
     foreach ($pattern in $candidates) {
         $fullPattern = Join-Path $root $pattern
         $paths = Get-ChildItem -Path $fullPattern -ErrorAction SilentlyContinue -Recurse:$false
-        foreach ($p in $paths) { $existing += $p.FullName.Substring($root.Length).TrimStart('\','/') }
+        foreach ($p in $paths) { 
+            $existing += $p.FullName.Substring($root.Length).TrimStart('\','/').Replace('\','/') 
+        }
     }
     $existing | Sort-Object -Unique
 }
@@ -79,7 +87,7 @@ function New-FilteredRepo([string]$sourceRoot, [string]$repoPath, [string[]]$pat
     Push-Location $tempDir
     try {
         $args = @("--force")
-        foreach ($p in $pathsToKeep) { $args += @("--path",$p -replace "\\","/") }
+        foreach ($p in $pathsToKeep) { $args += @("--path",$p) }
 
         git filter-repo @args
         git checkout -B main | Out-Null
@@ -87,29 +95,21 @@ function New-FilteredRepo([string]$sourceRoot, [string]$repoPath, [string[]]$pat
 
         if (Test-Path $repoPath) { Safe-RemoveDir $repoPath }
         New-Item -ItemType Directory -Force -Path $repoPath | Out-Null
-        Get-ChildItem -Force | Move-Item -Destination $repoPath -Force
 
-        # Create solution if missing
-        Push-Location $repoPath
-        try {
-            $csprojs = Get-ChildItem -Recurse -Filter *.csproj -ErrorAction SilentlyContinue
-            if ($csprojs -and -not (Get-ChildItem -Filter *.sln -ErrorAction SilentlyContinue)) {
-                dotnet new sln -n $repoName | Out-Null
-                foreach ($p in $csprojs) { dotnet sln add $p.FullName | Out-Null }
-            }
-            git add . | Out-Null
-            if (-not (git rev-parse HEAD 2>$null)) { git commit -m "Initial import ($repoName)" | Out-Null }
-        } finally { Pop-Location }
-    } finally { Pop-Location; Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue }
+        # Move everything except .git
+        Get-ChildItem -Force | Where-Object { $_.Name -ne ".git" } | Move-Item -Destination $repoPath -Force
+
+    } finally { 
+        Pop-Location
+        Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue 
+    }
 }
 
 function Apply-Renames([string]$repoPath) {
     if ($DryRun) {
         Write-Host "[DryRun] Would apply renames in: $repoPath"
         foreach ($kv in $RenameMap.GetEnumerator()) {
-            $old = $kv.Key -replace "\\","/"
-            $new = $kv.Value -replace "\\","/"
-            Write-Host "[DryRun] Would rename '$old' → '$new'"
+            Write-Host "[DryRun] Would rename '$($kv.Key)' → '$($kv.Value)'"
         }
         return
     }
@@ -122,12 +122,14 @@ function Apply-Renames([string]$repoPath) {
     Push-Location $repoPath
     try {
         foreach ($kv in $RenameMap.GetEnumerator()) {
-            $old = $kv.Key -replace "\\","/"
-            $new = $kv.Value -replace "\\","/"
+            $old = $kv.Key
+            $new = $kv.Value
             if (Test-Path $old) {
                 $newDir = Split-Path $new -Parent
                 if ($newDir -and -not (Test-Path $newDir)) { New-Item -ItemType Directory -Force -Path $newDir | Out-Null }
                 git mv -f $old $new | Out-Null
+            } else {
+                Write-Warning "Path '$old' does not exist after filter-repo; skipping rename."
             }
         }
         git add . | Out-Null
@@ -139,14 +141,12 @@ function Apply-Renames([string]$repoPath) {
 # Prerequisites
 # ---------------------------
 Ensure-Tool "git" "git"
-Ensure-Tool "dotnet" "dotnet CLI"
-$hasFilterRepo = Test-Tool "git" "filter-repo -h"
+if (-not (Test-Tool "git-filter-repo" "--help")) { throw "git-filter-repo is required but not found on PATH." }
 
 # ---------------------------
 # Resolve library paths
 # ---------------------------
 $resolvedLib = Resolve-ExistingPaths $LibPaths $SourceRoot
-
 Write-Host "Library paths to extract:"
 $resolvedLib | ForEach-Object { Write-Host "  - $_" }
 
@@ -172,13 +172,8 @@ if (-not $DryRun) {
 # ---------------------------
 # Execute extraction
 # ---------------------------
-if ($hasFilterRepo) {
-    Write-Host "Using git filter-repo to preserve history..."
-    New-FilteredRepo -sourceRoot $SourceRoot -repoPath $LibRepoPath -pathsToKeep $resolvedLib -repoName $LibRepoName
-    Apply-Renames -repoPath $LibRepoPath
-} else {
-    Write-Warning "git filter-repo not found; history will NOT be preserved."
-    Write-Host "[DryRun] Skipping actual copy; would perform a normal copy here."
-}
+Write-Host "Using git filter-repo to preserve history..."
+New-FilteredRepo -sourceRoot $SourceRoot -repoPath $LibRepoPath -pathsToKeep $resolvedLib -repoName $LibRepoName
+Apply-Renames -repoPath $LibRepoPath
 
 Write-Host "✅ dotnet-gha-runner-tasks extraction complete."
