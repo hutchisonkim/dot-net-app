@@ -59,9 +59,18 @@ foreach ($file in $coverageFiles) {
   try {
     $xml = [xml](Get-Content -Path $file -Raw)
     if ($xml -and $xml.coverage) {
-      # attribute is usually named 'line-rate' in cobertura
-      $attr = $xml.coverage.'@line-rate'
-      if ($attr) { $lineRatePercent = [math]::Round([double]$attr * 100, 2) }
+      # attribute is usually named 'line-rate' in cobertura; use GetAttribute which is more reliable
+      $attr = $null
+      try { $attr = $xml.coverage.GetAttribute('line-rate') } catch { }
+      if (-not $attr) { $attr = $xml.coverage.'@line-rate' }
+      try {
+        if ($attr -ne $null -and $attr -ne '') {
+          $val = [double]$attr
+          $lineRatePercent = [math]::Round($val * 100, 2)
+        }
+      } catch {
+        # ignore parse/cast errors
+      }
     }
   } catch {
     # ignore parse errors
