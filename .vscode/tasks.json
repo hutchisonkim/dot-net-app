@@ -4,11 +4,20 @@
     {
       "label": "Start GitHub self-hosted runner",
       "type": "shell",
-  "detail": "(DEPRECATED) Previously started docker-compose in github-self-hosted-runner-docker. Compose-based runner retired; use programmatic GitHub.RunnerTasks orchestration for tests/automation.",
-      "command": "docker-compose",
+      "detail": "Start runner via programmatic RunnerCli (uses GitHub.RunnerTasks)",
+      "command": "dotnet",
       "args": [
-        "up",
-        "-d"
+        "run",
+        "--project",
+        "tools/RunnerCli",
+        "--",
+        "start",
+        "--repo",
+        "${input:ownerRepo}",
+        "--token",
+        "${input:runnerToken}",
+        "--url",
+        "${input:githubUrl}"
       ],
       "options": {
         "cwd": "${workspaceFolder}",
@@ -29,10 +38,14 @@
     {
       "label": "Stop GitHub self-hosted runner",
       "type": "shell",
-  "detail": "(DEPRECATED) Shuts down the docker-compose stack. Compose-based runner retired; kept for backward compatibility only.",
-      "command": "docker-compose",
+      "detail": "Stop runner via programmatic RunnerCli (uses GitHub.RunnerTasks)",
+      "command": "dotnet",
       "args": [
-        "down"
+        "run",
+        "--project",
+        "tools/RunnerCli",
+        "--",
+        "stop"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
