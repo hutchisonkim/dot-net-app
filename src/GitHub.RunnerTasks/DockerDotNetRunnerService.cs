@@ -43,50 +43,8 @@ namespace GitHub.RunnerTasks
             _clientWrapper = new DockerClientWrapper(_client);
         }
 
-        private async Task<bool> TryBuildImageWithDockerCli(string tag, CancellationToken cancellationToken)
-        {
-            // Create a temp dir for docker build context
-            var tmp = Path.Combine(Path.GetTempPath(), "runner-image-build-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tmp);
-            try
-            {
-                // Write a minimal Dockerfile that downloads and extracts the runner
-                var lines = new[]
-                {
-                    "FROM ubuntu:20.04",
-                    "RUN apt-get update && apt-get install -y curl ca-certificates tar gzip sudo openssl && rm -rf /var/lib/apt/lists/*",
-                    "RUN useradd -m -s /bin/bash github-runner",
-                    "WORKDIR /actions-runner",
-                    "ARG RUNNER_VERSION=2.328.0",
-                    "RUN curl -L -o actions-runner.tar.gz https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz && tar xzf actions-runner.tar.gz --strip-components=0 || true",
-                    "USER github-runner",
-                    "CMD [\"/bin/bash\", \"-c\", \"tail -f /dev/null\"]"
-                };
-
-                var dockerfile = string.Join(System.Environment.NewLine, lines);
-                File.WriteAllText(Path.Combine(tmp, "Dockerfile"), dockerfile);
-
-                // Run docker build and stream output live so we can see progress/errors as they happen
-                var exit = await ProcessRunner.RunAndStreamAsync("docker", $"build --progress=plain -t {tag} .", tmp, cancellationToken).ConfigureAwait(false);
-                if (exit != 0)
-                {
-                    _logger?.LogWarning("docker build exited with code {ExitCode}", exit);
-                    return false;
-                }
-
-                _logger?.LogInformation("Successfully built runner image {Tag}", tag);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Exception during docker build");
-                return false;
-            }
-            finally
-            {
-                try { Directory.Delete(tmp, true); } catch { }
-            }
-        }
+        // NOTE: CLI-specific helpers and fallback behavior have been removed from this DotNet-based implementation.
+        // There is a separate DockerCliRunnerService class that implements CLI behavior.
 
         // For tests: allow injecting a custom wrapper
         public DockerDotNetRunnerService(string workingDirectory, IDockerClientWrapper clientWrapper, ILogger<DockerDotNetRunnerService>? logger = null)
@@ -161,70 +119,14 @@ namespace GitHub.RunnerTasks
                 }
                 else
                 {
-                    Console.WriteLine("No image found via Docker.DotNet; attempting to build a minimal runner image via docker CLI");
-                    _logger?.LogInformation("No image found via Docker.DotNet; attempting to build a minimal runner image via docker CLI");
-                    // Attempt to build a minimal image programmatically via docker CLI
-                    var wantedTag = "github-self-hosted-runner-docker-github-runner:latest";
-                    try
-                    {
-                        var built = await TryBuildImageWithDockerCli(wantedTag, cancellationToken).ConfigureAwait(false);
-                        Console.WriteLine($"TryBuildImageWithDockerCli returned: {built}");
-                        if (!built)
-                        {
-                            _logger?.LogWarning("Failed to build runner image via docker CLI");
-                            return false;
-                        }
-
-                        // Re-fetch images and find the newly built image
-                        var images2 = _clientWrapper != null
-                            ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
-                            : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
-                        var found2 = images2.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => string.Equals(t, wantedTag, StringComparison.OrdinalIgnoreCase)));
-                        if (found2 == null)
-                        {
-                            Console.WriteLine("Built image not present after build step");
-                            _logger?.LogWarning("Built image not present after build step");
-                            return false;
-                        }
-
-                        var tag = (found2.RepoTags ?? Array.Empty<string>()).First();
-                        Console.WriteLine($"Found built image tag: {tag}");
-                        _imageTagInUse = tag;
-
-                        // prepare createParams for the built image
-                        createParams = new CreateContainerParameters
-                        {
-                            Image = _imageTagInUse,
-                            Name = $"runner-test-{Guid.NewGuid():N}",
-                            Cmd = new[] { "tail", "-f", "/dev/null" },
-                            Env = envVars?.ToList() ?? new System.Collections.Generic.List<string>(),
-                            HostConfig = new HostConfig { AutoRemove = false }
-                        };
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Exception while attempting to build runner image: {ex}");
-                        _logger?.LogWarning(ex, "Exception while attempting to build runner image");
-                        return false;
-                    }
+                    // No image found via Docker.DotNet -- this DotNet-based implementation does not fall back to the docker CLI.
+                    _logger?.LogWarning("No docker image found matching {Guess} or {GuessAlt} via Docker.DotNet; not attempting CLI fallback in this implementation.", guess, guessAlt);
+                    return false;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"StartContainersAsync: Docker.DotNet path failed with exception: {ex}");
-                _logger?.LogWarning(ex, "Docker.DotNet path failed; attempting docker CLI fallback");
-                // Attempt to perform the same actions using the docker CLI as a fallback
-                try
-                {
-                    var ok = await TryStartContainersWithDockerCli(envVars, cancellationToken).ConfigureAwait(false);
-                    if (ok) return true;
-                }
-                catch (Exception ex2)
-                {
-                    Console.WriteLine($"StartContainersAsync: docker CLI fallback failed: {ex2}");
-                    _logger?.LogWarning(ex2, "docker CLI fallback failed");
-                }
-
+                _logger?.LogWarning(ex, "StartContainersAsync failed using Docker.DotNet");
                 return false;
             }
 
@@ -292,12 +194,8 @@ namespace GitHub.RunnerTasks
             _lastRegistrationToken = token;
             if (string.IsNullOrEmpty(_imageTagInUse))
             {
-                _logger?.LogWarning("No image available to run registration via Docker.DotNet; falling back to docker CLI");
-                // Fallback: use docker CLI to run configure-runner.sh inside a container
-                // Run a one-off container programmatically to execute the configure script
-                return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
-                    new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
-                    new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
+                _logger?.LogWarning("No image available to run registration via Docker.DotNet in this implementation");
+                return false;
             }
 
             // Exec configure script inside the running container (created by StartContainersAsync)
@@ -558,27 +456,8 @@ namespace GitHub.RunnerTasks
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Registration exec path failed; attempting docker CLI exec into existing container or one-off container fallback");
-
-                // If we have a container created via the docker CLI path, try to run the configure script using the docker CLI
-                try
-                {
-                    if (!string.IsNullOrEmpty(_containerId))
-                    {
-                        // configArgs was defined earlier and contains the script path as the first element; pass the remaining args
-                        var cliArgs = configArgs.Skip(1).ToArray();
-                        var cliOk = await RunConfigureInContainerWithDockerCli(_containerId, cliArgs, cancellationToken).ConfigureAwait(false);
-                        if (cliOk) return true;
-                    }
-                }
-                catch (Exception ex2)
-                {
-                    _logger?.LogDebug(ex2, "docker CLI exec attempt failed; falling back to one-off container");
-                }
-
-                return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
-                    new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
-                    new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
+                _logger?.LogWarning(ex, "Registration exec path failed using Docker.DotNet");
+                return false;
             }
         }
 
@@ -674,60 +553,7 @@ namespace GitHub.RunnerTasks
             }
         }
 
-        // Fallback: use docker CLI to create and start a container if Docker.DotNet fails
-        private async Task<bool> TryStartContainersWithDockerCli(string[] envVars, CancellationToken cancellationToken)
-        {
-            // Determine image name to use
-            var projectName = Path.GetFileName(_workingDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-            var wantedTag = "github-self-hosted-runner-docker-github-runner:latest";
-
-            try
-            {
-                // Attempt to see if image exists locally via 'docker images'
-                var id = await ProcessRunner.CaptureOutputAsync("docker", $"images -q {wantedTag}", null, cancellationToken).ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(id))
-                {
-                    _logger?.LogInformation("Image {Tag} not found locally -- attempting to build via docker CLI", wantedTag);
-                    var built = await TryBuildImageWithDockerCli(wantedTag, cancellationToken).ConfigureAwait(false);
-                    if (!built) return false;
-                }
-
-                // Create a container using docker run (detached) with a volume mount for runner data
-                var volumeName = "runner_data_cli_" + Guid.NewGuid().ToString("n");
-                Console.WriteLine($"Creating docker volume {volumeName}");
-                var vout = await ProcessRunner.CaptureOutputAsync("docker", $"volume create {volumeName}", null, cancellationToken).ConfigureAwait(false);
-                if (vout == null) { _logger?.LogWarning("Failed to create docker volume {Volume}", volumeName); return false; }
-                _logger?.LogInformation("Created docker volume {Volume}", vout.Trim());
-
-                // Ensure RUNNER_LABELS is present in envVars (docker container expects it)
-                var envListMutable = envVars?.ToList() ?? new System.Collections.Generic.List<string>();
-                if (!envListMutable.Any(e => e.StartsWith("RUNNER_LABELS=", StringComparison.OrdinalIgnoreCase)))
-                {
-                    envListMutable.Add($"RUNNER_LABELS=self-hosted");
-                }
-
-                // Build docker run command
-                var envArgs = string.Join(' ', envListMutable.Select(e => $"-e \"{e}\""));
-                // Mount the same volume to both /actions-runner and /runner to match docker-compose behavior
-                var runCmd = $"run -d --name runner-cli-{Guid.NewGuid():N} -v {volumeName}:/actions-runner -v {volumeName}:/runner {envArgs} {wantedTag} tail -f /dev/null";
-                var rout = await ProcessRunner.CaptureOutputAsync("docker", runCmd, null, cancellationToken).ConfigureAwait(false);
-                if (rout == null)
-                {
-                    _logger?.LogWarning("Failed to start docker run for {Cmd}", runCmd);
-                    return false;
-                }
-                _containerId = rout.Trim();
-                _createdVolumeName = volumeName;
-                _imageTagInUse = wantedTag;
-                _logger?.LogInformation("Started container via docker CLI: {Id}", _containerId);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                    _logger?.LogWarning(ex, "TryStartContainersWithDockerCli exception");
-                return false;
-            }
-        }
+        // CLI fallbacks have been removed from this DotNet-based implementation.
 
 
 
@@ -735,38 +561,8 @@ namespace GitHub.RunnerTasks
         {
             if (string.IsNullOrEmpty(_containerId))
             {
-                // No tracked container from Docker.DotNet path; attempt to clean up any CLI-created containers/volumes
-                try
-                {
-                    // Stop and remove containers named runner-cli-*
-                    var outStr = await ProcessRunner.CaptureOutputAsync("docker", "ps -a --filter \"name=runner-cli\" --format \"{{.ID}}\"", null, cancellationToken).ConfigureAwait(false) ?? string.Empty;
-                    var ids = outStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToArray();
-                    foreach (var id in ids)
-                    {
-                        try
-                        {
-                            await ProcessRunner.CaptureOutputAsync("docker", $"rm -f {id}", null, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch { }
-                    }
-
-                    // Remove volumes named runner_data_cli_*
-                    var vout = await ProcessRunner.CaptureOutputAsync("docker", "volume ls --format \"{{.Name}}\"", null, cancellationToken).ConfigureAwait(false) ?? string.Empty;
-                    var vols = vout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.StartsWith("runner_data_cli_") || s.Equals("runner_data", StringComparison.OrdinalIgnoreCase) || s.StartsWith("github-self-hosted-runner-docker_runner_data")).ToArray();
-                    foreach (var vol in vols)
-                    {
-                        try
-                        {
-                            await ProcessRunner.CaptureOutputAsync("docker", $"volume rm {vol}", null, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch { }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Error during docker CLI cleanup of runner-cli containers/volumes");
-                }
-
+                // CLI fallback cleanup disabled for now — avoid invoking docker CLI from the DotNet runner path.
+                _logger?.LogInformation("CLI fallback cleanup disabled in DockerDotNetRunnerService.StopContainersAsync; skipping docker CLI cleanup.");
                 return true;
             }
 
@@ -914,20 +710,7 @@ namespace GitHub.RunnerTasks
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Failed to create/start unregister exec; attempting docker CLI unregister");
-                try
-                {
-                    if (!string.IsNullOrEmpty(_containerId) && !string.IsNullOrEmpty(_lastRegistrationToken))
-                    {
-                        var args = new[] { "remove", "--unattended", "--token", _lastRegistrationToken };
-                        var cliOk = await RunConfigureInContainerWithDockerCli(_containerId, args, cancellationToken).ConfigureAwait(false);
-                        if (!cliOk) _logger?.LogWarning("docker CLI unregister returned false");
-                    }
-                }
-                catch (Exception ex2)
-                {
-                    _logger?.LogDebug(ex2, "docker CLI unregister attempt failed");
-                }
+                _logger?.LogWarning(ex, "Failed to create/start unregister exec using Docker.DotNet");
             }
             finally
             {
@@ -939,24 +722,7 @@ namespace GitHub.RunnerTasks
 
         // Test hooks moved to partial class in DockerDotNetRunnerService.TestHooks.cs to keep this file lean.
 
-        private async Task<bool> RunConfigureInContainerWithDockerCli(string containerId, string[] args, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var joinedArgs = string.Join(' ', args.Select(a => a.Contains(' ') ? '"' + a + '"' : a));
-                // run as the github-runner user to avoid configure script refusing to run as root
-                var cmd = $"exec -u github-runner {containerId} /actions-runner/config.sh {joinedArgs}";
-                _logger?.LogInformation("Running docker {Cmd}", cmd);
-                var exit = await ProcessRunner.RunAndStreamAsync("docker", cmd, null, cancellationToken).ConfigureAwait(false);
-                _logger?.LogInformation("docker exec exit code: {ExitCode}", exit);
-                return exit == 0;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "RunConfigureInContainerWithDockerCli exception");
-                return false;
-            }
-        }
+        // CLI helpers were intentionally removed from this DotNet-based implementation.
     }
 
 }
