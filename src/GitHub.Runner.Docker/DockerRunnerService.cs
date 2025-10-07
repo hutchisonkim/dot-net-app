@@ -30,24 +30,55 @@ namespace GitHub.Runner.Docker
 
         private DockerClient CreateDockerClient()
         {
-            // prefer DOCKER_HOST when set (matches docker CLI context)
-            var dockerHost = Environment.GetEnvironmentVariable("DOCKER_HOST");
+            var candidates = new List<string>();
 
-            string dockerUri = !string.IsNullOrEmpty(dockerHost)
-                ? dockerHost
-                : (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? "npipe://./pipe/docker_engine"
-                    : "unix:///var/run/docker.sock");
+            // Use DOCKER_HOST if set
+            var envHost = Environment.GetEnvironmentVariable("DOCKER_HOST");
+            if (!string.IsNullOrWhiteSpace(envHost)) candidates.Add(envHost);
 
-            try
+            // Detect host OS to pick the proper Docker endpoint
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var config = new DockerClientConfiguration(new Uri(dockerUri));
-                return config.CreateClient();
+                // Named pipes for Docker Desktop on Windows
+                candidates.Add("npipe://./pipe/dockerDesktopLinuxEngine");
+                candidates.Add("npipe://./pipe/docker_engine");
+                // Optional TCP fallback if user enabled daemon exposure
+                candidates.Add("tcp://localhost:2375");
             }
-            catch (Exception ex)
+            else
             {
-                throw new InvalidOperationException($"Failed to create Docker client for '{dockerUri}'. Ensure DOCKER_HOST is correct and the Docker daemon is reachable.", ex);
+                // Unix socket on Linux or WSL2
+                candidates.Add("unix:///var/run/docker.sock");
+                candidates.Add("tcp://localhost:2375"); // optional fallback
             }
+
+            // Deduplicate
+            candidates = candidates.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+
+            Exception? lastEx = null;
+            foreach (var endpoint in candidates)
+            {
+                try
+                {
+                    _logger?.LogInformation("Trying Docker endpoint: {Endpoint}", endpoint);
+                    var config = new DockerClientConfiguration(new Uri(endpoint));
+                    var client = config.CreateClient();
+
+                    // quick probe
+                    client.Images.ListImagesAsync(new ImagesListParameters { All = true }).GetAwaiter().GetResult();
+
+                    _logger?.LogInformation("Connected to Docker endpoint: {Endpoint}", endpoint);
+                    return client;
+                }
+                catch (Exception ex)
+                {
+                    lastEx = ex;
+                    _logger?.LogWarning(ex, "Endpoint {Endpoint} failed", endpoint);
+                }
+            }
+
+            throw new InvalidOperationException(
+                $"Unable to connect to Docker daemon. Tried endpoints: {string.Join(", ", candidates)}", lastEx);
         }
 
         public async Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken)
@@ -162,7 +193,7 @@ namespace GitHub.Runner.Docker
 
             using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
             var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
-            string output = stdout; // Use stdout or stderr as needed
+            string output = stdout;
 
             _logger?.LogInformation("Unregister output: {Output}", output.Trim());
             return true;
