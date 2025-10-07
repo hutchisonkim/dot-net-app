@@ -783,7 +783,72 @@ namespace GitHub.RunnerTasks
 
         public async Task<bool> StopContainersAsync(CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(_containerId)) return true;
+            if (string.IsNullOrEmpty(_containerId))
+            {
+                // No tracked container from Docker.DotNet path; attempt to clean up any CLI-created containers/volumes
+                try
+                {
+                    // Stop and remove containers named runner-cli-*
+                    var psiList = new System.Diagnostics.ProcessStartInfo("docker", "ps -a --filter \"name=runner-cli\" --format \"{{.ID}}\"") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                    using (var pList = System.Diagnostics.Process.Start(psiList))
+                    {
+                        if (pList != null)
+                        {
+                            var outStr = await pList.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                            await pList.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                            var ids = outStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToArray();
+                            foreach (var id in ids)
+                            {
+                                try
+                                {
+                                    var psiRm = new System.Diagnostics.ProcessStartInfo("docker", $"rm -f {id}") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                                    using var pRm = System.Diagnostics.Process.Start(psiRm);
+                                    if (pRm != null)
+                                    {
+                                        var rout = await pRm.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                                        var rerr = await pRm.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                                        await pRm.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+
+                    // Remove volumes named runner_data_cli_*
+                    var psiVols = new System.Diagnostics.ProcessStartInfo("docker", "volume ls --format \"{{.Name}}\"") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                    using (var pVols = System.Diagnostics.Process.Start(psiVols))
+                    {
+                        if (pVols != null)
+                        {
+                            var vout = await pVols.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                            await pVols.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                            var vols = vout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.StartsWith("runner_data_cli_") || s.Equals("runner_data", StringComparison.OrdinalIgnoreCase) || s.StartsWith("github-self-hosted-runner-docker_runner_data")).ToArray();
+                            foreach (var vol in vols)
+                            {
+                                try
+                                {
+                                    var psiVolRm = new System.Diagnostics.ProcessStartInfo("docker", $"volume rm {vol}") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                                    using var pVolRm = System.Diagnostics.Process.Start(psiVolRm);
+                                    if (pVolRm != null)
+                                    {
+                                        var rout = await pVolRm.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                                        var rerr = await pVolRm.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                                        await pVolRm.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error during docker CLI cleanup of runner-cli containers/volumes");
+                }
+
+                return true;
+            }
 
             // Unregister asynchronously (separated API) - leave in place to call from OrchestrateStopAsync
             try
