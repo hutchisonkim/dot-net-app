@@ -17,7 +17,7 @@ namespace GitHub.RunnerTasks
     /// container to run the configure script.
     /// Note: This is intended for gated integration tests only.
     /// </summary>
-    public class DockerDotNetRunnerService : IRunnerService
+    public partial class DockerDotNetRunnerService : IRunnerService
     {
         private readonly string _workingDirectory;
         private readonly ILogger<DockerDotNetRunnerService>? _logger;
@@ -67,7 +67,7 @@ namespace GitHub.RunnerTasks
                 File.WriteAllText(Path.Combine(tmp, "Dockerfile"), dockerfile);
 
                 // Run docker build and stream output live so we can see progress/errors as they happen
-                var exit = await RunProcessAndStreamOutputAsync("docker", $"build --progress=plain -t {tag} .", tmp, cancellationToken).ConfigureAwait(false);
+                var exit = await ProcessRunner.RunAndStreamAsync("docker", $"build --progress=plain -t {tag} .", tmp, cancellationToken).ConfigureAwait(false);
                 if (exit != 0)
                 {
                     _logger?.LogWarning("docker build exited with code {ExitCode}", exit);
@@ -684,7 +684,7 @@ namespace GitHub.RunnerTasks
             try
             {
                 // Attempt to see if image exists locally via 'docker images'
-                var id = await RunProcessCaptureOutputAsync("docker", $"images -q {wantedTag}", null, cancellationToken).ConfigureAwait(false);
+                var id = await ProcessRunner.CaptureOutputAsync("docker", $"images -q {wantedTag}", null, cancellationToken).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(id))
                 {
                     _logger?.LogInformation("Image {Tag} not found locally -- attempting to build via docker CLI", wantedTag);
@@ -695,7 +695,7 @@ namespace GitHub.RunnerTasks
                 // Create a container using docker run (detached) with a volume mount for runner data
                 var volumeName = "runner_data_cli_" + Guid.NewGuid().ToString("n");
                 Console.WriteLine($"Creating docker volume {volumeName}");
-                var vout = await RunProcessCaptureOutputAsync("docker", $"volume create {volumeName}", null, cancellationToken).ConfigureAwait(false);
+                var vout = await ProcessRunner.CaptureOutputAsync("docker", $"volume create {volumeName}", null, cancellationToken).ConfigureAwait(false);
                 if (vout == null) { _logger?.LogWarning("Failed to create docker volume {Volume}", volumeName); return false; }
                 _logger?.LogInformation("Created docker volume {Volume}", vout.Trim());
 
@@ -710,7 +710,7 @@ namespace GitHub.RunnerTasks
                 var envArgs = string.Join(' ', envListMutable.Select(e => $"-e \"{e}\""));
                 // Mount the same volume to both /actions-runner and /runner to match docker-compose behavior
                 var runCmd = $"run -d --name runner-cli-{Guid.NewGuid():N} -v {volumeName}:/actions-runner -v {volumeName}:/runner {envArgs} {wantedTag} tail -f /dev/null";
-                var rout = await RunProcessCaptureOutputAsync("docker", runCmd, null, cancellationToken).ConfigureAwait(false);
+                var rout = await ProcessRunner.CaptureOutputAsync("docker", runCmd, null, cancellationToken).ConfigureAwait(false);
                 if (rout == null)
                 {
                     _logger?.LogWarning("Failed to start docker run for {Cmd}", runCmd);
@@ -729,79 +729,6 @@ namespace GitHub.RunnerTasks
             }
         }
 
-        // Helper: run a process and stream stdout/stderr to Console and logger; returns exit code or -1 if process couldn't be started
-        private static async Task<int> RunProcessAndStreamOutputAsync(string fileName, string arguments, string? workingDirectory, CancellationToken cancellationToken)
-        {
-            var psi = new ProcessStartInfo(fileName, arguments)
-            {
-                WorkingDirectory = workingDirectory ?? string.Empty,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var proc = Process.Start(psi);
-            if (proc == null) return -1;
-
-            try
-            {
-                proc.OutputDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
-                proc.ErrorDataReceived += (s, e) => { if (e.Data != null) Console.Error.WriteLine(e.Data); };
-                try { proc.BeginOutputReadLine(); proc.BeginErrorReadLine(); } catch { }
-                await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-                return proc.ExitCode;
-            }
-            catch (OperationCanceledException)
-            {
-                try { if (!proc.HasExited) proc.Kill(true); } catch { }
-                return -1;
-            }
-            catch
-            {
-                try { if (!proc.HasExited) proc.Kill(true); } catch { }
-                return -1;
-            }
-        }
-
-        // Helper: run a process and capture stdout as string; returns null on failure
-        private static async Task<string?> RunProcessCaptureOutputAsync(string fileName, string arguments, string? workingDirectory, CancellationToken cancellationToken)
-        {
-            var psi = new ProcessStartInfo(fileName, arguments)
-            {
-                WorkingDirectory = workingDirectory ?? string.Empty,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var proc = Process.Start(psi);
-            if (proc == null) return null;
-
-            try
-            {
-                var outStr = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-                var errStr = await proc.StandardError.ReadToEndAsync().ConfigureAwait(false);
-                await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-                if (proc.ExitCode != 0)
-                {
-                    // prefer stdout if present, otherwise stderr
-                    return string.IsNullOrEmpty(outStr) ? errStr : outStr;
-                }
-                return outStr;
-            }
-            catch (OperationCanceledException)
-            {
-                try { if (!proc.HasExited) proc.Kill(true); } catch { }
-                return null;
-            }
-            catch
-            {
-                try { if (!proc.HasExited) proc.Kill(true); } catch { }
-                return null;
-            }
-        }
 
 
         public async Task<bool> StopContainersAsync(CancellationToken cancellationToken)
@@ -812,25 +739,25 @@ namespace GitHub.RunnerTasks
                 try
                 {
                     // Stop and remove containers named runner-cli-*
-                    var outStr = await RunProcessCaptureOutputAsync("docker", "ps -a --filter \"name=runner-cli\" --format \"{{.ID}}\"", null, cancellationToken).ConfigureAwait(false) ?? string.Empty;
+                    var outStr = await ProcessRunner.CaptureOutputAsync("docker", "ps -a --filter \"name=runner-cli\" --format \"{{.ID}}\"", null, cancellationToken).ConfigureAwait(false) ?? string.Empty;
                     var ids = outStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToArray();
                     foreach (var id in ids)
                     {
                         try
                         {
-                            await RunProcessCaptureOutputAsync("docker", $"rm -f {id}", null, cancellationToken).ConfigureAwait(false);
+                            await ProcessRunner.CaptureOutputAsync("docker", $"rm -f {id}", null, cancellationToken).ConfigureAwait(false);
                         }
                         catch { }
                     }
 
                     // Remove volumes named runner_data_cli_*
-                    var vout = await RunProcessCaptureOutputAsync("docker", "volume ls --format \"{{.Name}}\"", null, cancellationToken).ConfigureAwait(false) ?? string.Empty;
+                    var vout = await ProcessRunner.CaptureOutputAsync("docker", "volume ls --format \"{{.Name}}\"", null, cancellationToken).ConfigureAwait(false) ?? string.Empty;
                     var vols = vout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.StartsWith("runner_data_cli_") || s.Equals("runner_data", StringComparison.OrdinalIgnoreCase) || s.StartsWith("github-self-hosted-runner-docker_runner_data")).ToArray();
                     foreach (var vol in vols)
                     {
                         try
                         {
-                            await RunProcessCaptureOutputAsync("docker", $"volume rm {vol}", null, cancellationToken).ConfigureAwait(false);
+                            await ProcessRunner.CaptureOutputAsync("docker", $"volume rm {vol}", null, cancellationToken).ConfigureAwait(false);
                         }
                         catch { }
                     }
@@ -1010,35 +937,7 @@ namespace GitHub.RunnerTasks
             return true;
         }
 
-        // Test helpers: allow tests to set internal state without reflection
-        public void Test_SetInternalState(string? containerId, string? lastRegistrationToken)
-        {
-            _containerId = containerId;
-            _lastRegistrationToken = lastRegistrationToken;
-        }
-
-        public (string? containerId, string? lastRegistrationToken) Test_GetInternalState()
-        {
-            return (_containerId, _lastRegistrationToken);
-        }
-
-        public void Test_SetImageTag(string? tag)
-        {
-            _imageTagInUse = tag;
-        }
-
-        // Test helper: allow tests to set the created volume name so StopContainersAsync attempts removal
-        public void Test_SetCreatedVolumeName(string? name)
-        {
-            _createdVolumeName = name;
-        }
-
-        public void Test_SetLogWaitTimeout(TimeSpan t)
-        {
-            // allow tests to shorten the waiting period
-            // reflection-friendly helper
-            typeof(DockerDotNetRunnerService).GetField("_logWaitTimeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.SetValue(this, t);
-        }
+        // Test hooks moved to partial class in DockerDotNetRunnerService.TestHooks.cs to keep this file lean.
 
         private async Task<bool> RunConfigureInContainerWithDockerCli(string containerId, string[] args, CancellationToken cancellationToken)
         {
@@ -1048,13 +947,13 @@ namespace GitHub.RunnerTasks
                 // run as the github-runner user to avoid configure script refusing to run as root
                 var cmd = $"exec -u github-runner {containerId} /actions-runner/config.sh {joinedArgs}";
                 _logger?.LogInformation("Running docker {Cmd}", cmd);
-                var exit = await RunProcessAndStreamOutputAsync("docker", cmd, null, cancellationToken).ConfigureAwait(false);
+                var exit = await ProcessRunner.RunAndStreamAsync("docker", cmd, null, cancellationToken).ConfigureAwait(false);
                 _logger?.LogInformation("docker exec exit code: {ExitCode}", exit);
                 return exit == 0;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"RunConfigureInContainerWithDockerCli exception: {ex}");
+                _logger?.LogWarning(ex, "RunConfigureInContainerWithDockerCli exception");
                 return false;
             }
         }
