@@ -4,7 +4,7 @@
     {
       "label": "API: Build",
       "type": "shell",
-      "command": "dotnet build src/DotNetApp.Api/DotNetApp.Api.csproj -c Debug",
+  "command": "dotnet build src/DotNetApp.Server/DotNetApp.Server.csproj -c Debug",
       "problemMatcher": ["$msCompile"]
     },
     {

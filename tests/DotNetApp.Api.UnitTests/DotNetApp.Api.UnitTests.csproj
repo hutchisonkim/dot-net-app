@@ -13,7 +13,7 @@
     <PackageReference Include="Moq" Version="4.20.72" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\DotNetApp.Api\DotNetApp.Api.csproj" />
+  <ProjectReference Include="..\..\src\DotNetApp.Server\DotNetApp.Server.csproj" />
   </ItemGroup>
 </Project>
 

@@ -13,7 +13,7 @@
   <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\DotNetApp.Api\DotNetApp.Api.csproj" />
+  <ProjectReference Include="..\..\src\DotNetApp.Server\DotNetApp.Server.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Include shared test helpers from tests/Shared -->

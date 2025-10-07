@@ -2,14 +2,14 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY src/DotNetApp.Api/DotNetApp.Api.csproj src/DotNetApp.Api/
+COPY src/DotNetApp.Server/DotNetApp.Server.csproj src/DotNetApp.Server/
 
-RUN dotnet restore "src/DotNetApp.Api/DotNetApp.Api.csproj"
+RUN dotnet restore "src/DotNetApp.Server/DotNetApp.Server.csproj"
 
 # Copy the remaining source
 COPY . .
 
-RUN dotnet publish "src/DotNetApp.Api/DotNetApp.Api.csproj" -c Release -o /app/publish
+RUN dotnet publish "src/DotNetApp.Server/DotNetApp.Server.csproj" -c Release -o /app/publish
 
 ## Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0

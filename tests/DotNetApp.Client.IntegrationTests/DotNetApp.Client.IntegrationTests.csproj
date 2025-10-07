@@ -14,7 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\DotNetApp.Client\DotNetApp.Client.csproj" />
-    <ProjectReference Include="..\..\src\DotNetApp.Api\DotNetApp.Api.csproj" />
+  <ProjectReference Include="..\..\src\DotNetApp.Server\DotNetApp.Server.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Include shared test helpers from tests/Shared -->
