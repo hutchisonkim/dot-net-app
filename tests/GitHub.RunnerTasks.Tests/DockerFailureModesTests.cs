@@ -110,6 +110,25 @@ namespace GitHub.RunnerTasks.Tests
         }
 
         [Fact]
+        public async Task RegisterAsync_RunExecReportsDotnetNotFound_ReturnsFalseAndLogsError()
+        {
+            var fake = new RunnerTasks.Tests.Fakes.FakeDockerClientWrapper_RunExecDotnetNotFound();
+            var logger = new TestLogger<DockerDotNetRunnerService>();
+            var svc = new DockerDotNetRunnerService(".", fake, logger);
+
+            // create a container and set internal state so RegisterAsync will exec into container
+            var cid = (await fake.CreateContainerAsync(new CreateContainerParameters { Image = "img" }, CancellationToken.None)).ID;
+            svc.Test_SetInternalState(cid, null);
+            svc.Test_SetImageTag("img:latest");
+            svc.Test_SetLogWaitTimeout(TimeSpan.FromSeconds(1));
+
+            var ok = await svc.RegisterAsync("token", "owner/repo", "https://github.com", CancellationToken.None);
+
+            Assert.False(ok);
+            Assert.True(logger.Contains(Microsoft.Extensions.Logging.LogLevel.Warning, "run.sh exec returned non-zero exit code") || logger.Contains(Microsoft.Extensions.Logging.LogLevel.Warning, "Did not see 'Listening for Jobs'"));
+        }
+
+        [Fact]
         public async Task StartContainersAsync_CreateContainerThrows_ReturnsFalse()
         {
             var fake = new FakeDockerClientWrapper_CreateContainerThrows();

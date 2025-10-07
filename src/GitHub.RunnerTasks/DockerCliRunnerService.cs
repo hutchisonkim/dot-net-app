@@ -36,11 +36,17 @@ namespace GitHub.RunnerTasks
                 var lines = new[]
                 {
                     "FROM ubuntu:20.04",
+                    // ensure PATH is set for all users and basic tools installed
+                    "ENV PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"",
                     "RUN apt-get update && apt-get install -y curl ca-certificates tar gzip sudo openssl && rm -rf /var/lib/apt/lists/*",
                     "RUN useradd -m -s /bin/bash github-runner",
                     "WORKDIR /actions-runner",
                     "ARG RUNNER_VERSION=2.328.0",
+                    // download and extract runner, tolerate failures
                     "RUN curl -L -o actions-runner.tar.gz https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz && tar xzf actions-runner.tar.gz --strip-components=0 || true",
+                    // ensure files are owned by the non-root user and provide a small wrapper for one-off configure invocation
+                    "RUN chown -R github-runner:github-runner /actions-runner || true",
+                    "RUN printf '#!/bin/sh\\nexec /actions-runner/config.sh \"$@\"' > /usr/local/bin/configure-runner.sh && chmod +x /usr/local/bin/configure-runner.sh && chown github-runner:github-runner /usr/local/bin/configure-runner.sh || true",
                     "USER github-runner",
                     "CMD [\"/bin/bash\", \"-c\", \"tail -f /dev/null\"]"
                 };

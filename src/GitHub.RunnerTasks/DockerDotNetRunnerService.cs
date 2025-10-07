@@ -119,9 +119,64 @@ namespace GitHub.RunnerTasks
                 }
                 else
                 {
-                    // No image found via Docker.DotNet -- this DotNet-based implementation does not fall back to the docker CLI.
-                    _logger?.LogWarning("No docker image found matching {Guess} or {GuessAlt} via Docker.DotNet; not attempting CLI fallback in this implementation.", guess, guessAlt);
-                    return false;
+                    // No image found via Docker.DotNet -- attempt to programmatically create and prepare a container
+                    // using a base image (ubuntu:20.04) so we don't need to invoke the docker CLI to build an image.
+                    _logger?.LogInformation("No docker image found matching {Guess} or {GuessAlt} via Docker.DotNet; will create and prepare a container from ubuntu:20.04 programmatically.", guess, guessAlt);
+
+                    // Ensure ubuntu:20.04 image is available (pull if necessary)
+                    try
+                    {
+                        var ubuntuTag = "20.04";
+                        if (_clientWrapper != null)
+                        {
+                            await _clientWrapper.CreateImageAsync(new ImagesCreateParameters { FromImage = "ubuntu", Tag = ubuntuTag }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await _client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = "ubuntu", Tag = ubuntuTag }, null, new Progress<JSONMessage>(), cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to pull ubuntu:20.04 image; continuing and hoping it's present");
+                    }
+
+                    // Create a dedicated volume and mount it to both /runner and /actions-runner to mirror docker-compose
+                    var volumeName = "runner_data_" + Guid.NewGuid().ToString("n");
+                    _createdVolumeName = volumeName;
+                    try
+                    {
+                        if (_clientWrapper != null) await _clientWrapper.CreateVolumeAsync(new VolumesCreateParameters { Name = volumeName }, cancellationToken).ConfigureAwait(false);
+                        else await _client.Volumes.CreateAsync(new VolumesCreateParameters { Name = volumeName }, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to create volume {Volume}; proceeding without explicit volume", volumeName);
+                        _createdVolumeName = null;
+                    }
+
+                    // Create container from ubuntu:20.04 that stays alive (tail -f /dev/null) so we can exec into it and prepare the runner
+                    createParams = new CreateContainerParameters
+                    {
+                        Image = "ubuntu:20.04",
+                        Name = $"runner-test-{Guid.NewGuid():N}",
+                        Cmd = new[] { "tail", "-f", "/dev/null" },
+                        Env = envVars?.ToList() ?? new System.Collections.Generic.List<string>(),
+                        HostConfig = new HostConfig
+                        {
+                            AutoRemove = false,
+                            Mounts = !string.IsNullOrEmpty(_createdVolumeName)
+                                ? new System.Collections.Generic.List<Mount>
+                                {
+                                    new Mount { Type = "volume", Source = _createdVolumeName, Target = "/runner" },
+                                    new Mount { Type = "volume", Source = _createdVolumeName, Target = "/actions-runner" }
+                                }
+                                : null
+                        }
+                    };
+
+                    // We'll mark an ephemeral tag to indicate we have prepared a container rather than using a prebuilt image
+                    _imageTagInUse = "ubuntu:20.04 (ephemeral)";
                 }
             }
             catch (Exception ex)
@@ -184,6 +239,26 @@ namespace GitHub.RunnerTasks
             catch (Exception ex)
             {
                 _logger?.LogDebug(ex, "Error while waiting for container running state");
+            }
+
+            // If we created an ephemeral ubuntu-based container, prepare it by installing requirements
+            try
+            {
+                if (!string.IsNullOrEmpty(_imageTagInUse) && _imageTagInUse.Contains("ubuntu:20.04"))
+                {
+                    var ok = await PrepareUbuntuContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                    if (!ok)
+                    {
+                        _logger?.LogWarning("Failed to prepare ubuntu-based container for runner; stopping and cleaning up container.");
+                        try { if (_clientWrapper != null) await _clientWrapper.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); else await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                        _containerId = null;
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error while preparing ubuntu-based container");
             }
 
             return true;
@@ -732,6 +807,50 @@ namespace GitHub.RunnerTasks
             }
 
             return true;
+        }
+
+        private async Task<bool> PrepareUbuntuContainerAsync(string containerId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(containerId)) return false;
+
+            try
+            {
+                // Install basic packages and set PATH in /etc/environment so exec'd processes have a sane PATH
+                var installCmd = new[] { "sh", "-c", "apt-get update && apt-get install -y curl ca-certificates tar gzip sudo openssl && rm -rf /var/lib/apt/lists/*" };
+                var execCreate = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(containerId, new ContainerExecCreateParameters { AttachStdout = true, AttachStderr = true, User = "root", Cmd = installCmd }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters { AttachStdout = true, AttachStderr = true, User = "root", Cmd = installCmd }, cancellationToken).ConfigureAwait(false);
+
+                if (_clientWrapper != null) await _clientWrapper.StartAndAttachExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false); else await _client.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken).ConfigureAwait(false);
+
+                // Create /etc/environment PATH entry
+                var envCmd = new[] { "sh", "-c", "echo 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' > /etc/environment" };
+                var envExec = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(containerId, new ContainerExecCreateParameters { AttachStdout = false, AttachStderr = false, User = "root", Cmd = envCmd }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters { AttachStdout = false, AttachStderr = false, User = "root", Cmd = envCmd }, cancellationToken).ConfigureAwait(false);
+                if (_clientWrapper != null) await _clientWrapper.StartAndAttachExecAsync(envExec.ID, false, cancellationToken).ConfigureAwait(false); else await _client.Containers.StartAndAttachContainerExecAsync(envExec.ID, false, cancellationToken).ConfigureAwait(false);
+
+                // Download and extract actions runner (use a conservative version)
+                var downloadCmd = new[] { "sh", "-c", "mkdir -p /actions-runner && cd /actions-runner && curl -L -o actions-runner.tar.gz https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz && tar xzf actions-runner.tar.gz --strip-components=0 || true" };
+                var dlExec = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(containerId, new ContainerExecCreateParameters { AttachStdout = true, AttachStderr = true, User = "root", Cmd = downloadCmd }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters { AttachStdout = true, AttachStderr = true, User = "root", Cmd = downloadCmd }, cancellationToken).ConfigureAwait(false);
+                if (_clientWrapper != null) await _clientWrapper.StartAndAttachExecAsync(dlExec.ID, false, cancellationToken).ConfigureAwait(false); else await _client.Containers.StartAndAttachContainerExecAsync(dlExec.ID, false, cancellationToken).ConfigureAwait(false);
+
+                // Ensure files are owned by github-runner user and create wrapper
+                var postCmd = new[] { "sh", "-c", "useradd -m -s /bin/bash github-runner || true && chown -R github-runner:github-runner /actions-runner || true && printf '#!/bin/sh\nexec /actions-runner/config.sh \"$@\"' > /usr/local/bin/configure-runner.sh && chmod +x /usr/local/bin/configure-runner.sh && chown github-runner:github-runner /usr/local/bin/configure-runner.sh || true" };
+                var postExec = _clientWrapper != null
+                    ? await _clientWrapper.ExecCreateAsync(containerId, new ContainerExecCreateParameters { AttachStdout = true, AttachStderr = true, User = "root", Cmd = postCmd }, cancellationToken).ConfigureAwait(false)
+                    : await _client.Containers.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters { AttachStdout = true, AttachStderr = true, User = "root", Cmd = postCmd }, cancellationToken).ConfigureAwait(false);
+                if (_clientWrapper != null) await _clientWrapper.StartAndAttachExecAsync(postExec.ID, false, cancellationToken).ConfigureAwait(false); else await _client.Containers.StartAndAttachContainerExecAsync(postExec.ID, false, cancellationToken).ConfigureAwait(false);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "PrepareUbuntuContainerAsync failed");
+                return false;
+            }
         }
 
         // Test hooks moved to partial class in DockerDotNetRunnerService.TestHooks.cs to keep this file lean.
