@@ -22,9 +22,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client.UnitTests"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{145A4016-4C34-43C5-B7F6-1713283C35AE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHub.RunnerTasks", "src\GitHub.RunnerTasks\GitHub.RunnerTasks.csproj", "{1701164D-357A-41DF-9C5F-CD6EA643A2B5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHub.Runner.Docker", "src\GitHub.Runner.Docker\GitHub.Runner.Docker.csproj", "{1701164D-357A-41DF-9C5F-CD6EA643A2B5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHub.RunnerTasks.Tests", "tests\GitHub.RunnerTasks.Tests\GitHub.RunnerTasks.Tests.csproj", "{C3C7EF6D-7495-492A-8EC1-334071954CF3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHub.Runner.Docker.Tests", "tests\GitHub.Runner.Docker.Tests\GitHub.Runner.Docker.Tests.csproj", "{C3C7EF6D-7495-492A-8EC1-334071954CF3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -5,8 +5,6 @@ using Xunit;
 using Moq;
 using GitHub.Runner.Docker;
 
-// Following MSDN guidance: Arrange/Act/Assert, small focused tests, one behavior per test.
-
 namespace GitHub.Runner.Docker.Tests
 {
     public class RunnerManagerTests
