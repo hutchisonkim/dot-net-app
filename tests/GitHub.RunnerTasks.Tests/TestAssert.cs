@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using Xunit.Abstractions;
 
-namespace GitHub.RunnerTasks.Tests
+namespace GitHub.Runner.Docker.Tests
 {
     public static class TestAssert
     {

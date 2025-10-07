@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace GitHub.RunnerTasks.Tests
+namespace GitHub.Runner.Docker.Tests
 {
     public interface ITestLogger
     {

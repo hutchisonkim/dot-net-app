@@ -2,9 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GitHub.RunnerTasks;
+using GitHub.Runner.Docker;
+using Dn = global::Docker.DotNet;
 
-namespace GitHub.RunnerTasks.Tests
+namespace GitHub.Runner.Docker.Tests
 {
     public class DockerRunnerServiceIntegrationOrchestrationTests
     {
@@ -22,7 +23,7 @@ namespace GitHub.RunnerTasks.Tests
                         ? new Uri("npipe://./pipe/docker_engine")
                         : new Uri("unix:///var/run/docker.sock");
 
-                    using var client = new Docker.DotNet.DockerClientConfiguration(dockerUri).CreateClient();
+                    using var client = new Dn.DockerClientConfiguration(dockerUri).CreateClient();
                     using var ctsPing = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                     await client.System.PingAsync(ctsPing.Token);
                 }

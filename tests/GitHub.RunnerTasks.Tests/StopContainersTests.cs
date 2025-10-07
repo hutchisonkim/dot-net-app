@@ -1,9 +1,9 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GitHub.RunnerTasks;
+using GitHub.Runner.Docker;
 
-namespace GitHub.RunnerTasks.Tests
+namespace GitHub.Runner.Docker.Tests
 {
     public class StopContainersTests
     {

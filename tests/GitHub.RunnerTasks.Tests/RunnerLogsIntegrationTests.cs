@@ -4,9 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GitHub.RunnerTasks;
+using GitHub.Runner.Docker;
 
-namespace GitHub.RunnerTasks.Tests
+namespace GitHub.Runner.Docker.Tests
 {
     public class RunnerLogsIntegrationTests
     {
@@ -32,8 +32,6 @@ namespace GitHub.RunnerTasks.Tests
 
                 var registered = await svc.RegisterAsync(token, "hutchisonkim/dot-net-app", "https://github.com", cts.Token);
                 Assert.True(registered, "RegisterAsync failed to detect listener");
-
-                // Unregister and stop
                 await svc.UnregisterAsync(cts.Token);
                 await svc.StopContainersAsync(cts.Token);
                 return;

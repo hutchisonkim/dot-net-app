@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.RunnerTasks;
+using GitHub.Runner.Docker;
 
 static class Program
 {
@@ -24,7 +24,7 @@ static class Program
             return 2;
         }
 
-    var workingDir = System.IO.Path.GetFullPath("src/GitHub.RunnerTasks");
+    var workingDir = System.IO.Path.GetFullPath("src/GitHub.Runner.Docker");
     Console.WriteLine($"RunnerCli: cmd={cmd}, repo={repo}, url={url}");
     Console.WriteLine($"RunnerCli: token present={(string.IsNullOrEmpty(token) ? "no" : "yes")}, token masked={(string.IsNullOrEmpty(token) ? "" : token.Substring(0,4) + new string('*', Math.Max(0, token.Length-8)) + token.Substring(Math.Max(4, token.Length-4)))}");
     await using var svc = new DockerRunnerService(null);

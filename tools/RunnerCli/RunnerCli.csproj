@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GitHub.RunnerTasks\GitHub.RunnerTasks.csproj" />
+  <ProjectReference Include="..\..\src\GitHub.Runner.Docker\GitHub.Runner.Docker.csproj" />
   </ItemGroup>
 
   <ItemGroup>
