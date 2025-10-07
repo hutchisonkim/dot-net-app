@@ -65,8 +65,8 @@ namespace GitHub.RunnerTasks
                 var dockerfile = string.Join(System.Environment.NewLine, lines);
                 File.WriteAllText(Path.Combine(tmp, "Dockerfile"), dockerfile);
 
-                // Run docker build
-                var psi = new System.Diagnostics.ProcessStartInfo("docker", $"build -t {tag} .")
+                // Run docker build and stream output live so we can see progress/errors as they happen
+                var psi = new System.Diagnostics.ProcessStartInfo("docker", $"build --progress=plain -t {tag} .")
                 {
                     WorkingDirectory = tmp,
                     RedirectStandardOutput = true,
@@ -75,17 +75,45 @@ namespace GitHub.RunnerTasks
                     CreateNoWindow = true
                 };
 
-                using var proc = System.Diagnostics.Process.Start(psi)!;
-                if (proc == null) return false;
-                var stdout = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-                var stderr = await proc.StandardError.ReadToEndAsync().ConfigureAwait(false);
-                await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                using var proc = System.Diagnostics.Process.Start(psi);
+                if (proc == null)
+                {
+                    Console.WriteLine("Failed to start 'docker' process. Is Docker installed and on PATH?");
+                    return false;
+                }
+
+                var stdoutSb = new System.Text.StringBuilder();
+                var stderrSb = new System.Text.StringBuilder();
+
+                proc.OutputDataReceived += (s, e) => { if (e.Data != null) { stdoutSb.AppendLine(e.Data); Console.WriteLine(e.Data); } };
+                proc.ErrorDataReceived += (s, e) => { if (e.Data != null) { stderrSb.AppendLine(e.Data); Console.Error.WriteLine(e.Data); } };
+
+                // Begin reading streams
+                try
+                {
+                    proc.BeginOutputReadLine();
+                    proc.BeginErrorReadLine();
+                }
+                catch { /* best-effort */ }
+
+                try
+                {
+                    await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    try { if (!proc.HasExited) proc.Kill(true); } catch { }
+                    Console.WriteLine("Docker build was cancelled.");
+                    return false;
+                }
+
                 if (proc.ExitCode != 0)
                 {
-                    Console.WriteLine("--- docker build stdout ---");
-                    Console.WriteLine(stdout);
-                    Console.WriteLine("--- docker build stderr ---");
-                    Console.WriteLine(stderr);
+                    Console.WriteLine("--- docker build stdout (summary) ---");
+                    Console.WriteLine(stdoutSb.ToString());
+                    Console.WriteLine("--- docker build stderr (summary) ---");
+                    Console.WriteLine(stderrSb.ToString());
+                    Console.WriteLine($"docker build exited with code {proc.ExitCode}");
                     return false;
                 }
 
@@ -147,6 +175,7 @@ namespace GitHub.RunnerTasks
                     }
                     catch (Exception ex)
                     {
+                        Console.WriteLine($"Warning: failed to create volume {volumeName}: {ex.Message}");
                         _logger?.LogWarning(ex, "Failed to create volume {Volume}; proceeding without explicit volume", volumeName);
                         _createdVolumeName = null;
                     }
@@ -225,7 +254,20 @@ namespace GitHub.RunnerTasks
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Docker.DotNet path failed; aborting StartContainersAsync");
+                Console.WriteLine($"StartContainersAsync: Docker.DotNet path failed with exception: {ex}");
+                _logger?.LogWarning(ex, "Docker.DotNet path failed; attempting docker CLI fallback");
+                // Attempt to perform the same actions using the docker CLI as a fallback
+                try
+                {
+                    var ok = await TryStartContainersWithDockerCli(envVars, cancellationToken).ConfigureAwait(false);
+                    if (ok) return true;
+                }
+                catch (Exception ex2)
+                {
+                    Console.WriteLine($"StartContainersAsync: docker CLI fallback failed: {ex2}");
+                    _logger?.LogWarning(ex2, "docker CLI fallback failed");
+                }
+
                 return false;
             }
 
@@ -300,15 +342,18 @@ namespace GitHub.RunnerTasks
 
             var runnerUrl = (githubUrl ?? "").TrimEnd('/') + "/" + ownerRepo;
             var runnerName = "runner-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+            var labelsFromEnv = Environment.GetEnvironmentVariable("RUNNER_LABELS");
+            if (string.IsNullOrWhiteSpace(labelsFromEnv)) labelsFromEnv = "self-hosted"; // default label
+
             var envList = new System.Collections.Generic.List<string>
             {
                 $"GITHUB_TOKEN={token}",
                 $"GITHUB_URL={githubUrl}",
                 $"GITHUB_REPOSITORY={ownerRepo}",
-                $"RUNNER_LABELS={string.Join(',', System.Array.Empty<string>())}"
+                $"RUNNER_LABELS={labelsFromEnv}"
             };
 
-            var configArgs = new System.Collections.Generic.List<string>
+                var configArgs = new System.Collections.Generic.List<string>
             {
                 "/actions-runner/config.sh",
                 "--url",
@@ -317,8 +362,8 @@ namespace GitHub.RunnerTasks
                 token,
                 "--name",
                 runnerName,
-                "--labels",
-                Environment.GetEnvironmentVariable("RUNNER_LABELS") ?? "",
+                    "--labels",
+                    labelsFromEnv,
                 "--work",
                 "_work",
                 "--ephemeral"
@@ -353,21 +398,33 @@ namespace GitHub.RunnerTasks
                     {
                         while (true)
                         {
-                            var res = await stream.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
-                            bool eof = false; int cnt = 0;
-                            try { eof = (bool)res.EOF; } catch { }
-                            try { cnt = (int)res.Count; } catch { try { cnt = (int)((long)res.Count); } catch { } }
-                            if (eof) break;
-                            if (cnt > 0)
+                            var type = stream.GetType();
+                            var hasReadOutput = type.GetMethod("ReadOutputAsync", new[] { typeof(byte[]), typeof(int), typeof(int), typeof(CancellationToken) }) != null;
+                            if (hasReadOutput)
                             {
-                                try { var s = Encoding.UTF8.GetString(buffer, 0, cnt); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[configure exec] {Line}", trimmed); } catch { }
+                                dynamic d = stream;
+                                var res = await d.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken);
+                                bool eof = false; int count = 0;
+                                try { eof = (bool)res.EOF; } catch { }
+                                try { count = (int)res.Count; } catch { try { count = (int)((long)res.Count); } catch { } }
+                                if (eof) break;
+                                if (count > 0)
+                                {
+                                    try { var s = Encoding.UTF8.GetString(buffer, 0, count); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[configure exec] {Line}", trimmed); } catch { }
+                                }
+                            }
+                            else
+                            {
+                                var read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                                if (read == 0) break;
+                                try { var s = Encoding.UTF8.GetString(buffer, 0, read); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[configure exec] {Line}", trimmed); } catch { }
                             }
                         }
                     }
                     catch (OperationCanceledException) { throw; }
-                    catch (Exception ex)
+                    catch (Exception exStream)
                     {
-                        _logger?.LogDebug(ex, "Error streaming configure exec output");
+                        _logger?.LogDebug(exStream, "Error streaming configure exec output");
                     }
                 }
 
@@ -633,6 +690,79 @@ namespace GitHub.RunnerTasks
             }
         }
 
+        // Fallback: use docker CLI to create and start a container if Docker.DotNet fails
+        private async Task<bool> TryStartContainersWithDockerCli(string[] envVars, CancellationToken cancellationToken)
+        {
+            // Determine image name to use
+            var projectName = Path.GetFileName(_workingDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var wantedTag = "github-self-hosted-runner-docker-github-runner:latest";
+
+            try
+            {
+                // Attempt to see if image exists locally via 'docker images'
+                var psiCheck = new System.Diagnostics.ProcessStartInfo("docker", $"images -q {wantedTag}") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var pcheck = System.Diagnostics.Process.Start(psiCheck);
+                if (pcheck == null) { Console.WriteLine("docker CLI not available"); return false; }
+                var id = await pcheck.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                await pcheck.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    Console.WriteLine($"Image {wantedTag} not found locally -- attempting to build via docker CLI");
+                    var built = await TryBuildImageWithDockerCli(wantedTag, cancellationToken).ConfigureAwait(false);
+                    if (!built) return false;
+                }
+
+                // Create a container using docker run (detached) with a volume mount for runner data
+                var volumeName = "runner_data_cli_" + Guid.NewGuid().ToString("n");
+                Console.WriteLine($"Creating docker volume {volumeName}");
+                var psiVol = new System.Diagnostics.ProcessStartInfo("docker", $"volume create {volumeName}") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using (var pvol = System.Diagnostics.Process.Start(psiVol))
+                {
+                    if (pvol == null) { Console.WriteLine("Failed to start docker to create volume"); return false; }
+                    var vout = await pvol.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                    await pvol.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                    Console.WriteLine(vout.Trim());
+                }
+
+                // Ensure RUNNER_LABELS is present in envVars (docker container expects it)
+                var envListMutable = envVars?.ToList() ?? new System.Collections.Generic.List<string>();
+                if (!envListMutable.Any(e => e.StartsWith("RUNNER_LABELS=", StringComparison.OrdinalIgnoreCase)))
+                {
+                    envListMutable.Add($"RUNNER_LABELS=self-hosted");
+                }
+
+                // Build docker run command
+                var envArgs = string.Join(' ', envListMutable.Select(e => $"-e \"{e}\""));
+                // Mount the same volume to both /actions-runner and /runner to match docker-compose behavior
+                var runCmd = $"run -d --name runner-cli-{Guid.NewGuid():N} -v {volumeName}:/actions-runner -v {volumeName}:/runner {envArgs} {wantedTag} tail -f /dev/null";
+                Console.WriteLine($"Running: docker {runCmd}");
+                var psiRun = new System.Diagnostics.ProcessStartInfo("docker", runCmd) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using (var prun = System.Diagnostics.Process.Start(psiRun))
+                {
+                    if (prun == null) { Console.WriteLine("Failed to start docker run process"); return false; }
+                    var rout = await prun.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                    var rerr = await prun.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                    await prun.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                    if (prun.ExitCode != 0)
+                    {
+                        Console.WriteLine("docker run failed:");
+                        Console.WriteLine(rerr);
+                        return false;
+                    }
+                    _containerId = rout.Trim();
+                    Console.WriteLine($"Started container via docker CLI: {_containerId}");
+                    _createdVolumeName = volumeName;
+                    _imageTagInUse = wantedTag;
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"TryStartContainersWithDockerCli exception: {ex}");
+                return false;
+            }
+        }
+
 
         public async Task<bool> StopContainersAsync(CancellationToken cancellationToken)
         {
@@ -820,6 +950,31 @@ namespace GitHub.RunnerTasks
             // allow tests to shorten the waiting period
             // reflection-friendly helper
             typeof(DockerDotNetRunnerService).GetField("_logWaitTimeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.SetValue(this, t);
+        }
+
+        private async Task<bool> RunConfigureInContainerWithDockerCli(string containerId, string[] args, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var joinedArgs = string.Join(' ', args.Select(a => a.Contains(' ') ? '"' + a + '"' : a));
+                var cmd = $"exec {containerId} /actions-runner/config.sh {joinedArgs}";
+                Console.WriteLine($"Running docker {cmd}");
+                var psi = new System.Diagnostics.ProcessStartInfo("docker", cmd) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var p = System.Diagnostics.Process.Start(psi);
+                if (p == null) { Console.WriteLine("Failed to start docker exec"); return false; }
+
+                p.OutputDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
+                p.ErrorDataReceived += (s, e) => { if (e.Data != null) Console.Error.WriteLine(e.Data); };
+                try { p.BeginOutputReadLine(); p.BeginErrorReadLine(); } catch { }
+                await p.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                Console.WriteLine($"docker exec exit code: {p.ExitCode}");
+                return p.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"RunConfigureInContainerWithDockerCli exception: {ex}");
+                return false;
+            }
         }
     }
 
