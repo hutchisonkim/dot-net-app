@@ -24,9 +24,10 @@ namespace GitHub.RunnerTasks
         public DockerRunnerService(ILogger<DockerRunnerService>? logger = null)
         {
             _logger = logger;
-            _docker = new DockerClientConfiguration(
-                new Uri(Environment.GetEnvironmentVariable("DOCKER_HOST") ?? "unix:///var/run/docker.sock"))
-                .CreateClient();
+            var dockerUri = Environment.OSVersion.Platform == PlatformID.Win32NT
+                ? new Uri("npipe://./pipe/docker_engine")
+                : new Uri(Environment.GetEnvironmentVariable("DOCKER_HOST") ?? "unix:///var/run/docker.sock");
+            _docker = new DockerClientConfiguration(dockerUri).CreateClient();
         }
 
         public async Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken)
@@ -97,8 +98,8 @@ namespace GitHub.RunnerTasks
         {
             if (_containerName == null)
             {
-                _logger?.LogWarning("Stop requested but no container name known");
-                return false;
+                _logger?.LogInformation("Stop requested but no container name known; treating as success");
+                return true;
             }
 
             _logger?.LogInformation("Stopping container {Container}", _containerName);

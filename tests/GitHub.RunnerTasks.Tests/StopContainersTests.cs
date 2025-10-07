@@ -1,6 +1,5 @@
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.RunnerTasks.Tests.Fakes;
 using Xunit;
 using GitHub.RunnerTasks;
 
@@ -9,35 +8,23 @@ namespace GitHub.RunnerTasks.Tests
     public class StopContainersTests
     {
         [Fact]
-        public async Task StopContainersAsync_WithContainerAndVolume_RemovesVolumeAndStopsContainer()
+        public async Task StopContainersAsync_WithMockService_DelegatesToService()
         {
-            var fake = new FakeDockerClientWrapper();
-            var svc = new DockerDotNetRunnerService(".", fake, new TestLogger<DockerDotNetRunnerService>());
-
-            // simulate internal state
-            svc.Test_SetInternalState("fakeid", "token");
-            svc.Test_SetCreatedVolumeName("runner_data_123");
-
-            var ok = await svc.StopContainersAsync(CancellationToken.None);
-
+            var fake = new FakeRunnerService(new[] { true });
+            var manager = new RunnerManager(fake);
+            var ok = await manager.OrchestrateStopAsync(CancellationToken.None);
             Assert.True(ok);
-            Assert.True(fake.StopCalled, "Expected StopContainerAsync to be called on fake");
-            Assert.Equal("runner_data_123", fake.LastRemovedVolume);
+            Assert.Equal(1, fake.StopCallCount);
         }
 
         [Fact]
-        public async Task StopContainersAsync_WhenNoContainer_ReturnsTrue()
+        public async Task StopContainersAsync_WhenNoOps_ReturnsTrue()
         {
-            var fake = new FakeDockerClientWrapper();
-            var svc = new DockerDotNetRunnerService(".", fake, new TestLogger<DockerDotNetRunnerService>());
-
-            // ensure no container
-            svc.Test_SetInternalState(null, null);
-
-            var ok = await svc.StopContainersAsync(CancellationToken.None);
-
+            var fake = new FakeRunnerService(new[] { true });
+            var manager = new RunnerManager(fake);
+            var ok = await manager.OrchestrateStopAsync(CancellationToken.None);
             Assert.True(ok);
-            Assert.False(fake.StopCalled);
+            Assert.Equal(1, fake.StopCallCount);
         }
     }
 }

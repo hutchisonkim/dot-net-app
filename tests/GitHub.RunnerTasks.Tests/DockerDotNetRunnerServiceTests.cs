@@ -6,10 +6,10 @@ using GitHub.RunnerTasks;
 
 namespace GitHub.RunnerTasks.Tests
 {
-    public class DockerDotNetRunnerServiceTests
+    public class DockerRunnerServiceIntegrationOrchestrationTests
     {
         [Fact]
-        public async Task DockerDotNetRunnerService_GatedIntegrationOrMock_Works()
+        public async Task DockerRunnerService_GatedIntegrationOrMock_Works()
         {
             bool dockerAvailable = false;
             // Only run the real Docker.DotNet integration when explicitly enabled.
@@ -35,8 +35,7 @@ namespace GitHub.RunnerTasks.Tests
                 dockerAvailable = true;
                 if (dockerAvailable)
                 {
-                var workingDir = System.IO.Path.GetFullPath("src/GitHub.RunnerTasks");
-                var svc = new DockerDotNetRunnerService(workingDir, new TestLogger<DockerDotNetRunnerService>());
+                await using var svc = new DockerRunnerService(new TestLogger<DockerRunnerService>());
 
                 using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
 
