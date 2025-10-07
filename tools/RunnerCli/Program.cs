@@ -24,8 +24,9 @@ static class Program
             return 2;
         }
 
-        var workingDir = System.IO.Path.GetFullPath("src/GitHub.RunnerTasks");
-    // No ILogger provided: pass null to avoid introducing extra package dependencies.
+    var workingDir = System.IO.Path.GetFullPath("src/GitHub.RunnerTasks");
+    Console.WriteLine($"RunnerCli: cmd={cmd}, repo={repo}, url={url}");
+    Console.WriteLine($"RunnerCli: token present={(string.IsNullOrEmpty(token) ? "no" : "yes")}, token masked={(string.IsNullOrEmpty(token) ? "" : token.Substring(0,4) + new string('*', Math.Max(0, token.Length-8)) + token.Substring(Math.Max(4, token.Length-4)))}");
     var svc = new DockerDotNetRunnerService(workingDir, null);
     var manager = new RunnerManager(svc, null);
 
@@ -42,8 +43,28 @@ static class Program
                 }
 
                 var env = new[] { $"GITHUB_REPOSITORY={repo}", $"GITHUB_TOKEN={token}", $"GITHUB_URL={url}" };
-                var ok = await manager.OrchestrateStartAsync(token, repo, url, env, maxRetries: 3, baseDelayMs: 200, cancellationToken: cts.Token);
-                return ok ? 0 : 1;
+
+                Console.WriteLine("RunnerCli: calling StartContainersAsync...");
+                var started = await svc.StartContainersAsync(env, cts.Token);
+                Console.WriteLine($"RunnerCli: StartContainersAsync returned {started}");
+                if (!started)
+                {
+                    Console.WriteLine("RunnerCli: StartContainersAsync failed — aborting start sequence");
+                    return 1;
+                }
+
+                Console.WriteLine("RunnerCli: calling RegisterAsync...");
+                var registered = await svc.RegisterAsync(token, repo, url, cts.Token);
+                Console.WriteLine($"RunnerCli: RegisterAsync returned {registered}");
+                if (!registered)
+                {
+                    Console.WriteLine("RunnerCli: RegisterAsync failed; attempting to stop containers...");
+                    await svc.StopContainersAsync(cts.Token);
+                    return 1;
+                }
+
+                Console.WriteLine("RunnerCli: start sequence complete");
+                return 0;
             }
             else if (cmd == "stop")
             {
@@ -71,4 +92,6 @@ static class Program
         }
         return null;
     }
+
+    // using Microsoft.Extensions.Logging.Console for output
 }

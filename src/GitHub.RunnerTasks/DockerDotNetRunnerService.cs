@@ -42,6 +42,67 @@ namespace GitHub.RunnerTasks
             _clientWrapper = new DockerClientWrapper(_client);
         }
 
+        private async Task<bool> TryBuildImageWithDockerCli(string tag, CancellationToken cancellationToken)
+        {
+            // Create a temp dir for docker build context
+            var tmp = Path.Combine(Path.GetTempPath(), "runner-image-build-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tmp);
+            try
+            {
+                // Write a minimal Dockerfile that downloads and extracts the runner
+                var lines = new[]
+                {
+                    "FROM ubuntu:20.04",
+                    "RUN apt-get update && apt-get install -y curl ca-certificates tar gzip sudo openssl && rm -rf /var/lib/apt/lists/*",
+                    "RUN useradd -m -s /bin/bash github-runner",
+                    "WORKDIR /actions-runner",
+                    "ARG RUNNER_VERSION=2.328.0",
+                    "RUN curl -L -o actions-runner.tar.gz https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz && tar xzf actions-runner.tar.gz --strip-components=0 || true",
+                    "USER github-runner",
+                    "CMD [\"/bin/bash\", \"-c\", \"tail -f /dev/null\"]"
+                };
+
+                var dockerfile = string.Join(System.Environment.NewLine, lines);
+                File.WriteAllText(Path.Combine(tmp, "Dockerfile"), dockerfile);
+
+                // Run docker build
+                var psi = new System.Diagnostics.ProcessStartInfo("docker", $"build -t {tag} .")
+                {
+                    WorkingDirectory = tmp,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var proc = System.Diagnostics.Process.Start(psi)!;
+                if (proc == null) return false;
+                var stdout = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                var stderr = await proc.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                if (proc.ExitCode != 0)
+                {
+                    Console.WriteLine("--- docker build stdout ---");
+                    Console.WriteLine(stdout);
+                    Console.WriteLine("--- docker build stderr ---");
+                    Console.WriteLine(stderr);
+                    return false;
+                }
+
+                Console.WriteLine($"Successfully built runner image {tag}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Exception during docker build");
+                return false;
+            }
+            finally
+            {
+                try { Directory.Delete(tmp, true); } catch { }
+            }
+        }
+
         // For tests: allow injecting a custom wrapper
         public DockerDotNetRunnerService(string workingDirectory, IDockerClientWrapper clientWrapper, ILogger<DockerDotNetRunnerService>? logger = null)
         {
@@ -59,17 +120,21 @@ namespace GitHub.RunnerTasks
             var projectName = Path.GetFileName(_workingDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
             var guess = $"{projectName}_github-runner";
             var guessAlt = $"{projectName}-github-runner";
+            CreateContainerParameters? createParams = null;
 
             try
             {
+                Console.WriteLine($"Searching for image matching: {guess} or {guessAlt}");
                 _logger?.LogInformation("Searching for image matching {Guess}", guess);
                 var images = _clientWrapper != null
                     ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
                     : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
                 var found = images.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => t.StartsWith(guess, StringComparison.OrdinalIgnoreCase) || t.StartsWith(guessAlt, StringComparison.OrdinalIgnoreCase) || t.Contains("github-runner", StringComparison.OrdinalIgnoreCase)));
+                Console.WriteLine($"Found images count: {images?.Count ?? 0}");
                 if (found != null)
                 {
                     var tag = (found.RepoTags ?? Array.Empty<string>()).First();
+                    Console.WriteLine($"Using image tag: {tag}");
                     _imageTagInUse = tag;
 
                     // Create a dedicated volume and mount it to both /runner and /actions-runner to mirror docker-compose
@@ -87,7 +152,7 @@ namespace GitHub.RunnerTasks
                     }
 
                     // Create container that stays alive (tail -f /dev/null) so we can exec into it programmatically
-                    var createParams = new CreateContainerParameters
+                    createParams = new CreateContainerParameters
                     {
                         Image = tag,
                         Name = $"runner-test-{Guid.NewGuid():N}",
@@ -106,48 +171,56 @@ namespace GitHub.RunnerTasks
                         }
                     };
 
-                    var created = _clientWrapper != null
-                        ? await _clientWrapper.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false)
-                        : await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
-                    _containerId = created.ID;
-
-                    var started = _clientWrapper != null
-                        ? await _clientWrapper.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
-                        : await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
-                    if (!started)
-                    {
-                        _logger?.LogError("Failed to start container {Id}", _containerId);
-                        // cleanup created resources
-                        try { await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
-                        _containerId = null;
-                        return false;
-                    }
-
-                    // Wait a short period for the container to reach running state
-                    try
-                    {
-                        var sw = System.Diagnostics.Stopwatch.StartNew();
-                        while (sw.Elapsed < _containerStartTimeout)
-                        {
-                            var inspect = _clientWrapper != null
-                                ? await _clientWrapper.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false)
-                                : await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
-                            if (inspect.State != null && inspect.State.Running)
-                            {
-                                break;
-                            }
-                            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogDebug(ex, "Error while waiting for container running state");
-                    }
+                    // container creation/start will be performed after image discovery (common path below)
                 }
                 else
                 {
-                    _logger?.LogWarning("No image found via Docker.DotNet; cannot continue without docker image");
-                    return false;
+                    Console.WriteLine("No image found via Docker.DotNet; attempting to build a minimal runner image via docker CLI");
+                    _logger?.LogInformation("No image found via Docker.DotNet; attempting to build a minimal runner image via docker CLI");
+                    // Attempt to build a minimal image programmatically via docker CLI
+                    var wantedTag = "github-self-hosted-runner-docker-github-runner:latest";
+                    try
+                    {
+                        var built = await TryBuildImageWithDockerCli(wantedTag, cancellationToken).ConfigureAwait(false);
+                        Console.WriteLine($"TryBuildImageWithDockerCli returned: {built}");
+                        if (!built)
+                        {
+                            _logger?.LogWarning("Failed to build runner image via docker CLI");
+                            return false;
+                        }
+
+                        // Re-fetch images and find the newly built image
+                        var images2 = _clientWrapper != null
+                            ? await _clientWrapper.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false)
+                            : await _client.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                        var found2 = images2.FirstOrDefault(i => (i.RepoTags ?? Array.Empty<string>()).Any(t => string.Equals(t, wantedTag, StringComparison.OrdinalIgnoreCase)));
+                        if (found2 == null)
+                        {
+                            Console.WriteLine("Built image not present after build step");
+                            _logger?.LogWarning("Built image not present after build step");
+                            return false;
+                        }
+
+                        var tag = (found2.RepoTags ?? Array.Empty<string>()).First();
+                        Console.WriteLine($"Found built image tag: {tag}");
+                        _imageTagInUse = tag;
+
+                        // prepare createParams for the built image
+                        createParams = new CreateContainerParameters
+                        {
+                            Image = _imageTagInUse,
+                            Name = $"runner-test-{Guid.NewGuid():N}",
+                            Cmd = new[] { "tail", "-f", "/dev/null" },
+                            Env = envVars?.ToList() ?? new System.Collections.Generic.List<string>(),
+                            HostConfig = new HostConfig { AutoRemove = false }
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Exception while attempting to build runner image: {ex}");
+                        _logger?.LogWarning(ex, "Exception while attempting to build runner image");
+                        return false;
+                    }
                 }
             }
             catch (Exception ex)
@@ -156,52 +229,51 @@ namespace GitHub.RunnerTasks
                 return false;
             }
 
-            var logParams = new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Follow = true, Tail = "all" };
-            var stream = _clientWrapper != null
-                ? await _clientWrapper.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false)
-                : (dynamic)await _client.Containers.GetContainerLogsAsync(_containerId, logParams, cancellationToken).ConfigureAwait(false);
-
-            // Log directly from a read loop; support both Docker.DotNet multiplexed ReadOutputAsync and plain Stream ReadAsync
-            _ = Task.Run(async () =>
+            if (createParams == null)
             {
-                var buffer = new byte[2048];
-                try
+                _logger?.LogError("No create parameters available for container creation");
+                return false;
+            }
+
+            // Create the container
+            var created = _clientWrapper != null
+                ? await _clientWrapper.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false)
+                : await _client.Containers.CreateContainerAsync(createParams, cancellationToken).ConfigureAwait(false);
+            _containerId = created.ID;
+            Console.WriteLine($"Created container with ID: {_containerId}");
+
+            // Start the container
+            var started = _clientWrapper != null
+                ? await _clientWrapper.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false)
+                : await _client.Containers.StartContainerAsync(_containerId, new ContainerStartParameters(), cancellationToken).ConfigureAwait(false);
+            if (!started)
+            {
+                _logger?.LogError("Failed to start container {Id}", _containerId);
+                try { await _client.Containers.RemoveContainerAsync(_containerId, new ContainerRemoveParameters { Force = true }, cancellationToken).ConfigureAwait(false); } catch { }
+                _containerId = null;
+                return false;
+            }
+
+            // Wait briefly for the container to reach running state
+            try
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                while (sw.Elapsed < _containerStartTimeout)
                 {
-                    // If the stream exposes ReadOutputAsync (multiplexed stream), call it dynamically so we don't hard-depend on the type.
-                    var hasReadOutput = stream.GetType().GetMethod("ReadOutputAsync", new[] { typeof(byte[]), typeof(int), typeof(int), typeof(CancellationToken) }) != null;
-                    if (hasReadOutput)
+                    var inspect = _clientWrapper != null
+                        ? await _clientWrapper.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false)
+                        : await _client.Containers.InspectContainerAsync(_containerId, cancellationToken).ConfigureAwait(false);
+                    if (inspect.State != null && inspect.State.Running)
                     {
-                        dynamic dstream = stream;
-                        while (true)
-                        {
-                            var res = await dstream.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken);
-                            bool eof = false; int count = 0;
-                            try { eof = (bool)res.EOF; } catch { }
-                            try { count = (int)res.Count; } catch { try { count = (int)((long)res.Count); } catch { } }
-                            if (eof) break;
-                            if (count > 0)
-                            {
-                                try { var s = Encoding.UTF8.GetString(buffer, 0, count); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[container logs] {Line}", trimmed); } catch { }
-                            }
-                        }
+                        break;
                     }
-                    else
-                    {
-                        while (true)
-                        {
-                            int read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
-                            if (read == 0) break;
-                            try { var s = Encoding.UTF8.GetString(buffer, 0, read); var trimmed = s.TrimEnd(); if (_logger != null) Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[container logs] {Line}", trimmed); } catch { }
-                        }
-                    }
+                    await Task.Delay(200, cancellationToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) { }
-                catch (Exception ex) { _logger?.LogDebug(ex, "Error streaming container logs"); }
-                finally
-                {
-                    try { stream.Dispose(); } catch { }
-                }
-            }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Error while waiting for container running state");
+            }
 
             return true;
         }
