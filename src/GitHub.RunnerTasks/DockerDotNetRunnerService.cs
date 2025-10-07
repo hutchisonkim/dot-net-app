@@ -591,7 +591,24 @@ namespace GitHub.RunnerTasks
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Registration exec path failed; attempting one-off container");
+                _logger?.LogWarning(ex, "Registration exec path failed; attempting docker CLI exec into existing container or one-off container fallback");
+
+                // If we have a container created via the docker CLI path, try to run the configure script using the docker CLI
+                try
+                {
+                    if (!string.IsNullOrEmpty(_containerId))
+                    {
+                        // configArgs was defined earlier and contains the script path as the first element; pass the remaining args
+                        var cliArgs = configArgs.Skip(1).ToArray();
+                        var cliOk = await RunConfigureInContainerWithDockerCli(_containerId, cliArgs, cancellationToken).ConfigureAwait(false);
+                        if (cliOk) return true;
+                    }
+                }
+                catch (Exception ex2)
+                {
+                    _logger?.LogDebug(ex2, "docker CLI exec attempt failed; falling back to one-off container");
+                }
+
                 return await RunOneOffContainerAsync("github-self-hosted-runner-docker-github-runner:latest",
                     new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" },
                     new[] { "/usr/local/bin/configure-runner.sh" }, cancellationToken).ConfigureAwait(false);
@@ -957,7 +974,8 @@ namespace GitHub.RunnerTasks
             try
             {
                 var joinedArgs = string.Join(' ', args.Select(a => a.Contains(' ') ? '"' + a + '"' : a));
-                var cmd = $"exec {containerId} /actions-runner/config.sh {joinedArgs}";
+                // run as the github-runner user to avoid configure script refusing to run as root
+                var cmd = $"exec -u github-runner {containerId} /actions-runner/config.sh {joinedArgs}";
                 Console.WriteLine($"Running docker {cmd}");
                 var psi = new System.Diagnostics.ProcessStartInfo("docker", cmd) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
                 using var p = System.Diagnostics.Process.Start(psi);
