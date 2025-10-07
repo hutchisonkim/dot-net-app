@@ -14,6 +14,8 @@
         "start",
         "--repo",
         "${input:ownerRepo}",
+        "--token",
+        "${input:runnerToken}",
         "--url",
         "${input:githubUrl}"
       ],
