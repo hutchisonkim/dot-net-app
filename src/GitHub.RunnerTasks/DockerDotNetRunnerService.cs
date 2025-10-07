@@ -994,7 +994,20 @@ namespace GitHub.RunnerTasks
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Failed to create/start unregister exec");
+                _logger?.LogWarning(ex, "Failed to create/start unregister exec; attempting docker CLI unregister");
+                try
+                {
+                    if (!string.IsNullOrEmpty(_containerId) && !string.IsNullOrEmpty(_lastRegistrationToken))
+                    {
+                        var args = new[] { "remove", "--unattended", "--token", _lastRegistrationToken };
+                        var cliOk = await RunConfigureInContainerWithDockerCli(_containerId, args, cancellationToken).ConfigureAwait(false);
+                        if (!cliOk) _logger?.LogWarning("docker CLI unregister returned false");
+                    }
+                }
+                catch (Exception ex2)
+                {
+                    _logger?.LogDebug(ex2, "docker CLI unregister attempt failed");
+                }
             }
             finally
             {
