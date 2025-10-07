@@ -2,6 +2,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Docker;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace GitHub.Runner.Docker.Cli;
 
@@ -20,6 +22,21 @@ static class Program
         var token = GetArgValue(args, "--token") ?? Environment.GetEnvironmentVariable("GITHUB_TOKEN");
         var url = GetArgValue(args, "--url") ?? Environment.GetEnvironmentVariable("GITHUB_URL") ?? "https://github.com";
 
+        // create a console logger so internal services emit useful information
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.ClearProviders();
+            builder.AddSimpleConsole(options =>
+            {
+                options.SingleLine = true;
+                options.TimestampFormat = "hh:mm:ss ";
+            });
+            builder.SetMinimumLevel(LogLevel.Information);
+        });
+
+        var dockerLogger = loggerFactory.CreateLogger<GitHub.Runner.Docker.DockerRunnerService>();
+        var managerLogger = loggerFactory.CreateLogger<GitHub.Runner.Docker.RunnerManager>();
+
         if (string.IsNullOrEmpty(repo))
         {
             Console.Error.WriteLine("Missing repo (use --repo or set GITHUB_REPOSITORY)");
@@ -29,8 +46,8 @@ static class Program
         var workingDir = System.IO.Path.GetFullPath("src/GitHub.Runner.Docker");
         Console.WriteLine($"GitHub.Runner.Docker.Cli: cmd={cmd}, repo={repo}, url={url}");
         Console.WriteLine($"GitHub.Runner.Docker.Cli: token present={(string.IsNullOrEmpty(token) ? "no" : "yes")}, token masked={(string.IsNullOrEmpty(token) ? "" : token.Substring(0,4) + new string('*', Math.Max(0, token.Length-8)) + token.Substring(Math.Max(4, token.Length-4)))}");
-        await using var svc = new DockerRunnerService(null);
-        var manager = new RunnerManager(svc, null);
+    await using var svc = new DockerRunnerService(dockerLogger);
+    var manager = new RunnerManager(svc, managerLogger);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
 

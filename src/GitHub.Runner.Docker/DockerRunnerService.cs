@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
 namespace GitHub.Runner.Docker
@@ -24,10 +25,29 @@ namespace GitHub.Runner.Docker
         public DockerRunnerService(ILogger<DockerRunnerService>? logger = null)
         {
             _logger = logger;
-            var dockerUri = Environment.OSVersion.Platform == PlatformID.Win32NT
-                ? new Uri("npipe://./pipe/docker_engine")
-                : new Uri(Environment.GetEnvironmentVariable("DOCKER_HOST") ?? "unix:///var/run/docker.sock");
-            _docker = new DockerClientConfiguration(dockerUri).CreateClient();
+            _docker = CreateDockerClient();
+        }
+
+        private DockerClient CreateDockerClient()
+        {
+            // prefer DOCKER_HOST when set (matches docker CLI context)
+            var dockerHost = Environment.GetEnvironmentVariable("DOCKER_HOST");
+
+            string dockerUri = !string.IsNullOrEmpty(dockerHost)
+                ? dockerHost
+                : (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? "npipe://./pipe/docker_engine"
+                    : "unix:///var/run/docker.sock");
+
+            try
+            {
+                var config = new DockerClientConfiguration(new Uri(dockerUri));
+                return config.CreateClient();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to create Docker client for '{dockerUri}'. Ensure DOCKER_HOST is correct and the Docker daemon is reachable.", ex);
+            }
         }
 
         public async Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken)
@@ -152,8 +172,16 @@ namespace GitHub.Runner.Docker
 
         private async Task<bool> ImageExistsAsync(CancellationToken cancellationToken)
         {
-            var images = await _docker.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken);
-            return images.Any(i => i.RepoTags != null && i.RepoTags.Contains(ImageTag));
+            try
+            {
+                var images = await _docker.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken);
+                return images.Any(i => i.RepoTags != null && i.RepoTags.Contains(ImageTag));
+            }
+            catch (DockerApiException ex)
+            {
+                _logger?.LogWarning(ex, "ImageExistsAsync: Docker API call failed; cannot list images");
+                throw;
+            }
         }
 
         private async Task BuildImageAsync(CancellationToken cancellationToken)
