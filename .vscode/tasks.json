@@ -4,14 +4,14 @@
     {
       "label": "Start GitHub self-hosted runner",
       "type": "shell",
-      "detail": "Prompts for owner/repo and runner token, then starts the docker-compose stack in github-self-hosted-runner-docker",
+  "detail": "(DEPRECATED) Previously started docker-compose in github-self-hosted-runner-docker. Compose-based runner retired; use programmatic GitHub.RunnerTasks orchestration for tests/automation.",
       "command": "docker-compose",
       "args": [
         "up",
         "-d"
       ],
       "options": {
-        "cwd": "${workspaceFolder}/github-self-hosted-runner-docker",
+        "cwd": "${workspaceFolder}",
         "env": {
           "GITHUB_REPOSITORY": "${input:ownerRepo}",
           "GITHUB_TOKEN": "${input:runnerToken}",
@@ -29,13 +29,13 @@
     {
       "label": "Stop GitHub self-hosted runner",
       "type": "shell",
-      "detail": "Shuts down the docker-compose stack (github-self-hosted-runner-docker)",
+  "detail": "(DEPRECATED) Shuts down the docker-compose stack. Compose-based runner retired; kept for backward compatibility only.",
       "command": "docker-compose",
       "args": [
         "down"
       ],
       "options": {
-        "cwd": "${workspaceFolder}/github-self-hosted-runner-docker"
+        "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [],
       "group": "build"
