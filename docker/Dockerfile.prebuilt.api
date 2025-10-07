@@ -6,4 +6,4 @@ ENV ASPNETCORE_URLS="http://+:8080"
 # the image small and avoid leaking source or test files.
 COPY downloaded-artifacts/api/ ./
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "DotNetApp.Api.dll"]
+ENTRYPOINT ["dotnet", "DotNetApp.Server.dll"]
