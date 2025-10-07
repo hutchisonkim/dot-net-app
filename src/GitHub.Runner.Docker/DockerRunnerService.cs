@@ -1,20 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
 namespace GitHub.Runner.Docker
 {
     public class DockerRunnerService : IRunnerService, IAsyncDisposable
     {
-        private readonly DockerClient _docker;
+        private readonly DockerClient? _docker;
         private readonly ILogger<DockerRunnerService>? _logger;
+        private readonly bool _useCli;
 
         private const string ImageTag = "github-runner:latest";
         private string? _repoUrl;
@@ -25,60 +27,27 @@ namespace GitHub.Runner.Docker
         public DockerRunnerService(ILogger<DockerRunnerService>? logger = null)
         {
             _logger = logger;
-            _docker = CreateDockerClient();
+            _useCli = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+            if (!_useCli)
+            {
+                _docker = CreateDockerClient();
+            }
         }
 
         private DockerClient CreateDockerClient()
         {
-            var candidates = new List<string>();
+            var socket = "unix:///var/run/docker.sock";
 
-            // Use DOCKER_HOST if set
-            var envHost = Environment.GetEnvironmentVariable("DOCKER_HOST");
-            if (!string.IsNullOrWhiteSpace(envHost)) candidates.Add(envHost);
+            if (!File.Exists("/var/run/docker.sock"))
+                throw new InvalidOperationException("Docker Unix socket not found. Ensure Docker is running.");
 
-            // Detect host OS to pick the proper Docker endpoint
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                // Named pipes for Docker Desktop on Windows
-                candidates.Add("npipe://./pipe/dockerDesktopLinuxEngine");
-                candidates.Add("npipe://./pipe/docker_engine");
-                // Optional TCP fallback if user enabled daemon exposure
-                candidates.Add("tcp://localhost:2375");
-            }
-            else
-            {
-                // Unix socket on Linux or WSL2
-                candidates.Add("unix:///var/run/docker.sock");
-                candidates.Add("tcp://localhost:2375"); // optional fallback
-            }
+            var client = new DockerClientConfiguration(new Uri(socket)).CreateClient();
 
-            // Deduplicate
-            candidates = candidates.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
-
-            Exception? lastEx = null;
-            foreach (var endpoint in candidates)
-            {
-                try
-                {
-                    _logger?.LogInformation("Trying Docker endpoint: {Endpoint}", endpoint);
-                    var config = new DockerClientConfiguration(new Uri(endpoint));
-                    var client = config.CreateClient();
-
-                    // quick probe
-                    client.Images.ListImagesAsync(new ImagesListParameters { All = true }).GetAwaiter().GetResult();
-
-                    _logger?.LogInformation("Connected to Docker endpoint: {Endpoint}", endpoint);
-                    return client;
-                }
-                catch (Exception ex)
-                {
-                    lastEx = ex;
-                    _logger?.LogWarning(ex, "Endpoint {Endpoint} failed", endpoint);
-                }
-            }
-
-            throw new InvalidOperationException(
-                $"Unable to connect to Docker daemon. Tried endpoints: {string.Join(", ", candidates)}", lastEx);
+            // quick probe
+            client.Images.ListImagesAsync(new ImagesListParameters { All = true }).GetAwaiter().GetResult();
+            _logger?.LogInformation("Connected to Docker via Unix socket {Socket}", socket);
+            return client;
         }
 
         public async Task<bool> RegisterAsync(string token, string ownerRepo, string githubUrl, CancellationToken cancellationToken)
@@ -111,38 +80,52 @@ namespace GitHub.Runner.Docker
             _logger?.LogInformation("Starting runner container {ContainerName}", _containerName);
             await RemoveContainerIfExistsAsync(_containerName!, cancellationToken);
 
-            var mergedEnv = new List<string>(envVars)
+            if (_useCli)
             {
-                $"RUNNER_REPO_URL={_repoUrl}",
-                $"RUNNER_TOKEN={_token}",
-                $"RUNNER_NAME={_runnerName}"
-            };
+                var mergedEnv = envVars.Select(e => $"--env {e}").ToList();
+                mergedEnv.Add($"--env RUNNER_REPO_URL={_repoUrl}");
+                mergedEnv.Add($"--env RUNNER_TOKEN={_token}");
+                mergedEnv.Add($"--env RUNNER_NAME={_runnerName}");
 
-            var createParams = new CreateContainerParameters
+                string envArgs = string.Join(" ", mergedEnv);
+                string cmd = $"docker run --name {_containerName} {envArgs} -d {ImageTag} /bin/bash -c \"./config.sh --url {_repoUrl} --token {_token} --name {_runnerName} && ./run.sh\"";
+
+                return await RunCliAsync(cmd, cancellationToken);
+            }
+            else
             {
-                Image = ImageTag,
-                Name = _containerName,
-                Env = mergedEnv,
-                HostConfig = new HostConfig
+                var mergedEnv = new List<string>(envVars)
                 {
-                    AutoRemove = true,
-                    RestartPolicy = new RestartPolicy { Name = RestartPolicyKind.No }
-                },
-                Tty = true,
-                Cmd = new[]
+                    $"RUNNER_REPO_URL={_repoUrl}",
+                    $"RUNNER_TOKEN={_token}",
+                    $"RUNNER_NAME={_runnerName}"
+                };
+
+                var createParams = new CreateContainerParameters
                 {
-                    "/bin/bash", "-c",
-                    $"./config.sh --url {_repoUrl} --token {_token} --name {_runnerName} && ./run.sh"
-                }
-            };
+                    Image = ImageTag,
+                    Name = _containerName,
+                    Env = mergedEnv,
+                    HostConfig = new HostConfig
+                    {
+                        AutoRemove = true,
+                        RestartPolicy = new RestartPolicy { Name = RestartPolicyKind.No }
+                    },
+                    Tty = true,
+                    Cmd = new[]
+                    {
+                        "/bin/bash", "-c",
+                        $"./config.sh --url {_repoUrl} --token {_token} --name {_runnerName} && ./run.sh"
+                    }
+                };
 
-            var response = await _docker.Containers.CreateContainerAsync(createParams, cancellationToken);
-            _logger?.LogInformation("Container created: {Id}", response.ID);
+                var response = await _docker!.Containers.CreateContainerAsync(createParams, cancellationToken);
+                _logger?.LogInformation("Container created: {Id}", response.ID);
 
-            bool started = await _docker.Containers.StartContainerAsync(response.ID, null, cancellationToken);
-            _logger?.LogInformation("Container started: {Started}", started);
-
-            return started;
+                bool started = await _docker.Containers.StartContainerAsync(response.ID, null, cancellationToken);
+                _logger?.LogInformation("Container started: {Started}", started);
+                return started;
+            }
         }
 
         public async Task<bool> StopContainersAsync(CancellationToken cancellationToken)
@@ -153,21 +136,25 @@ namespace GitHub.Runner.Docker
                 return true;
             }
 
-            _logger?.LogInformation("Stopping container {Container}", _containerName);
-            try
+            if (_useCli)
             {
-                await _docker.Containers.StopContainerAsync(_containerName, new ContainerStopParameters
+                string cmd = $"docker stop {_containerName}";
+                return await RunCliAsync(cmd, cancellationToken);
+            }
+            else
+            {
+                try
                 {
-                    WaitBeforeKillSeconds = 10
-                }, cancellationToken);
-                _logger?.LogInformation("Container stopped");
-            }
-            catch (DockerContainerNotFoundException)
-            {
-                _logger?.LogWarning("Container {Container} not found", _containerName);
-            }
+                    await _docker!.Containers.StopContainerAsync(_containerName, new ContainerStopParameters { WaitBeforeKillSeconds = 10 }, cancellationToken);
+                    _logger?.LogInformation("Container stopped");
+                }
+                catch (DockerContainerNotFoundException)
+                {
+                    _logger?.LogWarning("Container {Container} not found", _containerName);
+                }
 
-            return true;
+                return true;
+            }
         }
 
         public async Task<bool> UnregisterAsync(CancellationToken cancellationToken)
@@ -178,40 +165,41 @@ namespace GitHub.Runner.Docker
                 return false;
             }
 
-            _logger?.LogInformation("Unregistering runner {Runner}", _runnerName);
-
-            var execCreate = await _docker.Containers.ExecCreateContainerAsync(_containerName, new ContainerExecCreateParameters
+            if (_useCli)
             {
-                AttachStdout = true,
-                AttachStderr = true,
-                Cmd = new[]
+                string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --url {_repoUrl} --token {_token}\"";
+                return await RunCliAsync(cmd, cancellationToken);
+            }
+            else
+            {
+                var execCreate = await _docker!.Containers.ExecCreateContainerAsync(_containerName, new ContainerExecCreateParameters
                 {
-                    "/bin/bash", "-c",
-                    $"./config.sh remove --url {_repoUrl} --token {_token}"
-                }
-            }, cancellationToken);
+                    AttachStdout = true,
+                    AttachStderr = true,
+                    Cmd = new[] { "/bin/bash", "-c", $"./config.sh remove --url {_repoUrl} --token {_token}" }
+                }, cancellationToken);
 
-            using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
-            var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
-            string output = stdout;
-
-            _logger?.LogInformation("Unregister output: {Output}", output.Trim());
-            return true;
+                using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
+                var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
+                _logger?.LogInformation("Unregister output: {Output}", stdout.Trim());
+                return true;
+            }
         }
 
         // --- Helpers --------------------------------------------------------
 
         private async Task<bool> ImageExistsAsync(CancellationToken cancellationToken)
         {
-            try
+            if (_useCli)
             {
-                var images = await _docker.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken);
-                return images.Any(i => i.RepoTags != null && i.RepoTags.Contains(ImageTag));
+                string cmd = $"docker images -q {ImageTag}";
+                var output = await RunCliCaptureOutputAsync(cmd, cancellationToken);
+                return !string.IsNullOrWhiteSpace(output);
             }
-            catch (DockerApiException ex)
+            else
             {
-                _logger?.LogWarning(ex, "ImageExistsAsync: Docker API call failed; cannot list images");
-                throw;
+                var images = await _docker!.Images.ListImagesAsync(new ImagesListParameters { All = true }, cancellationToken);
+                return images.Any(i => i.RepoTags != null && i.RepoTags.Contains(ImageTag));
             }
         }
 
@@ -225,26 +213,36 @@ RUN mkdir /actions-runner && cd /actions-runner && \
     tar xzf ./actions-runner-linux-x64-2.328.0.tar.gz
 WORKDIR /actions-runner
 ";
-
             string tempDir = Path.Combine(Path.GetTempPath(), "runner-docker");
             Directory.CreateDirectory(tempDir);
             string dockerfilePath = Path.Combine(tempDir, "Dockerfile");
             await File.WriteAllTextAsync(dockerfilePath, dockerfile, cancellationToken);
 
-            using var tarStream = DockerfileHelper.CreateTarballForBuildContext(tempDir);
-            await _docker.Images.BuildImageFromDockerfileAsync(
-                tarStream,
-                new ImageBuildParameters { Tags = new[] { ImageTag } },
-                cancellationToken);
+            if (_useCli)
+            {
+                string cmd = $"docker build -t {ImageTag} -f \"{dockerfilePath}\" \"{tempDir}\"";
+                await RunCliAsync(cmd, cancellationToken);
+            }
+            else
+            {
+                using var tarStream = DockerfileHelper.CreateTarballForBuildContext(tempDir);
+                await _docker!.Images.BuildImageFromDockerfileAsync(
+                    tarStream,
+                    new ImageBuildParameters { Tags = new[] { ImageTag } },
+                    cancellationToken);
+            }
         }
 
         private async Task RemoveContainerIfExistsAsync(string name, CancellationToken cancellationToken)
         {
-            try
+            if (_useCli)
             {
-                var existing = await _docker.Containers.ListContainersAsync(
-                    new ContainersListParameters { All = true }, cancellationToken);
-
+                string cmd = $"docker rm -f {name}";
+                await RunCliAsync(cmd, cancellationToken);
+            }
+            else
+            {
+                var existing = await _docker!.Containers.ListContainersAsync(new ContainersListParameters { All = true }, cancellationToken);
                 var found = existing.FirstOrDefault(c => c.Names.Contains("/" + name));
                 if (found != null)
                 {
@@ -252,10 +250,34 @@ WORKDIR /actions-runner
                     await _docker.Containers.RemoveContainerAsync(found.ID, new ContainerRemoveParameters { Force = true }, cancellationToken);
                 }
             }
-            catch (Exception ex)
+        }
+
+        private async Task<bool> RunCliAsync(string cmd, CancellationToken cancellationToken)
+        {
+            _logger?.LogInformation("Executing CLI: {Cmd}", cmd);
+            var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
             {
-                _logger?.LogWarning(ex, "Error cleaning up existing container");
-            }
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+            using var proc = Process.Start(psi)!;
+            await proc.WaitForExitAsync(cancellationToken);
+            return proc.ExitCode == 0;
+        }
+
+        private async Task<string> RunCliCaptureOutputAsync(string cmd, CancellationToken cancellationToken)
+        {
+            var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+            using var proc = Process.Start(psi)!;
+            string output = await proc.StandardOutput.ReadToEndAsync();
+            await proc.WaitForExitAsync(cancellationToken);
+            return output.Trim();
         }
 
         public async ValueTask DisposeAsync()
@@ -270,7 +292,6 @@ WORKDIR /actions-runner
     {
         public static Stream CreateTarballForBuildContext(string directoryPath)
         {
-            // Simplified tarball creator; production code should use proper tar.
             var stream = new MemoryStream();
             System.IO.Compression.ZipFile.CreateFromDirectory(directoryPath, stream, System.IO.Compression.CompressionLevel.Fastest, false);
             stream.Position = 0;
