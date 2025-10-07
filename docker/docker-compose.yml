@@ -5,9 +5,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.api
     volumes:
-      - ../src/DotNetApp.Api:/src/DotNetApp.Api
+      - ../src/DotNetApp.Server:/src/DotNetApp.Server
     environment:
-      - WORKDIR=/src/DotNetApp.Api
+      - WORKDIR=/src/DotNetApp.Server
     ports:
       - "5000:8080"
     networks:
@@ -34,12 +34,12 @@ services:
     depends_on:
       - api
     volumes:
-      - ../src/DotNetApp.Api:/src/DotNetApp.Api
+      - ../src/DotNetApp.Server:/src/DotNetApp.Server
       - ../src/DotNetApp.Client:/src/DotNetApp.Client
-      - ../tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests
+      - ../tests/DotNetApp.Server.IntegrationTests:/src/DotNetApp.Server.IntegrationTests
       - nuget-packages:/root/.nuget/packages
     environment:
-      - WORKDIR=/src/DotNetApp.Api.IntegrationTests
+      - WORKDIR=/src/DotNetApp.Server.IntegrationTests
       - FRONTEND_API_BASE=http://api:8080/
       - NUGET_HTTP_TIMEOUT=200000
     networks:

@@ -10,13 +10,13 @@
     {
       "label": "API: Run",
       "type": "shell",
-      "command": "dotnet run --project src/DotNetApp.Api -c Debug",
+  "command": "dotnet run --project src/DotNetApp.Server -c Debug",
       "problemMatcher": []
     },
     {
       "label": "API: Test (Unit)",
       "type": "shell",
-      "command": "dotnet test tests/DotNetApp.Api.UnitTests/DotNetApp.Api.UnitTests.csproj -c Debug",
+  "command": "dotnet test tests/DotNetApp.Server.UnitTests/DotNetApp.Server.UnitTests.csproj -c Debug",
       "problemMatcher": ["$msCompile"]
     }
   ]

@@ -33,12 +33,12 @@ services:
     depends_on:
       - api
     volumes:
-      - ../downloaded-artifacts/api:/src/DotNetApp.Api:ro
+      - ../downloaded-artifacts/api:/src/DotNetApp.Server:ro
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
-      - ../tests/DotNetApp.Api.IntegrationTests:/src/DotNetApp.Api.IntegrationTests:ro
+      - ../tests/DotNetApp.Server.IntegrationTests:/src/DotNetApp.Server.IntegrationTests:ro
       - nuget-packages:/root/.nuget/packages
     environment:
-      - WORKDIR=/src/DotNetApp.Api.IntegrationTests
+      - WORKDIR=/src/DotNetApp.Server.IntegrationTests
       - FRONTEND_API_BASE=http://api:8080/
       - NUGET_HTTP_TIMEOUT=200000
     networks:
