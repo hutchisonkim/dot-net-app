@@ -239,7 +239,7 @@ namespace GitHub.RunnerTasks.Tests
             // so the test passes in environments without Docker.
             if (string.Equals(Environment.GetEnvironmentVariable("RUN_INTEGRATION"), "1", StringComparison.OrdinalIgnoreCase))
             {
-                var workingDir = System.IO.Path.GetFullPath("github-self-hosted-runner-docker");
+                var workingDir = System.IO.Path.GetFullPath("src/GitHub.RunnerTasks");
                 var svc = new DockerComposeRunnerService(workingDir, new TestLogger<DockerComposeRunnerService>());
 
                 using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));

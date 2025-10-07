@@ -32,7 +32,7 @@ namespace GitHub.RunnerTasks.Tests
                     return;
                 }
 
-                var workingDir = System.IO.Path.GetFullPath("github-self-hosted-runner-docker");
+                var workingDir = System.IO.Path.GetFullPath("src/GitHub.RunnerTasks");
                 var svc = new DockerDotNetRunnerService(workingDir, new TestLogger<DockerDotNetRunnerService>());
                 using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
 
