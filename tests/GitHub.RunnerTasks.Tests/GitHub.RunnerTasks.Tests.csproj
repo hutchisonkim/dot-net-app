@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GitHub.RunnerTasks\RunnerTasks.csproj" />
+    <ProjectReference Include="..\..\src\GitHub.RunnerTasks\GitHub.RunnerTasks.csproj" />
   </ItemGroup>
 
   <!-- Configure Coverlet to include the test assembly and DotNetApp product assemblies -->
