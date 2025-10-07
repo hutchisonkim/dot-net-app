@@ -117,9 +117,34 @@ namespace GitHub.RunnerTasks
             }
         }
 
-        // StartContainersAsync, StopContainersAsync and UnregisterAsync are unchanged in logic and will be added in a follow-up if needed.
-        public Task<bool> StartContainersAsync(string[] envVars, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<bool> StopContainersAsync(CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<bool> UnregisterAsync(CancellationToken cancellationToken) => throw new NotImplementedException();
+        // To avoid duplicating compose-based shell flows, delegate runtime operations to
+        // the programmatic DockerDotNetRunnerService implementation which provides
+        // the same behaviors and is fully unit-tested.
+        private DockerDotNetRunnerService? _delegateService;
+
+        private DockerDotNetRunnerService EnsureDelegate()
+        {
+            if (_delegateService != null) return _delegateService;
+            var wrapper = _clientWrapper ?? new DockerClientWrapper(_client);
+            _delegateService = new DockerDotNetRunnerService(_workingDirectory, wrapper, null);
+            return _delegateService;
+        }
+
+        public Task<bool> StartContainersAsync(string[] envVars, CancellationToken cancellationToken)
+        {
+            // Delegate to DockerDotNetRunnerService which will find/bind the image,
+            // create the container, mount volumes and stream logs.
+            return EnsureDelegate().StartContainersAsync(envVars, cancellationToken);
+        }
+
+        public Task<bool> StopContainersAsync(CancellationToken cancellationToken)
+        {
+            return EnsureDelegate().StopContainersAsync(cancellationToken);
+        }
+
+        public Task<bool> UnregisterAsync(CancellationToken cancellationToken)
+        {
+            return EnsureDelegate().UnregisterAsync(cancellationToken);
+        }
     }
 }
