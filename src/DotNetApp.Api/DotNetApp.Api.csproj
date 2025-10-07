@@ -3,8 +3,8 @@
   <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>DotNetApp.Api</AssemblyName>
-    <RootNamespace>DotNetApp.Api</RootNamespace>
+  <AssemblyName>DotNetApp.Server</AssemblyName>
+  <RootNamespace>DotNetApp.Server</RootNamespace>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>

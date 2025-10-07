@@ -1,7 +1,7 @@
 using DotNetApp.Core.Abstractions;
 using DotNetApp.Core.Models;
 
-namespace DotNetApp.Api.Services;
+namespace DotNetApp.Server.Services;
 
 public class DefaultHealthService : IHealthService
 {

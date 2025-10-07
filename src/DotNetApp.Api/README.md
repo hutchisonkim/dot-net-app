@@ -1,6 +1,8 @@
-# DotNetApp.Api workspace
+# DotNetApp.Api workspace (assembly: DotNetApp.Server)
 
 This README sits next to the `DotNetApp.Api.code-workspace` so it appears when opening the workspace.
+
+The API project file keeps the path/name `src/DotNetApp.Api/DotNetApp.Api.csproj` but its AssemblyName/RootNamespace have been changed to `DotNetApp.Server`.
 
 Open the workspace by opening `src/DotNetApp.Api/DotNetApp.Api.code-workspace` in VS Code.
 

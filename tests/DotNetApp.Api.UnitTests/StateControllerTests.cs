@@ -1,12 +1,12 @@
 using System.Threading;
 using System.Threading.Tasks;
-using DotNetApp.Api.Controllers;
+using DotNetApp.Server.Controllers;
 using DotNetApp.Core.Abstractions;
 using Xunit;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
-namespace DotNetApp.Api.UnitTests;
+namespace DotNetApp.Server.UnitTests;
 
 public class StateControllerTests
 {
@@ -28,7 +28,7 @@ public class StateControllerTests
     Assert.NotNull(ok.Value);
 
     // Cast the returned value to the DTO and assert explicitly on the Status property
-    var dto = ok.Value as DotNetApp.Api.Contracts.HealthDto;
+    var dto = ok.Value as DotNetApp.Server.Contracts.HealthDto;
     Assert.NotNull(dto);
     Assert.Equal("Healthy", dto!.Status);
 

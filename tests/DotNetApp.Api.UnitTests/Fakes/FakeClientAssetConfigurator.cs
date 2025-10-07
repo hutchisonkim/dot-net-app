@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DotNetApp.Api.UnitTests.Fakes;
+namespace DotNetApp.Server.UnitTests.Fakes;
 
 public class FakeClientAssetConfigurator : IClientAssetConfigurator
 {

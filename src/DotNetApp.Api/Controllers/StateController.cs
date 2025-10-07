@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using DotNetApp.Core.Abstractions;
-using DotNetApp.Api.Contracts;
+using DotNetApp.Server.Contracts;
 
-namespace DotNetApp.Api.Controllers;
+namespace DotNetApp.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

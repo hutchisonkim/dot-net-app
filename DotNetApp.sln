@@ -4,7 +4,7 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Api", "src\DotNetApp.Api\DotNetApp.Api.csproj", "{E4787A6F-2E4D-CDBC-A83F-6CEECD16407D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server", "src\DotNetApp.Api\DotNetApp.Api.csproj", "{E4787A6F-2E4D-CDBC-A83F-6CEECD16407D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client", "src\DotNetApp.Client\DotNetApp.Client.csproj", "{D1111111-2222-3333-4444-555555555555}"
 EndProject

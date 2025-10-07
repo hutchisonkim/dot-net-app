@@ -14,8 +14,8 @@ builder.Services.AddSwaggerGen();
 // Core + application services
 // Register core-like services directly (DotNetApp.Core project removed in this workspace).
 builder.Services
-    .AddScoped<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Api.Services.DefaultHealthService>()
-    .AddSingleton<DotNetApp.Core.Abstractions.IClientAssetConfigurator, DotNetApp.Api.Services.BlazorClientAssetConfigurator>();
+    .AddScoped<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Server.Services.DefaultHealthService>()
+    .AddSingleton<DotNetApp.Core.Abstractions.IClientAssetConfigurator, DotNetApp.Server.Services.BlazorClientAssetConfigurator>();
 
 // Allow CORS for local testing (replace with tighter policy in prod)
 builder.Services.AddCors(options =>

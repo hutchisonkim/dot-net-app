@@ -1,4 +1,4 @@
-namespace DotNetApp.Api.Contracts;
+namespace DotNetApp.Server.Contracts;
 
 public sealed class HealthDto
 {

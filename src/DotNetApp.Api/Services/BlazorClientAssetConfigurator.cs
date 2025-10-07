@@ -1,7 +1,7 @@
 using DotNetApp.Core.Abstractions;
 using Microsoft.Extensions.FileProviders;
 
-namespace DotNetApp.Api.Services;
+namespace DotNetApp.Server.Services;
 
 public class BlazorClientAssetConfigurator : IClientAssetConfigurator
 {

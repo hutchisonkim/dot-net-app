@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace DotNetApp.Api.IntegrationTests;
+namespace DotNetApp.Server.IntegrationTests;
 
 // Integration-style test verifies the ASP.NET Core pipeline + DI wiring using WebApplicationFactory.
 // Per Microsoft guidance, this belongs in an integration test project (not a pure unit test assembly)
