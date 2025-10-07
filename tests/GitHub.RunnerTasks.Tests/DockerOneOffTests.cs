@@ -1,10 +1,10 @@
 using System.Threading;
 using System.Threading.Tasks;
-using RunnerTasks.Tests.Fakes;
-using RunnerTasks;
+using GitHub.RunnerTasks.Tests.Fakes;
+using GitHub.RunnerTasks;
 using Xunit;
 
-namespace RunnerTasks.Tests
+namespace GitHub.RunnerTasks.Tests
 {
     public class DockerOneOffTests
     {

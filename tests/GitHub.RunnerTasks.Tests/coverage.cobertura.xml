@@ -1,10 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <coverage line-rate="0.6363" branch-rate="0.4481" version="1.9" timestamp="1759685835" lines-covered="511" lines-valid="803" branches-covered="285" branches-valid="636">
   <sources>
-    <source>c:\___work\dot-net-app\src\RunnerTasks\</source>
+  <source>c:\___work\dot-net-app\src\GitHub.RunnerTasks\</source>
   </sources>
   <packages>
-    <package name="RunnerTasks" line-rate="0.6363" branch-rate="0.4481" complexity="661">
+  <package name="GitHub.RunnerTasks" line-rate="0.6363" branch-rate="0.4481" complexity="661">
       <classes>
         <class name="RunnerTasks.DockerClientWrapper" filename="DockerClientWrapper.cs" line-rate="0.75" branch-rate="0.5" complexity="2">
           <methods>

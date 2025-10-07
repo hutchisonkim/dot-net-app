@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
-namespace RunnerTasks
+namespace GitHub.RunnerTasks
 {
     /// <summary>
     /// Lightweight Docker.DotNet implementation: finds a docker image (built by docker-compose), creates a container

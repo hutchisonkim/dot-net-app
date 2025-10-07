@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
-namespace RunnerTasks
+namespace GitHub.RunnerTasks
 {
     public class DockerComposeRunnerService : IRunnerService
     {

@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using RunnerTasks;
+using GitHub.RunnerTasks;
 
-namespace RunnerTasks.Tests
+namespace GitHub.RunnerTasks.Tests
 {
     public class DockerDotNetRunnerServiceTests
     {

@@ -25,10 +25,10 @@ param(
 # ---------------------------
 # Library config
 # ---------------------------
-$LibPaths = @("src\RunnerTasks", "tests\RunnerTasks.Tests")
+$LibPaths = @("src\GitHub.RunnerTasks", "tests\GitHub.RunnerTasks.Tests")
 $RenameMap = @{
-    "src/RunnerTasks"         = "src/GitHub.RunnerTasks"
-    "tests/RunnerTasks.Tests" = "tests/GitHub.RunnerTasks.Tests"
+    "src/GitHub.RunnerTasks"         = "src/GitHub.RunnerTasks"
+    "tests/GitHub.RunnerTasks.Tests" = "tests/GitHub.RunnerTasks.Tests"
 }
 
 # ---------------------------

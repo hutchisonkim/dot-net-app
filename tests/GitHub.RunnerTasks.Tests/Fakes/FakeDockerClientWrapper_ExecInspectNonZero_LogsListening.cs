@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet.Models;
 
-namespace RunnerTasks.Tests.Fakes
+namespace GitHub.RunnerTasks.Tests.Fakes
 {
     // exec inspect returns non-zero exit code, but logs stream contains 'Listening for Jobs'
     public class FakeDockerClientWrapper_ExecInspectNonZero_LogsListening : FakeDockerClientWrapper

@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet.Models;
 
-namespace RunnerTasks.Tests.Fakes
+namespace GitHub.RunnerTasks.Tests.Fakes
 {
     // StartAndAttachExec returns a stream that throws on ReadOutputAsync/ReadAsync to simulate attach read error
     public class FakeDockerClientWrapper_AttachReadError : FakeDockerClientWrapper

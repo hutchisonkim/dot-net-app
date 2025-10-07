@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace RunnerTasks.Tests
+namespace GitHub.RunnerTasks.Tests
 {
     public class FakeRunnerService : IRunnerService
     {

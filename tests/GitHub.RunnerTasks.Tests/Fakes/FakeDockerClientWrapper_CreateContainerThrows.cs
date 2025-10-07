@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet.Models;
 
-namespace RunnerTasks.Tests.Fakes
+namespace GitHub.RunnerTasks.Tests.Fakes
 {
     public class FakeDockerClientWrapper_CreateContainerThrows : FakeDockerClientWrapper
     {

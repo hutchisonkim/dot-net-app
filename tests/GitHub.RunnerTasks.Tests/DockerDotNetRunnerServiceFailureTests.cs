@@ -5,10 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet.Models;
 using Xunit;
-using RunnerTasks.Tests.Fakes;
-using RunnerTasks;
+using GitHub.RunnerTasks.Tests.Fakes;
+using GitHub.RunnerTasks;
 
-namespace RunnerTasks.Tests
+namespace GitHub.RunnerTasks.Tests
 {
     public class DockerDotNetRunnerServiceFailureTests
     {

@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace RunnerTasks
+namespace GitHub.RunnerTasks
 {
     public interface IRunnerService
     {

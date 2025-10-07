@@ -3,11 +3,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Moq;
-using RunnerTasks;
+using GitHub.RunnerTasks;
 
 // Following MSDN guidance: Arrange/Act/Assert, small focused tests, one behavior per test.
 
-namespace RunnerTasks.Tests
+namespace GitHub.RunnerTasks.Tests
 {
     public class RunnerManagerTests
     {

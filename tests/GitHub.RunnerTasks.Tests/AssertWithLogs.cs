@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using Xunit.Abstractions;
 
-namespace RunnerTasks.Tests
+namespace GitHub.RunnerTasks.Tests
 {
     public static class AssertWithLogs
     {

@@ -6,7 +6,7 @@ A .NET 8 sample that pairs an ASP.NET Core API with a Blazor WebAssembly client,
 
 ## Features
 
-- [x] Programmatic Docker orchestration library (`RunnerTasks`) used by tests to manage runners/containers.
+ - [x] Programmatic Docker orchestration library (`GitHub.RunnerTasks`) used by tests to manage runners/containers.
 - [x] Self-hosted GitHub runner stack (Docker-based) with VS Code tasks to start/stop locally.
 - [x] GitHub Actions workflows for robust self-hosted CI, diagnostics, and publishing coverage to GitHub Pages.
 - [x] Unit tests (xUnit, bUnit) for client components and services.
@@ -18,8 +18,8 @@ A .NET 8 sample that pairs an ASP.NET Core API with a Blazor WebAssembly client,
 
 - [ ] Split the monorepo into three coordinated repositories and wire CI to consume them:
 	- App repo (API + Blazor client)
-	- RunnerTasks repo (programmatic Docker orchestration; publish as a NuGet package and reference from tests)
+	- GitHub.RunnerTasks repo (programmatic Docker orchestration; publish as a NuGet package and reference from tests)
 	- Self-hosted runner stack repo (Docker Compose + images; referenced via submodule or multi-checkout in CI)
-- [ ] Apply programmatic orchestration end-to-end: replace remaining script/compose invocations with `RunnerTasks` across integration/E2E tests and local dev, and provide a single entry point (CLI or tool) for start/stop/teardown.
+- [ ] Apply programmatic orchestration end-to-end: replace remaining script/compose invocations with `GitHub.RunnerTasks` across integration/E2E tests and local dev, and provide a single entry point (CLI or tool) for start/stop/teardown.
 - [ ] Increase and enforce test coverage to 100% line/branch/method across API, client, and RunnerTasks; gate in CI using coverlet outputs plus summary thresholds.
 - [ ] Enforce branch protections and PR-only merges to protect `main`.
