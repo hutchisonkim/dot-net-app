@@ -194,8 +194,22 @@ namespace GitHub.RunnerTasks
             _lastRegistrationToken = token;
             if (string.IsNullOrEmpty(_imageTagInUse))
             {
-                _logger?.LogWarning("No image available to run registration via Docker.DotNet in this implementation");
-                return false;
+                // No tracked image available via Docker.DotNet -- run a one-off container to execute registration.
+                _logger?.LogInformation("No image tag set; falling back to RunOneOffContainerAsync for registration");
+                try
+                {
+                    var env = new[] { $"GITHUB_TOKEN={token}", $"GITHUB_URL={githubUrl}", $"GITHUB_REPOSITORY={ownerRepo}" };
+                    // Use the same image name used by the CLI implementation for parity
+                    var image = "github-self-hosted-runner-docker-github-runner:latest";
+                    var cmd = new[] { "/usr/local/bin/configure-runner.sh" };
+                    var ok = await RunOneOffContainerAsync(image, env, cmd, cancellationToken).ConfigureAwait(false);
+                    return ok;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "RunOneOffContainerAsync fallback failed during RegisterAsync");
+                    return false;
+                }
             }
 
             // Exec configure script inside the running container (created by StartContainersAsync)
