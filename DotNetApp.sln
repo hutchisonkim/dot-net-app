@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHub.Runner.Docker", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHub.Runner.Docker.Tests", "tests\GitHub.Runner.Docker.Tests\GitHub.Runner.Docker.Tests.csproj", "{C3C7EF6D-7495-492A-8EC1-334071954CF3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHub.Runner.Docker.Cli", "tools\GitHub.Runner.Docker.Cli\GitHub.Runner.Docker.Cli.csproj", "{ABCD1234-5678-4DEF-9012-ABCDEF123456}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +70,10 @@ Global
 		{C3C7EF6D-7495-492A-8EC1-334071954CF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3C7EF6D-7495-492A-8EC1-334071954CF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3C7EF6D-7495-492A-8EC1-334071954CF3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABCD1234-5678-4DEF-9012-ABCDEF123456}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABCD1234-5678-4DEF-9012-ABCDEF123456}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABCD1234-5678-4DEF-9012-ABCDEF123456}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABCD1234-5678-4DEF-9012-ABCDEF123456}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

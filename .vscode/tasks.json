@@ -4,12 +4,12 @@
     {
       "label": "Start GitHub self-hosted runner",
       "type": "shell",
-      "detail": "Start runner via programmatic RunnerCli (uses GitHub.RunnerTasks)",
+  "detail": "Start runner via programmatic GitHub.Runner.Docker.Cli",
       "command": "dotnet",
       "args": [
         "run",
-        "--project",
-        "tools/RunnerCli",
+  "--project",
+  "tools/GitHub.Runner.Docker.Cli",
         "--",
         "start",
         "--repo",
@@ -38,12 +38,12 @@
     {
       "label": "Stop GitHub self-hosted runner",
       "type": "shell",
-      "detail": "Stop runner via programmatic RunnerCli (uses GitHub.RunnerTasks)",
+  "detail": "Stop runner via programmatic GitHub.Runner.Docker.Cli",
       "command": "dotnet",
       "args": [
         "run",
-        "--project",
-        "tools/RunnerCli",
+  "--project",
+  "tools/GitHub.Runner.Docker.Cli",
         "--",
         "stop"
       ],
