@@ -8,16 +8,10 @@
       "command": "dotnet",
       "args": [
         "run",
-  "--project",
-  "tools/GitHub.Runner.Docker.Cli",
+        "--project",
+        "tools/GitHub.Runner.Docker.Cli",
         "--",
-        "start",
-        "--repo",
-        "${input:ownerRepo}",
-        "--token",
-        "${input:runnerToken}",
-        "--url",
-        "${input:githubUrl}"
+        "start"
       ],
       "options": {
         "cwd": "${workspaceFolder}",
@@ -42,8 +36,8 @@
       "command": "dotnet",
       "args": [
         "run",
-  "--project",
-  "tools/GitHub.Runner.Docker.Cli",
+        "--project",
+        "tools/GitHub.Runner.Docker.Cli",
         "--",
         "stop"
       ],
