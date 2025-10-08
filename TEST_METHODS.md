@@ -60,4 +60,14 @@ Below is a list of test methods discovered in the `tests/` folder, grouped by th
 
 ---
 
+### How to calculate scores
+
+Scores follow xUnit / MSDN testing guidance: we weighted key qualities to produce a single fun score:
+
+- Isolation (30%): can the test run without external services? Unit tests score high here.
+- Repeatability / Determinism (30%): will the test produce the same result every run? Tests that mock/seed state score higher.
+- Speed (20%): how fast is the test to run locally/CI? Quick unit tests score full points.
+- Maintainability (20%): clarity, ease of update, and whether the test is brittle against UI or build layout changes.
+
+Each test's short rationale maps those qualities into the final 0–100 score and a playful badge: 🏆 Platinum / 🥇 Gold / 🥈 Silver / 🥉 Bronze / 💩 Copper / 🐉 Legendary.
 
