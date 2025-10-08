@@ -26,6 +26,24 @@ public class IndexTests
     }
 
     [Fact]
+    public void Index_InitialRender_ShowsLoadingMessage()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        // Use a delayed handler to keep the loading state visible
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"healthy\" }", System.Net.HttpStatusCode.OK, delayMs: 5000);
+        ctx.Services.AddPlatformApi(handler, "http://localhost/");
+
+        // Act
+        var cut = ctx.RenderComponent<Index>();
+
+        // Assert - initially shows loading state
+        var markup = cut.Markup;
+        Assert.Contains("<em>Checking API...</em>", markup);
+        Assert.DoesNotContain("healthy", markup);
+    }
+
+    [Fact]
     public async Task Index_AfterLoad_WithHealthyStatus_ShowsSuccessMessage()
     {
         // Arrange

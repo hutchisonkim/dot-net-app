@@ -15,21 +15,28 @@ namespace DotNetApp.Client.Tests
     {
         private readonly string _responseBody;
         private readonly HttpStatusCode _statusCode;
+        private readonly int _delayMs;
 
-        public TestHttpMessageHandler(string responseBody, HttpStatusCode statusCode)
+        public TestHttpMessageHandler(string responseBody, HttpStatusCode statusCode, int delayMs = 0)
         {
             _responseBody = responseBody;
             _statusCode = statusCode;
+            _delayMs = delayMs;
         }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (_delayMs > 0)
+            {
+                await Task.Delay(_delayMs, cancellationToken);
+            }
+            
             var msg = new HttpResponseMessage(_statusCode)
             {
                 Content = new StringContent(_responseBody)
             };
             msg.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            return Task.FromResult(msg);
+            return msg;
         }
     }
 
