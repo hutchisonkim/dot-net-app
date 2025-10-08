@@ -43,7 +43,8 @@ static class Program
             return 2;
         }
 
-        var workingDir = System.IO.Path.GetFullPath("src/GitHub.Runner.Docker");
+    var workingDir = System.IO.Path.GetFullPath("src/GitHub.Runner.Docker");
+    var stateFile = Path.Combine(workingDir, "runner_state.json");
         Console.WriteLine($"GitHub.Runner.Docker.Cli: cmd={cmd}, repo={repo}, url={url}");
         Console.WriteLine($"GitHub.Runner.Docker.Cli: token present={(string.IsNullOrEmpty(token) ? "no" : "yes")}, token masked={(string.IsNullOrEmpty(token) ? "" : token.Substring(0,4) + new string('*', Math.Max(0, token.Length-8)) + token.Substring(Math.Max(4, token.Length-4)))}");
     await using var svc = new DockerRunnerService(dockerLogger);
@@ -66,11 +67,31 @@ static class Program
                 Console.WriteLine("GitHub.Runner.Docker.Cli: orchestrating start (register + start containers)...");
                 var ok = await manager.OrchestrateStartAsync(token!, repo!, url!, env, maxRetries: 5, baseDelayMs: 200, cancellationToken: cts.Token);
                 Console.WriteLine($"GitHub.Runner.Docker.Cli: OrchestrateStartAsync returned {ok}");
+
+                if (ok && svc is GitHub.Runner.Docker.DockerRunnerService ds)
+                {
+                    // persist state so a fresh stop process can find the container
+                    await ds.SaveStateAsync(stateFile, cts.Token).ConfigureAwait(false);
+                }
+
                 return ok ? 0 : 1;
             }
             else if (cmd == "stop")
             {
+                // try to load persisted state first so we can call unregister against the correct container
+                if (svc is GitHub.Runner.Docker.DockerRunnerService ds2)
+                {
+                    ds2.LoadState(stateFile);
+                }
+
                 var ok = await manager.OrchestrateStopAsync(cts.Token);
+
+                // clear persisted state on successful stop
+                if (ok && svc is GitHub.Runner.Docker.DockerRunnerService ds3)
+                {
+                    ds3.ClearPersistedState(stateFile);
+                }
+
                 return ok ? 0 : 1;
             }
             else

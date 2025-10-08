@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace GitHub.Runner.Docker
 {
@@ -33,6 +35,80 @@ namespace GitHub.Runner.Docker
             {
                 _docker = CreateDockerClient();
             }
+        }
+
+        // Persisted state helper methods -------------------------------------------------
+        public async Task SaveStateAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var state = new RunnerState
+                {
+                    RepoUrl = _repoUrl,
+                    Token = _token,
+                    RunnerName = _runnerName,
+                    ContainerName = _containerName
+                };
+
+                var dir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+                var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
+                _logger?.LogInformation("Saved runner state to {Path}", filePath);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to save runner state to {Path}", filePath);
+            }
+        }
+
+        public void LoadState(string filePath)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    _logger?.LogDebug("State file {Path} not found", filePath);
+                    return;
+                }
+
+                var json = File.ReadAllText(filePath);
+                var state = JsonSerializer.Deserialize<RunnerState>(json);
+                if (state != null)
+                {
+                    _repoUrl = state.RepoUrl ?? _repoUrl;
+                    _token = state.Token ?? _token;
+                    _runnerName = state.RunnerName ?? _runnerName;
+                    _containerName = state.ContainerName ?? _containerName;
+                    _logger?.LogInformation("Loaded runner state from {Path}", filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to load runner state from {Path}", filePath);
+            }
+        }
+
+        public void ClearPersistedState(string filePath)
+        {
+            try
+            {
+                if (File.Exists(filePath)) File.Delete(filePath);
+                _logger?.LogInformation("Deleted state file {Path}", filePath);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to delete state file {Path}", filePath);
+            }
+        }
+
+        private class RunnerState
+        {
+            public string? RepoUrl { get; set; }
+            public string? Token { get; set; }
+            public string? RunnerName { get; set; }
+            public string? ContainerName { get; set; }
         }
 
         private DockerClient CreateDockerClient()
