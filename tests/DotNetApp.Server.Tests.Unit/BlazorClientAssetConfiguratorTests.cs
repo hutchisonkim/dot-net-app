@@ -52,7 +52,6 @@ public class BlazorClientAssetConfiguratorTests
             var services = new ServiceCollection();
             services.AddRouting();
             services.AddLogging();
-            services.AddLogging();
             
             // Mock IWebHostEnvironment with serverDir as ContentRoot
             var mockEnv = new Mock<IWebHostEnvironment>();
