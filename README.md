@@ -31,37 +31,37 @@ DotNetApp is a demo starter built to showcase clean, maintainable **.NET 8** pat
 
 ### Test Quality Breakdown
 
-| Method | File | Isolation | Repeatability | Speed | Maintainability | Average |
-|:--|:--|:--:|:--:|:--:|:--:|:--:|
-| StartWithRetries_WhenTransientFailureThenSuccess_LogsAndReturnsTrue | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| StartWithRetries_WhenFailsThenSucceeds_AttemptsUntilSuccess | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| StartWithRetries_WhenAlwaysFails_ReturnsFalseAfterMaxRetries | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| StartRunnerStackAsync_WithValidEnv_DelegatesToServiceAndReturnsTrue | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| OrchestrateStart_WhenRegisterSucceeds_StartsContainers | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| OrchestrateStart_WhenRegisterAlwaysFails_DoesNotStartContainers | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| StartWithRetries_WhenExceptionsThenSuccess_RetriesAndReturnsTrue | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| OrchestrateStart_WhenStartContainersReturnFalse_RecordsWarningAndReturnsFalse | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
-| OrchestrateStart_WhenEnvMissingRepository_ThrowsArgumentException | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 95 | 🟩 85 | 🟩 85 | 🟩 89 |
-| StartWithRetries_WhenCancelled_ThrowsTaskCanceledException | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟩 80 | 🟩 80 | 🟡 70 | 🟩 80 | 🟡 78 |
-| Integration_OrchestrateStartAndStop_WithFakeOrRealRunner_WorksBasedOnEnv | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟥 30 | 🟠 50 | 🟥 30 | 🟠 60 | 🟥 43 |
-| Constructor_WhenServiceIsNull_ThrowsArgumentNullException | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 95 | 🟢 95 | 🟢 95 | 🟩 90 | 🟢 94 |
-| StartWithRetries_WhenMaxRetriesIsNotPositive_ThrowsArgumentOutOfRange | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
-| StartWithRetries_WhenRegisterAlwaysThrows_ReturnsFalseAfterRetries | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
-| OrchestrateStart_WhenEnvVarsIsNull_ThrowsArgumentNullException | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
-| OrchestrateStart_WhenStartContainersThrows_PropagatesException | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
-| OrchestrateStopAsync_DelegatesToServiceStop | `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs` | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
-| StopContainersAsync_WithMockService_DelegatesToService | `tests/GitHub.Runner.Docker.Tests/StopContainersTests.cs` | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| RunnerLogs_Contain_ListeningForJobs_IntegrationOrMock | `tests/GitHub.Runner.Docker.Tests/RunnerLogsIntegrationTests.cs` | 🟠 60 | 🟡 70 | 🟠 50 | 🟡 70 | 🟠 63 |
-| DockerRunnerService_GatedIntegrationOrMock_Works | `tests/GitHub.Runner.Docker.Tests/DockerDotNetRunnerServiceTests.cs` | 🟥 40 | 🟠 50 | 🟥 40 | 🟠 60 | 🟥 48 |
-| Client_Index_Loads_BlazorRuntime | `tests/DotNetApp.Tests.E2E/PlaywrightTests.cs` | 🔴 20 | 🟥 30 | 🔴 10 | 🟥 40 | 🔴 25 |
-| Health_WhenCalled_ReturnsOkWithStatus | `tests/DotNetApp.Server.Tests.Unit/StateControllerTests.cs` | 🟢 95 | 🟢 95 | 🟩 90 | 🟩 90 | 🟢 93 |
-| Index_WhenRendered_ContainsAppTitle | `tests/DotNetApp.Client.Tests.Unit/IndexTests.cs` | 🟩 85 | 🟩 85 | 🟡 70 | 🟡 75 | 🟡 79 |
-| FetchStatusAsync_WhenCalled_ReturnsHealthy | `tests/DotNetApp.Client.Tests.Unit/HealthStatusProviderTests.cs` | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
-| ClientRootRequest_WhenServed_MatchesPublishedIndexHtml | `tests/DotNetApp.Client.Tests.Integration/ServeMatchesPublishedTests.cs` | 🟥 30 | 🟥 40 | 🔴 20 | 🟠 60 | 🟥 38 |
-| PlatformApiClient_CallsApi_ReturnsHealthStatus | `tests/DotNetApp.Client.Tests.Integration/ExampleApiIntegrationTests.cs` | 🟡 70 | 🟩 80 | 🟠 60 | 🟩 80 | 🟡 73 |
-| Health_WhenCalled_ReturnsMockedStatus | `tests/DotNetApp.Server.Tests.Integration/HealthEndpointIntegrationTests.cs` | 🟩 80 | 🟩 85 | 🟠 65 | 🟩 80 | 🟡 78 |
-| RootRequest_WhenFrontendConfigured_ReturnsFakeIndex | `tests/DotNetApp.Server.Tests.Integration/HealthEndpointIntegrationTests.cs` | 🟩 80 | 🟩 85 | 🟠 65 | 🟩 80 | 🟡 78 |
-| ClientRootRequest_WhenServed_MatchesExpectedIndex | `tests/DotNetApp.Server.Tests.Integration/ServeFrontendFromBackendTests.cs` | 🟥 30 | 🟥 40 | 🔴 20 | 🟠 60 | 🟥 38 |
-| All_Facts_And_Theories_Have_Category_Trait | `tests/DotNetApp.Server.Tests.Unit/CategoryConventionsTests.cs` | 🟢 95 | 🟢 95 | 🟩 90 | 🟡 85 | 🟢 91 |
+| Method | Isolation | Repeatability | Speed | Maintainability | Average |
+|:--|:--:|:--:|:--:|:--:|:--:|
+| <sub>StartWithRetries_WhenTransientFailureThenSuccess_LogsAndReturnsTrue</sub></sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>StartWithRetries_WhenFailsThenSucceeds_AttemptsUntilSuccess</sub></sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>StartWithRetries_WhenAlwaysFails_ReturnsFalseAfterMaxRetries</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>StartRunnerStackAsync_WithValidEnv_DelegatesToServiceAndReturnsTrue</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>OrchestrateStart_WhenRegisterSucceeds_StartsContainers</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>OrchestrateStart_WhenRegisterAlwaysFails_DoesNotStartContainers</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>StartWithRetries_WhenExceptionsThenSuccess_RetriesAndReturnsTrue</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>OrchestrateStart_WhenStartContainersReturnFalse_RecordsWarningAndReturnsFalse</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
+| <sub>OrchestrateStart_WhenEnvMissingRepository_ThrowsArgumentException</sub> | 🟢 90 | 🟢 95 | 🟩 85 | 🟩 85 | 🟩 89 |
+| <sub>StartWithRetries_WhenCancelled_ThrowsTaskCanceledException</sub> | 🟩 80 | 🟩 80 | 🟡 70 | 🟩 80 | 🟡 78 |
+| <sub>Integration_OrchestrateStartAndStop_WithFakeOrRealRunner_WorksBasedOnEnv</sub> | 🟥 30 | 🟠 50 | 🟥 30 | 🟠 60 | 🟥 43 |
+| <sub>Constructor_WhenServiceIsNull_ThrowsArgumentNullException</sub> | 🟢 95 | 🟢 95 | 🟢 95 | 🟩 90 | 🟢 94 |
+| <sub>StartWithRetries_WhenMaxRetriesIsNotPositive_ThrowsArgumentOutOfRange</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
+| <sub>StartWithRetries_WhenRegisterAlwaysThrows_ReturnsFalseAfterRetries</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
+| <sub>OrchestrateStart_WhenEnvVarsIsNull_ThrowsArgumentNullException</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
+| <sub>OrchestrateStart_WhenStartContainersThrows_PropagatesException</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
+| <sub>OrchestrateStopAsync_DelegatesToServiceStop</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
+| <sub>StopContainersAsync_WithMockService_DelegatesToService</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>RunnerLogs_Contain_ListeningForJobs_IntegrationOrMock</sub> | 🟠 60 | 🟡 70 | 🟠 50 | 🟡 70 | 🟠 63 |
+| <sub>DockerRunnerService_GatedIntegrationOrMock_Works</sub> | 🟥 40 | 🟠 50 | 🟥 40 | 🟠 60 | 🟥 48 |
+| <sub>Client_Index_Loads_BlazorRuntime</sub> | 🔴 20 | 🟥 30 | 🔴 10 | 🟥 40 | 🔴 25 |
+| <sub>Health_WhenCalled_ReturnsOkWithStatus</sub> | 🟢 95 | 🟢 95 | 🟩 90 | 🟩 90 | 🟢 93 |
+| <sub>Index_WhenRendered_ContainsAppTitle</sub> | 🟩 85 | 🟩 85 | 🟡 70 | 🟡 75 | 🟡 79 |
+| <sub>FetchStatusAsync_WhenCalled_ReturnsHealthy</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
+| <sub>ClientRootRequest_WhenServed_MatchesPublishedIndexHtml</sub> | 🟥 30 | 🟥 40 | 🔴 20 | 🟠 60 | 🟥 38 |
+| <sub>PlatformApiClient_CallsApi_ReturnsHealthStatus</sub> | 🟡 70 | 🟩 80 | 🟠 60 | 🟩 80 | 🟡 73 |
+| <sub>Health_WhenCalled_ReturnsMockedStatus</sub> | 🟩 80 | 🟩 85 | 🟠 65 | 🟩 80 | 🟡 78 |
+| <sub>RootRequest_WhenFrontendConfigured_ReturnsFakeIndex</sub> | 🟩 80 | 🟩 85 | 🟠 65 | 🟩 80 | 🟡 78 |
+| <sub>ClientRootRequest_WhenServed_MatchesExpectedIndex</sub> | 🟥 30 | 🟥 40 | 🔴 20 | 🟠 60 | 🟥 38 |
+| <sub>All_Facts_And_Theories_Have_Category_Trait</sub> | 🟢 95 | 🟢 95 | 🟩 90 | 🟡 85 | 🟢 91 |
 
-*Generated by project agent*
+
