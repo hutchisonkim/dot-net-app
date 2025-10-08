@@ -31,7 +31,7 @@ DotNetApp is a demo starter built to showcase clean, maintainable **.NET 8** pat
 
 ### Test Quality Breakdown
 
-| Method | Isolation | Repeatability | Speed | Maintainability | Average |
+| <sub>Method</sub>  | <sub>Isolation</sub>  | <sub>Repeatability</sub>  | <sub>Speed</sub>  | <sub>Maintainability</sub>  | <sub>Average</sub>  |
 |:--|:--:|:--:|:--:|:--:|:--:|
 | <sub>StartWithRetries_WhenTransientFailureThenSuccess_LogsAndRetu...</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
 | <sub>StartWithRetries_WhenFailsThenSucceeds_AttemptsUntilSuccess</sub></sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
