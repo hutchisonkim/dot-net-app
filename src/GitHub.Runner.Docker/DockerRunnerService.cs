@@ -54,7 +54,10 @@ namespace GitHub.Runner.Docker
         {
             _logger?.LogInformation("Preparing registration for {Repo}", ownerRepo);
 
-            _repoUrl = githubUrl.TrimEnd('/');
+            // Use the full repository URL (https://github.com/{owner}/{repo}) so the runner registers at the correct API path
+            _repoUrl = string.IsNullOrEmpty(ownerRepo)
+                ? githubUrl.TrimEnd('/')
+                : (githubUrl.TrimEnd('/') + "/" + ownerRepo);
             _token = token;
             _runnerName = $"github-runner-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}".Substring(0, 30);
             _containerName = _runnerName;
@@ -207,11 +210,15 @@ namespace GitHub.Runner.Docker
         {
             string dockerfile = @"
 FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y curl tar sudo git
-RUN mkdir /actions-runner && cd /actions-runner && \
-    curl -o actions-runner-linux-x64-2.328.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz && \
-    tar xzf ./actions-runner-linux-x64-2.328.0.tar.gz
+# install only what the docs specify: curl, tar and CA certificates so the download works
+RUN apt-get update && apt-get install -y curl tar ca-certificates libicu70 && rm -rf /var/lib/apt/lists/*
+# create a non-root user 'runner' and make the actions-runner directory owned by that user
+RUN useradd -m -s /bin/bash runner
+RUN mkdir /actions-runner && chown runner:runner /actions-runner
 WORKDIR /actions-runner
+USER runner
+RUN curl -o actions-runner-linux-x64-2.328.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz && \
+    tar xzf ./actions-runner-linux-x64-2.328.0.tar.gz
 ";
             string tempDir = Path.Combine(Path.GetTempPath(), "runner-docker");
             Directory.CreateDirectory(tempDir);
@@ -254,16 +261,41 @@ WORKDIR /actions-runner
 
         private async Task<bool> RunCliAsync(string cmd, CancellationToken cancellationToken)
         {
-            _logger?.LogInformation("Executing CLI: {Cmd}", cmd);
-            var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
-            {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            };
-            using var proc = Process.Start(psi)!;
-            await proc.WaitForExitAsync(cancellationToken);
-            return proc.ExitCode == 0;
+                _logger?.LogInformation("Executing CLI: {Cmd}", cmd);
+                var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
+
+                proc.OutputDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.WriteLine(e.Data);
+                        _logger?.LogInformation(e.Data);
+                    }
+                };
+
+                proc.ErrorDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.Error.WriteLine(e.Data);
+                        _logger?.LogError(e.Data);
+                    }
+                };
+
+                proc.Start();
+                proc.BeginOutputReadLine();
+                proc.BeginErrorReadLine();
+
+                await proc.WaitForExitAsync(cancellationToken);
+                return proc.ExitCode == 0;
         }
 
         private async Task<string> RunCliCaptureOutputAsync(string cmd, CancellationToken cancellationToken)
@@ -272,11 +304,16 @@ WORKDIR /actions-runner
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                UseShellExecute = false
+                UseShellExecute = false,
+                CreateNoWindow = true
             };
+
             using var proc = Process.Start(psi)!;
-            string output = await proc.StandardOutput.ReadToEndAsync();
-            await proc.WaitForExitAsync(cancellationToken);
+            var stdOutTask = proc.StandardOutput.ReadToEndAsync();
+            var stdErrTask = proc.StandardError.ReadToEndAsync();
+
+            await Task.WhenAll(stdOutTask, stdErrTask, proc.WaitForExitAsync(cancellationToken));
+            var output = stdOutTask.Result + "\n" + stdErrTask.Result;
             return output.Trim();
         }
 
