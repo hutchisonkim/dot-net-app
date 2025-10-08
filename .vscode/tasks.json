@@ -4,14 +4,23 @@
     {
       "label": "Start GitHub self-hosted runner",
       "type": "shell",
-      "detail": "Prompts for owner/repo and runner token, then starts the docker-compose stack in github-self-hosted-runner-docker",
-      "command": "docker-compose",
+  "detail": "Start runner via programmatic GitHub.Runner.Docker.Cli",
+      "command": "dotnet",
       "args": [
-        "up",
-        "-d"
+        "run",
+  "--project",
+  "tools/GitHub.Runner.Docker.Cli",
+        "--",
+        "start",
+        "--repo",
+        "${input:ownerRepo}",
+        "--token",
+        "${input:runnerToken}",
+        "--url",
+        "${input:githubUrl}"
       ],
       "options": {
-        "cwd": "${workspaceFolder}/github-self-hosted-runner-docker",
+        "cwd": "${workspaceFolder}",
         "env": {
           "GITHUB_REPOSITORY": "${input:ownerRepo}",
           "GITHUB_TOKEN": "${input:runnerToken}",
@@ -29,13 +38,17 @@
     {
       "label": "Stop GitHub self-hosted runner",
       "type": "shell",
-      "detail": "Shuts down the docker-compose stack (github-self-hosted-runner-docker)",
-      "command": "docker-compose",
+  "detail": "Stop runner via programmatic GitHub.Runner.Docker.Cli",
+      "command": "dotnet",
       "args": [
-        "down"
+        "run",
+  "--project",
+  "tools/GitHub.Runner.Docker.Cli",
+        "--",
+        "stop"
       ],
       "options": {
-        "cwd": "${workspaceFolder}/github-self-hosted-runner-docker"
+        "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [],
       "group": "build"

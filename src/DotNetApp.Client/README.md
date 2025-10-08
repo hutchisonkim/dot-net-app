@@ -17,5 +17,5 @@ dotnet build src/DotNetApp.Client/DotNetApp.Client.csproj -c Debug
 # run
 dotnet run --project src/DotNetApp.Client -c Debug
 # unit tests
-dotnet test tests/DotNetApp.Client.UnitTests/DotNetApp.Client.UnitTests.csproj -c Debug
+dotnet test tests/DotNetApp.Client.Tests.Unit/DotNetApp.Client.Tests.Unit.csproj -c Debug
 ```
