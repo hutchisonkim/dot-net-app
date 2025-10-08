@@ -16,7 +16,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Tests.E2E", "test
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{703793BB-3757-4385-B25E-55A5308DC793}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server.Tests.Unit", "tests\DotNetApp.Server.UnitTests\DotNetApp.Server.UnitTests.csproj", "{F53073A1-581A-46BA-A842-C899AB23ADEB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server.Tests.Unit", "tests\DotNetApp.Server.Tests.Unit\DotNetApp.Server.UnitTests.csproj", "{F53073A1-581A-46BA-A842-C899AB23ADEB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client.Tests.Unit", "tests\DotNetApp.Client.Tests.Unit\DotNetApp.Client.UnitTests.csproj", "{A2222222-3333-4444-5555-666666666666}"
 EndProject
