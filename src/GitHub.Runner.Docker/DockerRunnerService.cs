@@ -252,25 +252,26 @@ namespace GitHub.Runner.Docker
                 return false;
             }
 
-            if (_useCli)
-            {
-                    string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --url {_repoUrl} --token {_token}\"";
-                    return await RunCliAsync(cmd, cancellationToken);
-            }
-            else
-            {
-                var execCreate = await _docker!.Containers.ExecCreateContainerAsync(_containerName, new ContainerExecCreateParameters
+                if (_useCli)
                 {
-                    AttachStdout = true,
-                    AttachStderr = true,
-                    Cmd = new[] { "/bin/bash", "-c", $"./config.sh remove --url {_repoUrl} --token {_token}" }
-                }, cancellationToken);
+                    // config.sh remove does not accept --url; pass token only to avoid warning
+                    string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --token {_token}\"";
+                    return await RunCliAsync(cmd, cancellationToken);
+                }
+                else
+                {
+                    var execCreate = await _docker!.Containers.ExecCreateContainerAsync(_containerName, new ContainerExecCreateParameters
+                    {
+                        AttachStdout = true,
+                        AttachStderr = true,
+                        Cmd = new[] { "/bin/bash", "-c", $"./config.sh remove --token {_token}" }
+                    }, cancellationToken);
 
-                using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
-                var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
-                _logger?.LogInformation("Unregister output: {Output}", stdout.Trim());
-                return true;
-            }
+                    using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
+                    var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
+                    _logger?.LogInformation("Unregister output: {Output}", stdout.Trim());
+                    return true;
+                }
         }
 
         // Allow the CLI to provide repo/token when invoked in a fresh process so
