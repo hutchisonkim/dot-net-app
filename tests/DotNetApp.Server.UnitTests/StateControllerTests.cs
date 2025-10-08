@@ -6,7 +6,7 @@ using Xunit;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
-namespace DotNetApp.Server.UnitTests;
+namespace DotNetApp.Server.Tests.Unit;
 
 public class StateControllerTests
 {

@@ -10,7 +10,7 @@ using DotNetApp.Tests.Shared;
 
 #nullable enable
 
-namespace DotNetApp.Server.IntegrationTests;
+namespace DotNetApp.Server.Tests.Integration;
 
 [Trait("Category","Integration")]
 [Collection("docker-compose")]

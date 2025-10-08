@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 using DotNetApp.Client.Contracts;
 
-namespace DotNetApp.Client.IntegrationTests;
+namespace DotNetApp.Client.Tests.Integration;
 
 public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {

@@ -5,7 +5,7 @@ using System.Reflection;
 using Xunit;
 using Xunit.Sdk;
 
-namespace DotNetApp.Server.UnitTests;
+namespace DotNetApp.Server.Tests.Unit;
 
 public class CategoryConventionsTests
 {

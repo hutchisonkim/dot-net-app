@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Playwright;
 using Xunit;
 
-namespace DotNetApp.E2ETests;
+namespace DotNetApp.Tests.E2E;
 
 [Collection("Playwright E2E")] // Leverage shared browser instance
 public class PlaywrightTests

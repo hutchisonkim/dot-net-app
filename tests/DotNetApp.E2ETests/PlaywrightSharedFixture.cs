@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Playwright;
 using Xunit;
 
-namespace DotNetApp.E2ETests;
+namespace DotNetApp.Tests.E2E;
 
 public class PlaywrightSharedFixture : IAsyncLifetime
 {

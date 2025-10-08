@@ -4,7 +4,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client;
 
-namespace DotNetApp.Client.UnitTests;
+namespace DotNetApp.Client.Tests.Unit;
 
 public class HealthStatusProviderTests
 {

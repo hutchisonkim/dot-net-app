@@ -8,7 +8,7 @@ using System.Linq;
 using Xunit;
 using DotNetApp.Tests.Shared;
 
-namespace DotNetApp.Client.IntegrationTests;
+namespace DotNetApp.Client.Tests.Integration;
 
 [Trait("Category","Integration")]
 [Collection("docker-compose")]
