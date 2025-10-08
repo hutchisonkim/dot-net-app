@@ -129,7 +129,6 @@ public class BlazorClientAssetConfiguratorTests
     }
 
     [Fact]
-    [Trait("Category", "Unit")]
     public void Configure_WithDebugBinWwwroot_FindsAndConfigures()
     {
         // Arrange
