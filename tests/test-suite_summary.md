@@ -86,31 +86,24 @@ This document summarizes the test methods found across the solution (unit / inte
 
 ## Runner / Infrastructure tests (Docker / GitHub.Runner)
 
-- [`GitHub.Runner.Tests.RunnerLogsIntegrationTests.RunnerLogs_Contain_ListeningForJobs_IntegrationOrMock`](tests/GitHub.Runner.Tests/RunnerLogsIntegrationTests.cs) — [tests/GitHub.Runner.Tests/RunnerLogsIntegrationTests.cs](tests/GitHub.Runner.Tests/RunnerLogsIntegrationTests.cs)  
-  - What it does: attempts an integration path to run a runner via the programmatic GitHub.Runner library, verifies registration and the presence of "Listening for Jobs" in runner logs (searches container volumes), and falls back to a mocked path to keep the test stable.  
-  - Dependencies: Docker.DotNet client, Docker engine socket, test helper [`GitHub.Runner.Tests.FakeRunnerService`](tests/GitHub.Runner.Tests/FakeRunnerService.cs), [`GitHub.Runner.Tests.TestLogger<T>`](tests/GitHub.Runner.Tests/TestLogger.cs), helpers for reading volume logs.  
-  - Pertinence: validates the programmatic orchestration (important for integration/infrastructure); marked to be tolerant (integration-or-mock) to avoid CI flakiness.
+- [`GitHub.Runner.Docker.Tests.RunnerLogsIntegrationTests.RunnerLogs_Contain_ListeningForJobs_IntegrationOrMock`](tests/GitHub.Runner.Docker.Tests/RunnerLogsIntegrationTests.cs) — [tests/GitHub.Runner.Docker.Tests/RunnerLogsIntegrationTests.cs](tests/GitHub.Runner.Docker.Tests/RunnerLogsIntegrationTests.cs)  
+  - What it does: attempts an integration path to exercise the Docker-based runner, verifies registration and the presence of "Listening for Jobs" in runner logs (searches container volumes), and uses fakes/mocks when the environment isn't available to keep CI stable.  
+  - Dependencies: Docker.DotNet client (for live path), Docker engine socket, test helpers [`FakeRunnerService`](tests/GitHub.Runner.Docker.Tests/FakeRunnerService.cs), `TestLogger<T>` and log helpers.  
+  - Pertinence: verifies the Docker-based self-hosted runner logging and behavior; important for infra-level confidence.  
   - Score: 72/100 — 🥉 Bronze
-    - Quick rationale: Important infra test but environment-dependent. The mock fallback improves determinism; consider running the live path only on dedicated integration runners.
+    - Quick rationale: Useful infra test but environment-dependent; the mock/fallback path improves determinism for CI.
 
-- [`GitHub.Runner.Tests.FakeRunnerService`](tests/GitHub.Runner.Tests/FakeRunnerService.cs) — [tests/GitHub.Runner.Tests/FakeRunnerService.cs](tests/GitHub.Runner.Tests/FakeRunnerService.cs)  
-  - Test helper implementing `IRunnerService` used to simulate register/start/stop semantics without actually invoking Docker.
+- [`GitHub.Runner.Docker.Tests.FakeRunnerService`](tests/GitHub.Runner.Docker.Tests/FakeRunnerService.cs) — [tests/GitHub.Runner.Docker.Tests/FakeRunnerService.cs](tests/GitHub.Runner.Docker.Tests/FakeRunnerService.cs)  
+  - Test helper implementing `IRunnerService` used to simulate register/start/stop semantics without actually invoking Docker.  
   - Score: 88/100 — 🥈 Silver+
     - Quick rationale: Very useful test double — isolated, fast, and eases reliable testing of higher-level orchestration.
 
 - Test logging helpers:
-  - [`GitHub.Runner.Tests.TestLogger<T>`](tests/GitHub.Runner.Tests/TestLogger.cs) — [tests/GitHub.Runner.Tests/TestLogger.cs](tests/GitHub.Runner.Tests/TestLogger.cs)  
-  - [`GitHub.Runner.Tests.AssertWithLogs`](tests/GitHub.Runner.Tests/AssertWithLogs.cs) — [tests/GitHub.Runner.Tests/AssertWithLogs.cs](tests/GitHub.Runner.Tests/AssertWithLogs.cs)  
+  - [`GitHub.Runner.Docker.Tests.TestLogger<T>`](tests/GitHub.Runner.Docker.Tests/TestLogger.cs) — [tests/GitHub.Runner.Docker.Tests/TestLogger.cs](tests/GitHub.Runner.Docker.Tests/TestLogger.cs)  
+  - [`GitHub.Runner.Docker.Tests.AssertWithLogs`](tests/GitHub.Runner.Docker.Tests/AssertWithLogs.cs) — [tests/GitHub.Runner.Docker.Tests/AssertWithLogs.cs](tests/GitHub.Runner.Docker.Tests/AssertWithLogs.cs)  
   - Purpose: capture structured logs and present last N lines on assertion failures to ease diagnosing integration test failures.
   - Score: 90/100 — 🏆 Platinum
     - Quick rationale: Excellent for observability and diagnosing CI flakes; low cost and high maintenance payoff.
-
-- GitHub runner docker tests:
-  - [`GitHub.Runner.Docker.Tests.RunnerLogsIntegrationTests.RunnerLogs_Contain_ListeningForJobs_IntegrationOrMock`](tests/GitHub.Runner.Docker.Tests/RunnerLogsIntegrationTests.cs) — [tests/GitHub.Runner.Docker.Tests/RunnerLogsIntegrationTests.cs](tests/GitHub.Runner.Docker.Tests/RunnerLogsIntegrationTests.cs)  
-  - Helpers: [`GitHub.Runner.Docker.Tests.TestLogger<T>`](tests/GitHub.Runner.Docker.Tests/TestLogger.cs) — [tests/GitHub.Runner.Docker.Tests/TestLogger.cs](tests/GitHub.Runner.Docker.Tests/TestLogger.cs)  
-  - Pertinence: verifies the Docker-based self-hosted runner stack logging and behavior.
-  - Score: 70/100 — 🥉 Copper
-    - Quick rationale: Similar to GitHub.Runner tests — useful but environment heavy; helper logger raises the practical value.
 
 ---
 
