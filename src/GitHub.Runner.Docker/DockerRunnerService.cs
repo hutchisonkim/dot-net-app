@@ -422,8 +422,14 @@ RUN curl -o actions-runner-linux-x64-2.328.0.tar.gz -L https://github.com/action
         {
             if (_useCli)
             {
-                string cmd = $"docker rm -f {name}";
-                await RunCliAsync(cmd, cancellationToken);
+                // check if the container exists first to avoid docker emitting an error
+                string checkCmd = $"docker ps -a --filter name={name} -q";
+                var outp = await RunCliCaptureOutputAsync(checkCmd, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(outp))
+                {
+                    string cmd = $"docker rm -f {name}";
+                    await RunCliAsync(cmd, cancellationToken).ConfigureAwait(false);
+                }
             }
             else
             {
