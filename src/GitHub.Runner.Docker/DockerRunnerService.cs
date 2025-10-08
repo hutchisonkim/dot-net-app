@@ -279,7 +279,7 @@ namespace GitHub.Runner.Docker
 
             if (_useCli)
             {
-                string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --token $RUNNER_TOKEN --repo $RUNNER_OWNER_REPO\"";
+                string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --token $RUNNER_TOKEN --repo $GITHUB_REPOSITORY\"";
                 return await RunCliAsync(cmd, cancellationToken);
             }
             else
@@ -288,7 +288,7 @@ namespace GitHub.Runner.Docker
                 {
                     AttachStdout = true,
                     AttachStderr = true,
-                    Cmd = new[] { "/bin/bash", "-c", $"./config.sh remove --token $RUNNER_TOKEN --repo $RUNNER_OWNER_REPO" }
+                    Cmd = new[] { "/bin/bash", "-c", $"./config.sh remove --token $RUNNER_TOKEN --repo $GITHUB_REPOSITORY" }
                 }, cancellationToken);
 
                 using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
