@@ -52,11 +52,11 @@ ARG RUN_E2E=0
 ENV RUN_E2E=${RUN_E2E}
 
 RUN if [ "${RUN_E2E}" = "1" ]; then \
-			dotnet restore tests/DotNetApp.Tests.E2E/DotNetApp.E2ETests.csproj /p:RunE2E=true; \
+			dotnet restore tests/DotNetApp.Tests.E2E/DotNetApp.Tests.E2E.csproj /p:RunE2E=true; \
 		else echo "Skipping E2E restore (RUN_E2E=${RUN_E2E})"; fi
 
 RUN if [ "${RUN_E2E}" = "1" ]; then \
-			dotnet build --no-restore -c Debug tests/DotNetApp.Tests.E2E/DotNetApp.E2ETests.csproj /p:RunE2E=true; \
+			dotnet build --no-restore -c Debug tests/DotNetApp.Tests.E2E/DotNetApp.Tests.E2E.csproj /p:RunE2E=true; \
 		else echo "Skipping E2E build (RUN_E2E=${RUN_E2E})"; fi
 
 # Install playwright browsers (using the generated script) only when enabled
@@ -75,7 +75,7 @@ RUN echo '#!/usr/bin/env bash' > /usr/local/bin/run-e2e.sh \
 	&& echo '  if [ "$i" -eq 60 ]; then echo "Frontend did not become ready in time"; exit 1; fi' >> /usr/local/bin/run-e2e.sh \
 	&& echo 'done' >> /usr/local/bin/run-e2e.sh \
 	&& echo 'echo Running E2E tests...' >> /usr/local/bin/run-e2e.sh \
-	&& echo 'dotnet test --no-build --logger "trx;LogFileName=TestResults.trx" /src/tests/DotNetApp.Tests.E2E/DotNetApp.E2ETests.csproj' >> /usr/local/bin/run-e2e.sh \
+	&& echo 'dotnet test --no-build --logger "trx;LogFileName=TestResults.trx" /src/tests/DotNetApp.Tests.E2E/DotNetApp.Tests.E2E.csproj' >> /usr/local/bin/run-e2e.sh \
 	&& chmod +x /usr/local/bin/run-e2e.sh
 
 WORKDIR /src/tests/DotNetApp.Tests.E2E
