@@ -3,6 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
+    <RootNamespace>DotNetApp.Client.Tests.Unit</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
   <PackageReference Include="bunit" Version="1.40.0" />

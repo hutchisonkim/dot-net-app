@@ -3,6 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
+    <RootNamespace>DotNetApp.Tests.E2E</RootNamespace>
     <!-- E2E tests are opt-in. Default is false so workspace/test-explorer runs won't try to execute Playwright tests.
          Set /p:RunE2E=true on the dotnet CLI (or CI) to enable test SDK and test packages for E2E runs. -->
     <RunE2E Condition="'$(RunE2E)'==''">false</RunE2E>

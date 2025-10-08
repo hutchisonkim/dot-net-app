@@ -8,17 +8,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server", "src\Dot
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client", "src\DotNetApp.Client\DotNetApp.Client.csproj", "{D1111111-2222-3333-4444-555555555555}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server.IntegrationTests", "tests\DotNetApp.Server.IntegrationTests\DotNetApp.Server.IntegrationTests.csproj", "{B1111111-1111-1111-1111-111111111111}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server.Tests.Integration", "tests\DotNetApp.Server.IntegrationTests\DotNetApp.Server.IntegrationTests.csproj", "{B1111111-1111-1111-1111-111111111111}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client.IntegrationTests", "tests\DotNetApp.Client.IntegrationTests\DotNetApp.Client.IntegrationTests.csproj", "{C2222222-2222-2222-2222-222222222222}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client.Tests.Integration", "tests\DotNetApp.Client.IntegrationTests\DotNetApp.Client.IntegrationTests.csproj", "{C2222222-2222-2222-2222-222222222222}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.E2ETests", "tests\DotNetApp.E2ETests\DotNetApp.E2ETests.csproj", "{E3333333-3333-3333-3333-333333333333}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Tests.E2E", "tests\DotNetApp.E2ETests\DotNetApp.E2ETests.csproj", "{E3333333-3333-3333-3333-333333333333}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{703793BB-3757-4385-B25E-55A5308DC793}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server.UnitTests", "tests\DotNetApp.Server.UnitTests\DotNetApp.Server.UnitTests.csproj", "{F53073A1-581A-46BA-A842-C899AB23ADEB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server.Tests.Unit", "tests\DotNetApp.Server.UnitTests\DotNetApp.Server.UnitTests.csproj", "{F53073A1-581A-46BA-A842-C899AB23ADEB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client.UnitTests", "tests\DotNetApp.Client.UnitTests\DotNetApp.Client.UnitTests.csproj", "{A2222222-3333-4444-5555-666666666666}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Client.Tests.Unit", "tests\DotNetApp.Client.Tests.Unit\DotNetApp.Client.UnitTests.csproj", "{A2222222-3333-4444-5555-666666666666}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{145A4016-4C34-43C5-B7F6-1713283C35AE}"
 EndProject
