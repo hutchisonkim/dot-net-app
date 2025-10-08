@@ -35,10 +35,10 @@ services:
     volumes:
       - ../downloaded-artifacts/api:/src/DotNetApp.Server:ro
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
-      - ../tests/DotNetApp.Server.IntegrationTests:/src/DotNetApp.Server.IntegrationTests:ro
+      - ../tests/DotNetApp.Server.Tests.Integration:/src/DotNetApp.Server.Tests.Integration:ro
       - nuget-packages:/root/.nuget/packages
     environment:
-      - WORKDIR=/src/DotNetApp.Server.IntegrationTests
+      - WORKDIR=/src/DotNetApp.Server.Tests.Integration
       - FRONTEND_API_BASE=http://api:8080/
       - NUGET_HTTP_TIMEOUT=200000
     networks:
@@ -54,10 +54,10 @@ services:
       - client
     volumes:
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
-      - ../tests/DotNetApp.Client.IntegrationTests:/src/DotNetApp.Client.IntegrationTests:ro
+      - ../tests/DotNetApp.Client.Tests.Integration:/src/DotNetApp.Client.Tests.Integration:ro
       - nuget-packages:/root/.nuget/packages
     environment:
-      - WORKDIR=/src/DotNetApp.Client.IntegrationTests
+      - WORKDIR=/src/DotNetApp.Client.Tests.Integration
       - FRONTEND_API_BASE=http://api:8080/
       - NUGET_HTTP_TIMEOUT=200000
     networks:
@@ -75,10 +75,10 @@ services:
     volumes:
       - ../downloaded-artifacts/api:/src/DotNetApp.Api:ro
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
-      - ../tests/DotNetApp.E2ETests:/src/DotNetApp.E2ETests:ro
+      - ../tests/DotNetApp.Tests.E2E:/src/DotNetApp.Tests.E2E:ro
       - nuget-packages:/root/.nuget/packages
     environment:
-      - WORKDIR=/src/DotNetApp.E2ETests
+      - WORKDIR=/src/DotNetApp.Tests.E2E
       - FRONTEND_API_BASE=http://api:8080/
       - FRONTEND_URL=http://client:80
       - NUGET_HTTP_TIMEOUT=200000
