@@ -16,7 +16,7 @@
     {
       "label": "API: Test (Unit)",
       "type": "shell",
-  "command": "dotnet test tests/DotNetApp.Server.Tests.Unit/DotNetApp.Server.UnitTests.csproj -c Debug",
+  "command": "dotnet test tests/DotNetApp.Server.Tests.Unit/DotNetApp.Server.Tests.Unit.csproj -c Debug",
       "problemMatcher": ["$msCompile"]
     }
   ]
