@@ -28,28 +28,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// If a Blazor client build or source wwwroot exists in the repo, serve it as static files
-// This allows running integration tests locally without Docker by having the API host the static client files.
-var candidateClientWwwroots = new[] {
-    // Common build output for the client project (bin/Debug/net8.0/wwwroot)
-    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "src", "DotNetApp.Client", "bin", "Debug", "net8.0", "wwwroot")),
-    // Client source wwwroot
-    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "src", "DotNetApp.Client", "wwwroot"))
-};
-
-// Prefer a candidate wwwroot that actually contains an index.html so DefaultFiles will serve '/'
-string? clientWwwroot = null;
-foreach (var candidate in candidateClientWwwroots)
-{
-    var indexPath = Path.Combine(candidate, "index.html");
-    if (File.Exists(indexPath))
-    {
-        clientWwwroot = candidate;
-        break;
-    }
-}
-
-// Allow pluggable client asset configuration
+// Allow pluggable client asset configuration (BlazorClientAssetConfigurator will discover and wire static files)
 var assetConfigurator = app.Services.GetRequiredService<DotNetApp.Core.Abstractions.IClientAssetConfigurator>();
 assetConfigurator.Configure(app);
 
