@@ -78,6 +78,15 @@ namespace GitHub.Runner.Docker
             return true;
         }
 
+        // High level convenience: start full runner lifecycle (register + start container)
+        public async Task<bool> StartAsync(string token, string ownerRepo, string githubUrl, string[] envVars, CancellationToken cancellationToken)
+        {
+            SetRegistrationInfo(token, ownerRepo, githubUrl);
+            var registered = await RegisterAsync(token, ownerRepo, githubUrl, cancellationToken).ConfigureAwait(false);
+            if (!registered) return false;
+            return await StartContainersAsync(envVars, cancellationToken).ConfigureAwait(false);
+        }
+
         public async Task<bool> StartContainersAsync(string[] envVars, CancellationToken cancellationToken)
         {
             if (_repoUrl == null || _token == null || _runnerName == null)
@@ -174,6 +183,53 @@ namespace GitHub.Runner.Docker
             }
         }
 
+        // High level convenience: stop/unregister runner. If the container is present but
+        // not running, start it temporarily to allow config.sh remove to execute.
+        public async Task<bool> StopAsync(string? token, string? ownerRepo, string githubUrl, CancellationToken cancellationToken)
+        {
+            SetRegistrationInfo(token, ownerRepo, githubUrl);
+
+            await DiscoverContainerAsync(cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(_containerName))
+            {
+                _logger?.LogInformation("No runner container found; nothing to stop");
+                return true;
+            }
+
+            bool isRunning = await IsContainerRunningAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!isRunning)
+            {
+                _logger?.LogInformation("Container {Container} is not running; starting temporarily to run unregister", _containerName);
+                if (_useCli)
+                {
+                    await RunCliAsync($"docker start {_containerName}", cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    // find container id
+                    var existing = await _docker!.Containers.ListContainersAsync(new ContainersListParameters { All = true }, cancellationToken).ConfigureAwait(false);
+                    var found = existing.FirstOrDefault(c => c.Names.Any(n => n.TrimStart('/').Equals(_containerName)));
+                    if (found != null)
+                    {
+                        await _docker.Containers.StartContainerAsync(found.ID, null, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+            }
+
+            // attempt unregister inside the container
+            var unregistered = await UnregisterAsync(cancellationToken).ConfigureAwait(false);
+
+            // stop the container (best-effort)
+            await StopContainersAsync(cancellationToken).ConfigureAwait(false);
+
+            // remove the container so it doesn't linger
+            await RemoveContainerIfExistsAsync(_containerName!, cancellationToken).ConfigureAwait(false);
+
+            return unregistered;
+        }
+
         public async Task<bool> UnregisterAsync(CancellationToken cancellationToken)
         {
             if (_repoUrl == null || _token == null)
@@ -181,6 +237,8 @@ namespace GitHub.Runner.Docker
                 _logger?.LogWarning("Unregister skipped: missing repo URL or token");
                 return false;
             }
+
+            // allow explicit override of token/repo via CLI (SetRegistrationInfo)
 
             if (string.IsNullOrEmpty(_containerName))
             {
@@ -213,6 +271,22 @@ namespace GitHub.Runner.Docker
                 _logger?.LogInformation("Unregister output: {Output}", stdout.Trim());
                 return true;
             }
+        }
+
+        // Allow the CLI to provide repo/token when invoked in a fresh process so
+        // UnregisterAsync can run even if RegisterAsync wasn't called in this process.
+        public void SetRegistrationInfo(string? token, string? ownerRepo, string githubUrl)
+        {
+            if (!string.IsNullOrEmpty(ownerRepo))
+            {
+                _repoUrl = githubUrl.TrimEnd('/') + "/" + ownerRepo;
+            }
+            else
+            {
+                _repoUrl ??= githubUrl.TrimEnd('/');
+            }
+
+            if (!string.IsNullOrEmpty(token)) _token = token;
         }
 
         private async Task DiscoverContainerAsync(CancellationToken cancellationToken)
@@ -265,6 +339,30 @@ namespace GitHub.Runner.Docker
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Error while discovering runner container");
+            }
+        }
+
+        private async Task<bool> IsContainerRunningAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_containerName)) return false;
+
+                if (_useCli)
+                {
+                    var outp = await RunCliCaptureOutputAsync($"docker ps --filter name={_containerName} --format \"{{{{.ID}}}} {{{{.Names}}}}\"", cancellationToken).ConfigureAwait(false);
+                    return !string.IsNullOrWhiteSpace(outp);
+                }
+                else
+                {
+                    var list = await _docker!.Containers.ListContainersAsync(new ContainersListParameters { All = false }, cancellationToken).ConfigureAwait(false);
+                    return list.Any(c => c.Names.Any(n => n.TrimStart('/').Equals(_containerName)));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to determine container running state");
+                return false;
             }
         }
 
