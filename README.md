@@ -33,20 +33,20 @@ DotNetApp is a demo starter built to showcase clean, maintainable **.NET 8** pat
 
 | Method | Isolation | Repeatability | Speed | Maintainability | Average |
 |:--|:--:|:--:|:--:|:--:|:--:|
-| <sub>StartWithRetries_WhenTransientFailureThenSuccess_LogsAndReturnsTrue</sub></sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>StartWithRetries_WhenTransientFailureThenSuccess_LogsAndRetu...</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
 | <sub>StartWithRetries_WhenFailsThenSucceeds_AttemptsUntilSuccess</sub></sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
 | <sub>StartWithRetries_WhenAlwaysFails_ReturnsFalseAfterMaxRetries</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| <sub>StartRunnerStackAsync_WithValidEnv_DelegatesToServiceAndReturnsTrue</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>StartRunnerStackAsync_WithValidEnv_DelegatesToServiceAndRetur...</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
 | <sub>OrchestrateStart_WhenRegisterSucceeds_StartsContainers</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
 | <sub>OrchestrateStart_WhenRegisterAlwaysFails_DoesNotStartContainers</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| <sub>StartWithRetries_WhenExceptionsThenSuccess_RetriesAndReturnsTrue</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
-| <sub>OrchestrateStart_WhenStartContainersReturnFalse_RecordsWarningAndReturnsFalse</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
-| <sub>OrchestrateStart_WhenEnvMissingRepository_ThrowsArgumentException</sub> | 🟢 90 | 🟢 95 | 🟩 85 | 🟩 85 | 🟩 89 |
+| <sub>StartWithRetries_WhenExceptionsThenSuccess_RetriesAndReturns...</sub> | 🟢 90 | 🟢 90 | 🟩 80 | 🟩 80 | 🟩 85 |
+| <sub>OrchestrateStart_WhenStartContainersReturnFalse_RecordsWarnin...</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
+| <sub>OrchestrateStart_WhenEnvMissingRepository_ThrowsArgumentExcep...</sub> | 🟢 90 | 🟢 95 | 🟩 85 | 🟩 85 | 🟩 89 |
 | <sub>StartWithRetries_WhenCancelled_ThrowsTaskCanceledException</sub> | 🟩 80 | 🟩 80 | 🟡 70 | 🟩 80 | 🟡 78 |
-| <sub>Integration_OrchestrateStartAndStop_WithFakeOrRealRunner_WorksBasedOnEnv</sub> | 🟥 30 | 🟠 50 | 🟥 30 | 🟠 60 | 🟥 43 |
+| <sub>Integration_OrchestrateStartAndStop_WithFakeOrRealRunner_Work...</sub> | 🟥 30 | 🟠 50 | 🟥 30 | 🟠 60 | 🟥 43 |
 | <sub>Constructor_WhenServiceIsNull_ThrowsArgumentNullException</sub> | 🟢 95 | 🟢 95 | 🟢 95 | 🟩 90 | 🟢 94 |
-| <sub>StartWithRetries_WhenMaxRetriesIsNotPositive_ThrowsArgumentOutOfRange</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
-| <sub>StartWithRetries_WhenRegisterAlwaysThrows_ReturnsFalseAfterRetries</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
+| <sub>StartWithRetries_WhenMaxRetriesIsNotPositive_ThrowsArgument...</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
+| <sub>StartWithRetries_WhenRegisterAlwaysThrows_ReturnsFalseAfterR...</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
 | <sub>OrchestrateStart_WhenEnvVarsIsNull_ThrowsArgumentNullException</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
 | <sub>OrchestrateStart_WhenStartContainersThrows_PropagatesException</sub> | 🟩 85 | 🟩 85 | 🟡 75 | 🟩 80 | 🟩 82 |
 | <sub>OrchestrateStopAsync_DelegatesToServiceStop</sub> | 🟢 90 | 🟢 90 | 🟩 85 | 🟩 85 | 🟩 88 |
