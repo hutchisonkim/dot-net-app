@@ -37,7 +37,7 @@ static class Program
         var dockerLogger = loggerFactory.CreateLogger<GitHub.Runner.Docker.DockerRunnerService>();
         var managerLogger = loggerFactory.CreateLogger<GitHub.Runner.Docker.RunnerManager>();
 
-        if (string.IsNullOrEmpty(repo))
+        if (string.IsNullOrEmpty(repo) && cmd == "start")
         {
             Console.Error.WriteLine("Missing repo (use --repo or set GITHUB_REPOSITORY)");
             return 2;
