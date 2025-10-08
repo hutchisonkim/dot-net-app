@@ -109,6 +109,23 @@ This document summarizes the test methods found across the solution (unit / inte
 
 ## Project averages (based on tests summarized above)
 
+- `DotNetApp.Server.Tests.Unit` — Average: 90/100 🥇
+- `DotNetApp.Client.Tests.Unit` — Average: 85/100 🥈
+- `DotNetApp.Server.Tests.Integration` — Average: 80/100 🥉
+- `DotNetApp.Client.Tests.Integration` — Average: 75/100 🥉
+- `DotNetApp.Tests.E2E` — Average: 70/100 🥉
+- `tests/GitHub.Runner.Docker.Tests` — Average: 83/100 🥈
+
+Additional tests present but not individually summarized above (quick inventory):
+
+- `tests/DotNetApp.Server.Tests.Unit/StateControllerTests.cs`
+- `tests/DotNetApp.Client.Tests.Unit/HealthStatusProviderTests.cs`
+- `tests/GitHub.Runner.Docker.Tests/DockerDotNetRunnerServiceTests.cs`
+- `tests/GitHub.Runner.Docker.Tests/RunnerManagerTests.cs`
+- `tests/GitHub.Runner.Docker.Tests/StopContainersTests.cs`
+- `tests/GitHub.Runner.Docker.Tests/AssertWithLogs.cs` (helper)
+
+If you'd like, I can expand the summary to include those files (quick scan + one-line descriptions) and then recompute averages from the fuller list.
 
 ### How the scores were calculated
 
