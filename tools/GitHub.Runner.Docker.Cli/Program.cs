@@ -43,8 +43,9 @@ static class Program
             return 2;
         }
 
-        Console.WriteLine($"GitHub.Runner.Docker.Cli: cmd={cmd}, repo={repo}, url={url}");
-        Console.WriteLine($"GitHub.Runner.Docker.Cli: token present={(string.IsNullOrEmpty(token) ? "no" : "yes")}, token masked={(string.IsNullOrEmpty(token) ? "" : token.Substring(0,4) + new string('*', Math.Max(0, token.Length-8)) + token.Substring(Math.Max(4, token.Length-4)))}");
+    Console.WriteLine($"GitHub.Runner.Docker.Cli: cmd={cmd}, repo={repo}, url={url}");
+    // Do not log secret material or masked tokens. Log only presence.
+    Console.WriteLine($"GitHub.Runner.Docker.Cli: token present={(string.IsNullOrEmpty(token) ? "no" : "yes")}");
     await using var svc = new DockerRunnerService(dockerLogger);
     var manager = new RunnerManager(svc, managerLogger);
 

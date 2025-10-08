@@ -21,8 +21,6 @@ namespace GitHub.Runner.Docker
         private readonly bool _useCli;
 
         private const string ImageTag = "github-runner:latest";
-        private string? _repoUrl;
-        private string? _token;
         private string? _runnerName;
         private string? _containerName;
 
@@ -61,10 +59,6 @@ namespace GitHub.Runner.Docker
             _logger?.LogInformation("Preparing registration for {Repo}", ownerRepo);
 
             // Use the full repository URL (https://github.com/{owner}/{repo}) so the runner registers at the correct API path
-            _repoUrl = string.IsNullOrEmpty(ownerRepo)
-                ? githubUrl.TrimEnd('/')
-                : (githubUrl.TrimEnd('/') + "/" + ownerRepo);
-            _token = token;
             _runnerName = $"github-runner-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}".Substring(0, 30);
             _containerName = _runnerName;
 
@@ -81,43 +75,82 @@ namespace GitHub.Runner.Docker
         // High level convenience: start full runner lifecycle (register + start container)
         public async Task<bool> StartAsync(string token, string ownerRepo, string githubUrl, string[] envVars, CancellationToken cancellationToken)
         {
-            SetRegistrationInfo(token, ownerRepo, githubUrl);
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger?.LogError("Missing token; cannot start runner");
+                return false;
+            }
+            if (string.IsNullOrEmpty(ownerRepo))
+            {
+                _logger?.LogError("Missing owner/repo; cannot start runner");
+                return false;
+            }
+            if (string.IsNullOrEmpty(githubUrl))
+            {
+                _logger?.LogError("Missing GitHub URL; cannot start runner");
+                return false;
+            }
             var registered = await RegisterAsync(token, ownerRepo, githubUrl, cancellationToken).ConfigureAwait(false);
             if (!registered) return false;
+
+            var repoUrl = string.IsNullOrEmpty(ownerRepo)
+                ? githubUrl.TrimEnd('/')
+                : (githubUrl.TrimEnd('/') + "/" + ownerRepo);
+
+            // build the env var list properly and include token/name/repo info
+            var envList = envVars?.ToList() ?? new List<string>();
+            envList.Add($"RUNNER_TOKEN={token}");
+            envList.Add($"RUNNER_NAME={_runnerName}");
+            envList.Add($"RUNNER_OWNER_REPO={ownerRepo}");
+            envList.Add($"GITHUB_REPOSITORY={ownerRepo}");
+            envList.Add($"RUNNER_GITHUB_URL={githubUrl}");
+            envList.Add($"RUNNER_REPO_URL={repoUrl}");
+            envVars = envList.ToArray();
+
             return await StartContainersAsync(envVars, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<bool> StartContainersAsync(string[] envVars, CancellationToken cancellationToken)
         {
-            if (_repoUrl == null || _token == null || _runnerName == null)
-            {
-                _logger?.LogError("Missing registration details; call RegisterAsync first");
-                return false;
-            }
-
             _logger?.LogInformation("Starting runner container {ContainerName}", _containerName);
             await RemoveContainerIfExistsAsync(_containerName!, cancellationToken);
 
             if (_useCli)
             {
-                var mergedEnv = envVars.Select(e => $"--env {e}").ToList();
-                mergedEnv.Add($"--env RUNNER_REPO_URL={_repoUrl}");
-                mergedEnv.Add($"--env RUNNER_TOKEN={_token}");
-                mergedEnv.Add($"--env RUNNER_NAME={_runnerName}");
+                // Write env vars to a temporary env-file and pass that to docker
+                // This avoids embedding secret values in the command line.
+                string tempEnvFile = Path.GetTempFileName();
+                try
+                {
+                    var lines = new List<string>();
+                    if (envVars?.Length > 0)
+                    {
+                        lines.AddRange(envVars);
+                    }
 
-                string envArgs = string.Join(" ", mergedEnv);
-                string cmd = $"docker run --name {_containerName} {envArgs} -d {ImageTag} /bin/bash -c \"./config.sh --url {_repoUrl} --token {_token} --name {_runnerName} && ./run.sh\"";
+                    await File.WriteAllLinesAsync(tempEnvFile, lines, cancellationToken).ConfigureAwait(false);
 
-                return await RunCliAsync(cmd, cancellationToken);
+                    // Use env-file and reference the variables inside the container via $VAR
+                    // Mount a named volume so runner state (and env consumption) persists across restarts
+                    string cmd = $"docker run --name {_containerName} --env-file \"{tempEnvFile}\" -v runner-data:/actions-runner -d {ImageTag} /bin/bash -c \"./config.sh --url $RUNNER_REPO_URL --token $RUNNER_TOKEN --name $RUNNER_NAME && ./run.sh\"";
+
+                    return await RunCliAsync(cmd, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(tempEnvFile)) File.Delete(tempEnvFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogDebug(ex, "Failed to delete temporary env-file {File}", tempEnvFile);
+                    }
+                }
             }
             else
             {
-                var mergedEnv = new List<string>(envVars)
-                {
-                    $"RUNNER_REPO_URL={_repoUrl}",
-                    $"RUNNER_TOKEN={_token}",
-                    $"RUNNER_NAME={_runnerName}"
-                };
+                var mergedEnv = new List<string>(envVars);
 
                 var createParams = new CreateContainerParameters
                 {
@@ -127,14 +160,16 @@ namespace GitHub.Runner.Docker
                     HostConfig = new HostConfig
                     {
                         AutoRemove = true,
-                        RestartPolicy = new RestartPolicy { Name = RestartPolicyKind.No }
+                        RestartPolicy = new RestartPolicy { Name = RestartPolicyKind.No },
+                        // mount a named volume to persist runner files/config
+                        Binds = new List<string> { "runner-data:/actions-runner" }
                     },
                     Tty = true,
-                    Cmd = new[]
-                    {
+                    Cmd =
+                    [
                         "/bin/bash", "-c",
-                        $"./config.sh --url {_repoUrl} --token {_token} --name {_runnerName} && ./run.sh"
-                    }
+                        "./config.sh --url $RUNNER_REPO_URL --token $RUNNER_TOKEN --name $RUNNER_NAME && ./run.sh"
+                    ]
                 };
 
                 var response = await _docker!.Containers.CreateContainerAsync(createParams, cancellationToken);
@@ -187,8 +222,6 @@ namespace GitHub.Runner.Docker
         // not running, start it temporarily to allow config.sh remove to execute.
         public async Task<bool> StopAsync(string? token, string? ownerRepo, string githubUrl, CancellationToken cancellationToken)
         {
-            SetRegistrationInfo(token, ownerRepo, githubUrl);
-
             await DiscoverContainerAsync(cancellationToken).ConfigureAwait(false);
 
             if (string.IsNullOrEmpty(_containerName))
@@ -232,14 +265,6 @@ namespace GitHub.Runner.Docker
 
         public async Task<bool> UnregisterAsync(CancellationToken cancellationToken)
         {
-            if (_repoUrl == null || _token == null)
-            {
-                _logger?.LogWarning("Unregister skipped: missing repo URL or token");
-                return false;
-            }
-
-            // allow explicit override of token/repo via CLI (SetRegistrationInfo)
-
             if (string.IsNullOrEmpty(_containerName))
             {
                 _logger?.LogInformation("No container name known for unregister; attempting discovery");
@@ -252,42 +277,25 @@ namespace GitHub.Runner.Docker
                 return false;
             }
 
-                if (_useCli)
-                {
-                    // config.sh remove does not accept --url; pass token only to avoid warning
-                    string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --token {_token}\"";
-                    return await RunCliAsync(cmd, cancellationToken);
-                }
-                else
-                {
-                    var execCreate = await _docker!.Containers.ExecCreateContainerAsync(_containerName, new ContainerExecCreateParameters
-                    {
-                        AttachStdout = true,
-                        AttachStderr = true,
-                        Cmd = new[] { "/bin/bash", "-c", $"./config.sh remove --token {_token}" }
-                    }, cancellationToken);
-
-                    using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
-                    var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
-                    _logger?.LogInformation("Unregister output: {Output}", stdout.Trim());
-                    return true;
-                }
-        }
-
-        // Allow the CLI to provide repo/token when invoked in a fresh process so
-        // UnregisterAsync can run even if RegisterAsync wasn't called in this process.
-        public void SetRegistrationInfo(string? token, string? ownerRepo, string githubUrl)
-        {
-            if (!string.IsNullOrEmpty(ownerRepo))
+            if (_useCli)
             {
-                _repoUrl = githubUrl.TrimEnd('/') + "/" + ownerRepo;
+                string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --token $RUNNER_TOKEN --repo $RUNNER_OWNER_REPO\"";
+                return await RunCliAsync(cmd, cancellationToken);
             }
             else
             {
-                _repoUrl ??= githubUrl.TrimEnd('/');
-            }
+                var execCreate = await _docker!.Containers.ExecCreateContainerAsync(_containerName, new ContainerExecCreateParameters
+                {
+                    AttachStdout = true,
+                    AttachStderr = true,
+                    Cmd = new[] { "/bin/bash", "-c", $"./config.sh remove --token $RUNNER_TOKEN --repo $RUNNER_OWNER_REPO" }
+                }, cancellationToken);
 
-            if (!string.IsNullOrEmpty(token)) _token = token;
+                using var stream = await _docker.Containers.StartAndAttachContainerExecAsync(execCreate.ID, false, cancellationToken);
+                var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
+                _logger?.LogInformation("Unregister output: {Output}", stdout.Trim());
+                return true;
+            }
         }
 
         private async Task DiscoverContainerAsync(CancellationToken cancellationToken)
@@ -445,41 +453,41 @@ RUN curl -o actions-runner-linux-x64-2.328.0.tar.gz -L https://github.com/action
 
         private async Task<bool> RunCliAsync(string cmd, CancellationToken cancellationToken)
         {
-                _logger?.LogInformation("Executing CLI: {Cmd}", cmd);
-                var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+            _logger?.LogInformation("Executing CLI: {Cmd}", cmd);
+            var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
+
+            proc.OutputDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
                 {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+                    Console.WriteLine(e.Data);
+                    _logger?.LogInformation(e.Data);
+                }
+            };
 
-                using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
-                proc.OutputDataReceived += (s, e) =>
+            proc.ErrorDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        Console.WriteLine(e.Data);
-                        _logger?.LogInformation(e.Data);
-                    }
-                };
+                    Console.Error.WriteLine(e.Data);
+                    _logger?.LogError(e.Data);
+                }
+            };
 
-                proc.ErrorDataReceived += (s, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        Console.Error.WriteLine(e.Data);
-                        _logger?.LogError(e.Data);
-                    }
-                };
+            proc.Start();
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
 
-                proc.Start();
-                proc.BeginOutputReadLine();
-                proc.BeginErrorReadLine();
-
-                await proc.WaitForExitAsync(cancellationToken);
-                return proc.ExitCode == 0;
+            await proc.WaitForExitAsync(cancellationToken);
+            return proc.ExitCode == 0;
         }
 
         private async Task<string> RunCliCaptureOutputAsync(string cmd, CancellationToken cancellationToken)
