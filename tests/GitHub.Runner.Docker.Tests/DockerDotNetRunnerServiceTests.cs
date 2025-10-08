@@ -7,6 +7,7 @@ using Dn = global::Docker.DotNet;
 
 namespace GitHub.Runner.Docker.Tests
 {
+    [Trait("Category", "Integration")]
     public class DockerRunnerServiceIntegrationOrchestrationTests
     {
         [Fact]

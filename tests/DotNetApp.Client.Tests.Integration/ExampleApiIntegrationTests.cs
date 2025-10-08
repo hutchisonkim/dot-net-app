@@ -5,6 +5,7 @@ using DotNetApp.Client.Contracts;
 
 namespace DotNetApp.Client.Tests.Integration;
 
+[Trait("Category", "Integration")]
 public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
@@ -15,7 +16,6 @@ public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
-    [Trait("Category", "Integration")]
     public async Task PlatformApiClient_CallsApi_ReturnsHealthStatus()
     {
         using var client = _factory.CreateClient();

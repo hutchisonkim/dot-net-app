@@ -8,9 +8,10 @@ using GitHub.Runner.Docker;
 
 namespace GitHub.Runner.Docker.Tests
 {
+    [Trait("Category", "Integration")]
     public class RunnerLogsIntegrationTests
     {
-        [Fact]
+    [Fact]
         public async Task RunnerLogs_Contain_ListeningForJobs_IntegrationOrMock()
         {
             if (string.Equals(Environment.GetEnvironmentVariable("RUN_INTEGRATION_DOCKERDOTNET"), "1", StringComparison.OrdinalIgnoreCase))

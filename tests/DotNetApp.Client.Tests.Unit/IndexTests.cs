@@ -6,11 +6,11 @@ using DotNetApp.Client;
 
 namespace DotNetApp.Client.Tests.Unit;
 
+[Trait("Category", "Unit")]
 public class IndexTests
 {
     [Fact]
-    [Trait("Category", "Unit")]
-    public void Index_Renders_Welcome()
+    public void Index_WhenRendered_ContainsAppTitle()
     {
         // Arrange
         using var ctx = new TestContext();

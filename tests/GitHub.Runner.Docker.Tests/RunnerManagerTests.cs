@@ -7,6 +7,7 @@ using GitHub.Runner.Docker;
 
 namespace GitHub.Runner.Docker.Tests
 {
+    [Trait("Category", "Unit")]
     public class RunnerManagerTests
     {
         private readonly Xunit.Abstractions.ITestOutputHelper _output;

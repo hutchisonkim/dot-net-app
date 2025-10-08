@@ -6,10 +6,10 @@ using DotNetApp.Client;
 
 namespace DotNetApp.Client.Tests.Unit;
 
+[Trait("Category","Unit")]
 public class HealthStatusProviderTests
 {
     [Fact]
-    [Trait("Category","Unit")]
     public async Task FetchStatusAsync_WhenCalled_ReturnsHealthy()
     {
         // Arrange

@@ -14,11 +14,11 @@ namespace DotNetApp.Server.Tests.Integration;
 
 [Trait("Category","Integration")]
 [Collection("docker-compose")]
-public class ServeClientFromBackendTests
+public class ServeFrontendFromBackendTests
 {
     private readonly string[] CandidateUrls;
 
-    public ServeClientFromBackendTests(LocalStaticFrontendFixture fixture)
+    public ServeFrontendFromBackendTests(LocalStaticFrontendFixture fixture)
     {
         // Prefer fixture-provided FrontendUrl when the collection fixture started a local server.
         if (!string.IsNullOrWhiteSpace(fixture?.FrontendUrl))

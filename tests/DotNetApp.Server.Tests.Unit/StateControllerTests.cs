@@ -8,6 +8,7 @@ using Moq;
 
 namespace DotNetApp.Server.Tests.Unit;
 
+[Trait("Category", "Unit")]
 public class StateControllerTests
 {
     [Fact]
