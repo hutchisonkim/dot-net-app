@@ -2,8 +2,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 ENV ASPNETCORE_URLS="http://+:8080"
 # In CI we use the repository root as the build context and place the published
-# API output under downloaded-artifacts/api. Only copy that directory to keep
+# API output under downloaded-artifacts/server. Only copy that directory to keep
 # the image small and avoid leaking source or test files.
-COPY downloaded-artifacts/api/ ./
+COPY downloaded-artifacts/server/ ./
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "DotNetApp.Server.dll"]

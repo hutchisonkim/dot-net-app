@@ -2,7 +2,7 @@ services:
   api:
     build:
       # Use the repo root as build context so the Dockerfile (in docker/) is within
-      # the context. The Dockerfile copies published bits from downloaded-artifacts/api.
+      # the context. The Dockerfile copies published bits from downloaded-artifacts/server.
       context: ..
       dockerfile: docker/Dockerfile.prebuilt.api
     ports:
@@ -33,7 +33,7 @@ services:
     depends_on:
       - api
     volumes:
-      - ../downloaded-artifacts/api:/src/DotNetApp.Server:ro
+      - ../downloaded-artifacts/server:/src/DotNetApp.Server:ro
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
       - ../tests/DotNetApp.Server.Tests.Integration:/src/DotNetApp.Server.Tests.Integration:ro
       - nuget-packages:/root/.nuget/packages
@@ -73,7 +73,7 @@ services:
       - api
       - client
     volumes:
-      - ../downloaded-artifacts/api:/src/DotNetApp.Api:ro
+      - ../downloaded-artifacts/server:/src/DotNetApp.Server:ro
       - ../downloaded-artifacts/client:/src/DotNetApp.Client:ro
       - ../tests/DotNetApp.Tests.E2E:/src/DotNetApp.Tests.E2E:ro
       - nuget-packages:/root/.nuget/packages

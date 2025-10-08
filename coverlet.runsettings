@@ -7,15 +7,15 @@
           <!-- Produce cobertura format (matches existing test artifacts) -->
           <Format>cobertura</Format>
 
-          <!-- Ensure coverlet instruments product assemblies and the RunnerTasks test assembly
+          <!-- Ensure coverlet instruments product assemblies and the GitHub.Runner test assembly
                ModulePath entries are regular expressions matched against the module (assembly) name. -->
           <Include>
             <!-- Include compiled product assemblies under src (module names containing DotNetApp) -->
             <ModulePath>.*DotNetApp.*</ModulePath>
             <!-- Include common test assembly naming variations just in case -->
-            <!-- Also include the GitHub.RunnerTasks test assembly explicitly (assembly filename) so test-owned code is instrumented -->
-            <ModulePath>.*GitHub.RunnerTasks.Tests.dll$</ModulePath>
-            <ModulePath>.*GitHub.RunnerTasks.*</ModulePath>
+            <!-- Also include the GitHub.GitHub.Runner test assembly explicitly (assembly filename) so test-owned code is instrumented -->
+            <ModulePath>.*GitHub.GitHub.Runner.Tests.dll$</ModulePath>
+            <ModulePath>.*GitHub.GitHub.Runner.*</ModulePath>
           </Include>
 
           <!-- Keep the default exclusions minimal (no additional excludes here) -->

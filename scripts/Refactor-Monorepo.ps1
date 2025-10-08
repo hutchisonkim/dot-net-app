@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Extracts the RunnerTasks library from a monorepo into its own repository, preserving git history.
+Extracts the GitHub.Runner library from a monorepo into its own repository, preserving git history.
 
 .PARAMETER SourceRoot
 Root path of the monorepo.
@@ -25,10 +25,10 @@ param(
 # ---------------------------
 # Library config
 # ---------------------------
-$LibPaths = @("src\GitHub.RunnerTasks", "tests\GitHub.RunnerTasks.Tests")
+$LibPaths = @("src\GitHub.GitHub.Runner", "tests\GitHub.GitHub.Runner.Tests")
 $RenameMap = @{
-    "src/GitHub.RunnerTasks"         = "src/GitHub.RunnerTasks"
-    "tests/GitHub.RunnerTasks.Tests" = "tests/GitHub.RunnerTasks.Tests"
+    "src/GitHub.GitHub.Runner"         = "src/GitHub.GitHub.Runner"
+    "tests/GitHub.GitHub.Runner.Tests" = "tests/GitHub.GitHub.Runner.Tests"
 }
 
 # ---------------------------
@@ -97,7 +97,7 @@ if (-not $DryRun) {
     Push-Location $SourceRoot
     try {
         $tagName = "split-runnertasks-before-$(Get-Date -Format 'yyyyMMdd')"
-        git tag -a $tagName -m "Snapshot before extracting RunnerTasks" 2>$null
+        git tag -a $tagName -m "Snapshot before extracting GitHub.Runner" 2>$null
         Write-Host "✅ Created pre-split tag $tagName"
     } finally { Pop-Location }
 } else { Write-Host "[DryRun] Would create pre-split tag" }
