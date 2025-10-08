@@ -4,19 +4,13 @@ A .NET 8 sample that pairs an ASP.NET Core API with a Blazor WebAssembly client,
 
 ## Features
 
-- [x] Basic .NET 8 Web API + Blazor WebAssembly app template;
-- [x] Partial Programmatic Docker orchestration;
-- [x] Self-hosted GitHub Actions runner (for private repository workflow execution);
-- [x] GitHub Actions workflows for CI, diagnostics, and publishing coverage;
-- [x] GitHub Pages code coverage publishing (like the badge embedded above);
-- [x] Unit tests (xUnit, bUnit) 
-- [x] Integration tests 
-- [x] E2E tests (opt-in Playwright tests);
-
-## TODO
-
-- [ ] Apply programmatic orchestration end-to-end;
-- [ ] Increase code coverage.
+ - <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="vertical-align:middle;margin-right:8px;" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8l3 3 7-7" stroke="#2e7d32" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Basic .NET 8 Web API + Blazor WebAssembly app template
+ - <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="vertical-align:middle;margin-right:8px;" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8l3 3 7-7" stroke="#2e7d32" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Unit tests (xUnit, bUnit), integration tests, and opt-in E2E tests (Playwright)
+ - <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="vertical-align:middle;margin-right:8px;" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8l3 3 7-7" stroke="#2e7d32" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> GitHub Actions workflows (for deployment and diagnostics)
+ - <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="vertical-align:middle;margin-right:8px;" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8l3 3 7-7" stroke="#2e7d32" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> GitHub Actions Runner + Helper CLI (for self-hosted private repo workflow runs)
+ - <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="vertical-align:middle;margin-right:8px;" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8l3 3 7-7" stroke="#2e7d32" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> GitHub Pages code coverage publishing (like the badge embedded above)
+ - <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="vertical-align:middle;margin-right:8px;" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="#fdd835" stroke-width="1.6" fill="none"/><path d="M8 5v3l2 1" stroke="#fdd835" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> End-to-end programmatic  orchestration
+ - <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="vertical-align:middle;margin-right:8px;" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="#fdd835" stroke-width="1.6" fill="none"/><path d="M8 5v3l2 1" stroke="#fdd835" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> Full code coverage
 
 ## Coverage
 
