@@ -37,79 +37,9 @@ namespace GitHub.Runner.Docker
             }
         }
 
-        // Persisted state helper methods -------------------------------------------------
-        public async Task SaveStateAsync(string filePath, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var state = new RunnerState
-                {
-                    RepoUrl = _repoUrl,
-                    Token = _token,
-                    RunnerName = _runnerName,
-                    ContainerName = _containerName
-                };
-
-                var dir = Path.GetDirectoryName(filePath);
-                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-
-                var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
-                _logger?.LogInformation("Saved runner state to {Path}", filePath);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to save runner state to {Path}", filePath);
-            }
-        }
-
-        public void LoadState(string filePath)
-        {
-            try
-            {
-                if (!File.Exists(filePath))
-                {
-                    _logger?.LogDebug("State file {Path} not found", filePath);
-                    return;
-                }
-
-                var json = File.ReadAllText(filePath);
-                var state = JsonSerializer.Deserialize<RunnerState>(json);
-                if (state != null)
-                {
-                    _repoUrl = state.RepoUrl ?? _repoUrl;
-                    _token = state.Token ?? _token;
-                    _runnerName = state.RunnerName ?? _runnerName;
-                    _containerName = state.ContainerName ?? _containerName;
-                    _logger?.LogInformation("Loaded runner state from {Path}", filePath);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to load runner state from {Path}", filePath);
-            }
-        }
-
-        public void ClearPersistedState(string filePath)
-        {
-            try
-            {
-                if (File.Exists(filePath)) File.Delete(filePath);
-                _logger?.LogInformation("Deleted state file {Path}", filePath);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to delete state file {Path}", filePath);
-            }
-        }
-
-        private class RunnerState
-        {
-            public string? RepoUrl { get; set; }
-            public string? Token { get; set; }
-            public string? RunnerName { get; set; }
-            public string? ContainerName { get; set; }
-        }
+        // Instead of persisting state on disk in the repo, discover any existing
+        // runner container dynamically when stop/unregister are invoked from a
+        // fresh process. This avoids writing tokens or transient info into source.
 
         private DockerClient CreateDockerClient()
         {
@@ -209,9 +139,17 @@ namespace GitHub.Runner.Docker
 
         public async Task<bool> StopContainersAsync(CancellationToken cancellationToken)
         {
-            if (_containerName == null)
+            // If we don't yet know the container name (fresh process), try to discover
+            // a suitable container (by image tag or by name pattern).
+            if (string.IsNullOrEmpty(_containerName))
             {
-                _logger?.LogInformation("Stop requested but no container name known; treating as success");
+                _logger?.LogInformation("No container name known; attempting to discover runner container");
+                await DiscoverContainerAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (string.IsNullOrEmpty(_containerName))
+            {
+                _logger?.LogInformation("No runner container found; treating stop as success");
                 return true;
             }
 
@@ -238,16 +176,28 @@ namespace GitHub.Runner.Docker
 
         public async Task<bool> UnregisterAsync(CancellationToken cancellationToken)
         {
-            if (_repoUrl == null || _token == null || _containerName == null)
+            if (_repoUrl == null || _token == null)
             {
-                _logger?.LogWarning("Unregister skipped: missing parameters");
+                _logger?.LogWarning("Unregister skipped: missing repo URL or token");
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(_containerName))
+            {
+                _logger?.LogInformation("No container name known for unregister; attempting discovery");
+                await DiscoverContainerAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (string.IsNullOrEmpty(_containerName))
+            {
+                _logger?.LogWarning("Unregister skipped: no container found");
                 return false;
             }
 
             if (_useCli)
             {
-                string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --url {_repoUrl} --token {_token}\"";
-                return await RunCliAsync(cmd, cancellationToken);
+                    string cmd = $"docker exec {_containerName} /bin/bash -c \"./config.sh remove --url {_repoUrl} --token {_token}\"";
+                    return await RunCliAsync(cmd, cancellationToken);
             }
             else
             {
@@ -262,6 +212,59 @@ namespace GitHub.Runner.Docker
                 var (stdout, stderr) = await stream.ReadOutputToEndAsync(cancellationToken);
                 _logger?.LogInformation("Unregister output: {Output}", stdout.Trim());
                 return true;
+            }
+        }
+
+        private async Task DiscoverContainerAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (_useCli)
+                {
+                    // look for a running container from the github-runner image, or name prefix
+                    var out1 = await RunCliCaptureOutputAsync($"docker ps -a --filter ancestor={ImageTag} --format \"{{{{.ID}}}} {{{{.Names}}}}\"", cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(out1))
+                    {
+                        var first = out1.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                        var parts = first.Split(' ', 2);
+                        if (parts.Length >= 2)
+                        {
+                            _containerName = parts[1].Trim();
+                            _logger?.LogInformation("Discovered container by image: {Container}", _containerName);
+                            return;
+                        }
+                    }
+
+                    var out2 = await RunCliCaptureOutputAsync($"docker ps -a --filter \"name=github-runner-\" --format \"{{{{.ID}}}} {{{{.Names}}}}\"", cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(out2))
+                    {
+                        var first = out2.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                        var parts = first.Split(' ', 2);
+                        if (parts.Length >= 2)
+                        {
+                            _containerName = parts[1].Trim();
+                            _logger?.LogInformation("Discovered container by name pattern: {Container}", _containerName);
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    var existing = await _docker!.Containers.ListContainersAsync(new ContainersListParameters { All = true }, cancellationToken);
+                    var found = existing.FirstOrDefault(c => (c.Image != null && c.Image.Contains("github-runner")) || c.Names.Any(n => n.Contains("github-runner-")));
+                    if (found != null)
+                    {
+                        // Strip leading slash from names if present
+                        var name = found.Names.FirstOrDefault() ?? found.ID;
+                        _containerName = name.StartsWith("/") ? name.Substring(1) : name;
+                        _logger?.LogInformation("Discovered container via Docker API: {Container}", _containerName);
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error while discovering runner container");
             }
         }
 
