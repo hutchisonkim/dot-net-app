@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
-    <!-- Enforce stricter defaults across the repo -->
+    <!-- Enforce stricter defaults for production code (src/)
+         Test projects in tests/ override these settings via tests/Directory.Build.props -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -10,7 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Keep analyzers private to the build process -->
+    <!-- Keep analyzers private to the build process
+         Test projects in tests/ remove this via tests/Directory.Build.props -->
     <PackageReference Include="Roslynator.Analyzers" Version="4.5.0" PrivateAssets="All" />
   </ItemGroup>
 </Project>
