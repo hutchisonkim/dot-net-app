@@ -233,7 +233,6 @@ public class BlazorClientAssetConfiguratorTests
     }
 
     [Fact]
-    [Trait("Category", "Unit")]
     public async Task Configure_MiddlewarePipeline_ExecutesCorrectly()
     {
         // Arrange
