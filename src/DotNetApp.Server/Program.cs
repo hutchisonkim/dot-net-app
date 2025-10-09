@@ -11,7 +11,7 @@ builder.Services.AddSwaggerGen();
 // Core + application services
 // Register core-like services directly (DotNetApp.Core project removed in this workspace).
 builder.Services
-    .AddScoped<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Server.Services.DefaultHealthService>();
+    .AddSingleton<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Server.Services.DefaultHealthService>();
 
 // Allow CORS for local testing (replace with tighter policy in prod)
 builder.Services.AddCors(options =>
