@@ -13,11 +13,11 @@
 
   <!-- Only bring in test SDK and test-only packages when RunE2E is explicitly enabled -->
   <ItemGroup Condition="'$(RunE2E)' == 'true'">
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
-    <PackageReference Include="xunit" Version="2.5.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
-  <PackageReference Include="Microsoft.Playwright" Version="1.41.1" />
-    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 </Project>
 

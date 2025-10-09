@@ -11,6 +11,6 @@
 
   <ItemGroup>
     <!-- Keep analyzers private to the build process -->
-    <PackageReference Include="Roslynator.Analyzers" Version="4.5.0" PrivateAssets="All" />
+    <PackageReference Include="Roslynator.Analyzers" PrivateAssets="All" />
   </ItemGroup>
 </Project>
