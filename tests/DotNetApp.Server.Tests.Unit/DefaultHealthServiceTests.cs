@@ -37,4 +37,18 @@ public class DefaultHealthServiceTests
         // Assert
         Assert.Equal(HealthStatus.Healthy.Status, result);
     }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public async Task GetStatusAsync_ReturnsHealthyWithCapitalH()
+    {
+        // Arrange
+        var sut = new DefaultHealthService();
+
+        // Act
+        var result = await sut.GetStatusAsync();
+
+        // Assert - Verify exact casing: "Healthy" not "healthy"
+        Assert.Equal("Healthy", result);
+    }
 }

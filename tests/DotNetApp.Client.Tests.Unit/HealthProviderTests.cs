@@ -17,7 +17,7 @@ public class HealthProviderTests
     {
         // Arrange
         using var ctx = new Bunit.TestContext();
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"healthy\" }", System.Net.HttpStatusCode.OK);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", System.Net.HttpStatusCode.OK);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
 
         // Act
@@ -25,7 +25,7 @@ public class HealthProviderTests
         var status = await provider.FetchStatusAsync();
 
         // Assert
-        Assert.Equal("healthy", status);
+        Assert.Equal("Healthy", status);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class HealthProviderTests
     {
         // Arrange
         using var ctx = new Bunit.TestContext();
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"healthy\" }", System.Net.HttpStatusCode.OK);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", System.Net.HttpStatusCode.OK);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
         using var cts = new CancellationTokenSource();
 
@@ -42,7 +42,7 @@ public class HealthProviderTests
         var status = await provider.FetchStatusAsync(cts.Token);
 
         // Assert
-        Assert.Equal("healthy", status);
+        Assert.Equal("Healthy", status);
     }
 
     [Fact]

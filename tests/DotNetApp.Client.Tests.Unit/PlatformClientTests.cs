@@ -15,7 +15,7 @@ public class PlatformClientTests
     public async Task GetHealthStatusAsync_ReturnsHealthStatusDto()
     {
         // Arrange
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"healthy\" }", HttpStatusCode.OK);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", HttpStatusCode.OK);
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         var client = new PlatformApiClient(httpClient);
 
@@ -24,14 +24,14 @@ public class PlatformClientTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal("healthy", result.status);
+        Assert.Equal("Healthy", result.status);
     }
 
     [Fact]
     public async Task GetHealthStatusAsync_WithCancellationToken_ReturnsHealthStatusDto()
     {
         // Arrange
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"healthy\" }", HttpStatusCode.OK);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", HttpStatusCode.OK);
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         var client = new PlatformApiClient(httpClient);
         using var cts = new CancellationTokenSource();
@@ -41,7 +41,7 @@ public class PlatformClientTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal("healthy", result.status);
+        Assert.Equal("Healthy", result.status);
     }
 
     [Fact]
