@@ -3,7 +3,6 @@ using Xunit;
 using DotNetApp.Client.Pages;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client;
-using System.Threading.Tasks;
 
 namespace DotNetApp.Client.Tests.Unit;
 
@@ -44,7 +43,7 @@ public class IndexTests
     }
 
     [Fact]
-    public async Task Index_AfterLoad_WithHealthyStatus_ShowsSuccessMessage()
+    public void Index_AfterLoad_WithHealthyStatus_ShowsSuccessMessage()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -53,7 +52,6 @@ public class IndexTests
 
         // Act
         var cut = ctx.RenderComponent<Index>();
-        await Task.Delay(100); // Allow OnInitializedAsync to complete
         cut.WaitForState(() => !cut.Markup.Contains("Checking API"));
 
         // Assert
@@ -64,7 +62,7 @@ public class IndexTests
     }
 
     [Fact]
-    public async Task Index_AfterLoad_WithNullStatus_ShowsUnavailableMessage()
+    public void Index_AfterLoad_WithNullStatus_ShowsUnavailableMessage()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -73,7 +71,6 @@ public class IndexTests
 
         // Act
         var cut = ctx.RenderComponent<Index>();
-        await Task.Delay(100); // Allow OnInitializedAsync to complete
         cut.WaitForState(() => !cut.Markup.Contains("Checking API"));
 
         // Assert
@@ -84,7 +81,7 @@ public class IndexTests
     }
 
     [Fact]
-    public async Task Index_AfterLoad_WithDifferentStatus_DisplaysStatus()
+    public void Index_AfterLoad_WithDifferentStatus_DisplaysStatus()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -93,7 +90,6 @@ public class IndexTests
 
         // Act
         var cut = ctx.RenderComponent<Index>();
-        await Task.Delay(100); // Allow OnInitializedAsync to complete
         cut.WaitForState(() => !cut.Markup.Contains("Checking API"));
 
         // Assert
