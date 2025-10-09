@@ -5,7 +5,9 @@
     <Nullable>enable</Nullable>
   <AssemblyName>DotNetApp.Server</AssemblyName>
   <RootNamespace>DotNetApp.Server</RootNamespace>
+    <!-- Disable SDK-generated assembly attributes to avoid duplicate attribute errors in container builds -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Also avoid the SDK generating the TargetFramework attribute in generated assembly files -->
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
   <ItemGroup>
