@@ -1,4 +1,3 @@
-#if RUN_E2E
 using System;
 using System.Threading.Tasks;
 using Microsoft.Playwright;
@@ -45,4 +44,3 @@ public class PlaywrightTests
         await testTask;
     }
 }
-#endif

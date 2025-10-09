@@ -1,4 +1,3 @@
-#if RUN_E2E
 using System.Threading.Tasks;
 using Microsoft.Playwright;
 using Xunit;
@@ -28,4 +27,3 @@ public class PlaywrightCollection : ICollectionFixture<PlaywrightFixture>
 {
     // Intentionally empty - serves only as a marker for test collection
 }
-#endif
