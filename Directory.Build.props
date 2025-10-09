@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
-    <!-- Enforce stricter defaults across the repo -->
+    <!-- Enforce stricter defaults for production code (src/)
+         Test projects in tests/ override these settings via tests/Directory.Build.props -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>

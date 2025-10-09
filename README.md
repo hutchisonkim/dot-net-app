@@ -12,6 +12,15 @@ DotNetApp is a demo starter built to showcase clean, maintainable **.NET 8** pat
 🚧 End-to-end programmatic orchestration  
 🚧 Full code coverage tracking  
 
+## Build Configuration
+
+The repository uses hierarchical `Directory.Build.props` files to enforce different quality standards for production vs. test code:
+
+- **Production code** (`src/`): Strict settings with `TreatWarningsAsErrors=true` and Roslynator analyzers enabled
+- **Test code** (`tests/`): Relaxed settings with `TreatWarningsAsErrors=false` and analyzers disabled to prevent brittle build failures
+
+This approach maintains high code quality for production while allowing more flexibility in test projects.
+
 ## Coverage
 
 ![Test Coverage](https://hutchisonkim.github.io/dot-net-app/coverage-summary.svg)
