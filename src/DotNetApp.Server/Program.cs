@@ -34,4 +34,7 @@ app.MapControllers();
 app.Run();
 
 // Expose Program type for WebApplicationFactory-based tests
-public partial class Program { }
+namespace DotNetApp.Server
+{
+    public partial class Program { }
+}
