@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DotNetApp.Server.Controllers;
 using DotNetApp.Core.Abstractions;
+using DotNetApp.Core.Models;
 using Xunit;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -18,7 +19,7 @@ public class StateControllerTests
         // Arrange
         var mockHealth = new Mock<IHealthService>();
         mockHealth.Setup(h => h.GetStatusAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync("Healthy");
+            .ReturnsAsync(HealthStatus.Healthy.Status);
         var sut = new StateController(mockHealth.Object);
 
         // Act
@@ -31,7 +32,7 @@ public class StateControllerTests
     // Cast the returned value to the DTO and assert explicitly on the Status property
     var dto = ok.Value as DotNetApp.Server.Contracts.HealthDto;
     Assert.NotNull(dto);
-    Assert.Equal("Healthy", dto!.Status);
+    Assert.Equal(HealthStatus.Healthy.Status, dto!.Status);
 
         mockHealth.Verify(h => h.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
