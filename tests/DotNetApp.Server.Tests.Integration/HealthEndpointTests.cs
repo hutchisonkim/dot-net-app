@@ -17,11 +17,11 @@ namespace DotNetApp.Server.Tests.Integration;
 // Per Microsoft guidance, this belongs in an integration test project (not a pure unit test assembly)
 // to keep unit tests fast and isolated.
 [Trait("Category","Integration")]
-public class HealthEndpointIntegrationTests : IClassFixture<HealthEndpointIntegrationTests.CustomWebAppFactory>
+public class HealthEndpointTests : IClassFixture<HealthEndpointTests.CustomWebAppFactory>
 {
     private readonly HttpClient _client;
 
-    public HealthEndpointIntegrationTests(CustomWebAppFactory factory)
+    public HealthEndpointTests(CustomWebAppFactory factory)
     {
         _client = factory.CreateClient();
     }

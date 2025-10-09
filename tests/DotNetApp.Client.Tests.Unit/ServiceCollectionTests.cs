@@ -8,7 +8,7 @@ using DotNetApp.Client.Contracts;
 namespace DotNetApp.Client.Tests.Unit;
 
 [Trait("Category", "Unit")]
-public class ServiceCollectionExtensionsTests
+public class ServiceCollectionTests
 {
     [Fact]
     public void AddPlatformApi_WithoutHandler_RegistersServices()

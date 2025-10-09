@@ -5,7 +5,7 @@ using Xunit;
 
 namespace DotNetApp.Tests.E2E;
 
-public class PlaywrightSharedFixture : IAsyncLifetime
+public class PlaywrightFixture : IAsyncLifetime
 {
     public IPlaywright PlaywrightInstance { get; private set; } = default!;
     public IBrowser Browser { get; private set; } = default!;
@@ -24,7 +24,7 @@ public class PlaywrightSharedFixture : IAsyncLifetime
 }
 
 [CollectionDefinition("Playwright E2E")]
-public class PlaywrightCollection : ICollectionFixture<PlaywrightSharedFixture>
+public class PlaywrightCollection : ICollectionFixture<PlaywrightFixture>
 {
     // Intentionally empty - serves only as a marker for test collection
 }
