@@ -11,10 +11,12 @@ public class PlaywrightTests
     private readonly PlaywrightFixture _fx;
     public PlaywrightTests(PlaywrightFixture fx) => _fx = fx;
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "E2E")]
     public async Task Client_Index_Loads_BlazorRuntime()
     {
+        Skip.If(_fx.Browser == null, _fx.SkipReason ?? "Playwright not available");
+
         // Ensure the test as a whole cannot hang forever. Enforce a 10 second timeout
         // for the async operations inside this test. This is independent of any
         // Playwright timeouts passed to its API calls.
@@ -22,7 +24,7 @@ public class PlaywrightTests
 
         Func<Task> testBody = async () =>
         {
-            await using var context = await _fx.Browser.NewContextAsync();
+            await using var context = await _fx.Browser!.NewContextAsync();
             var page = await context.NewPageAsync();
             await page.GotoAsync(frontendUrl, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 30000 });
 
