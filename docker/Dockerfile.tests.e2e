@@ -46,23 +46,13 @@ COPY DotNetApp.sln ./
 COPY src ./src
 COPY tests ./tests
 
-# Restore only the E2E test project (pulls transitive dependencies) but only when RunE2E is enabled.
-# This keeps the image lightweight for non-E2E scenarios and avoids triggering Playwright tooling during workspace/test runs.
-ARG RUN_E2E=0
-ENV RUN_E2E=${RUN_E2E}
+# Restore and build the E2E test project
+RUN dotnet restore tests/DotNetApp.Tests.E2E/DotNetApp.Tests.E2E.csproj
 
-RUN if [ "${RUN_E2E}" = "1" ]; then \
-			dotnet restore tests/DotNetApp.Tests.E2E/DotNetApp.Tests.E2E.csproj /p:RunE2E=true; \
-		else echo "Skipping E2E restore (RUN_E2E=${RUN_E2E})"; fi
+RUN dotnet build --no-restore -c Debug tests/DotNetApp.Tests.E2E/DotNetApp.Tests.E2E.csproj
 
-RUN if [ "${RUN_E2E}" = "1" ]; then \
-			dotnet build --no-restore -c Debug tests/DotNetApp.Tests.E2E/DotNetApp.Tests.E2E.csproj /p:RunE2E=true; \
-		else echo "Skipping E2E build (RUN_E2E=${RUN_E2E})"; fi
-
-# Install playwright browsers (using the generated script) only when enabled
-RUN if [ "${RUN_E2E}" = "1" ]; then \
-			pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& tests/DotNetApp.Tests.E2E/bin/Debug/net8.0/playwright.ps1 install --with-deps"; \
-		else echo "Skipping Playwright browser install (RUN_E2E=${RUN_E2E})"; fi
+# Install Playwright browsers using the official install script with dependencies
+RUN pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& tests/DotNetApp.Tests.E2E/bin/Debug/net8.0/playwright.ps1 install --with-deps"
 
 # Add a lightweight wait script & test runner
 RUN echo '#!/usr/bin/env bash' > /usr/local/bin/run-e2e.sh \
@@ -80,5 +70,5 @@ RUN echo '#!/usr/bin/env bash' > /usr/local/bin/run-e2e.sh \
 
 WORKDIR /src/tests/DotNetApp.Tests.E2E
 
-# Default command keeps container idle (so you can exec to run tests) unless RUN_E2E=1
-CMD ["bash", "-lc", "if [ \"${RUN_E2E:-0}\" = 1 ]; then /usr/local/bin/run-e2e.sh; else echo 'E2E test container ready. Exec run-e2e.sh or set RUN_E2E=1.' && tail -f /dev/null; fi"]
+# Default command runs E2E tests
+CMD ["/usr/local/bin/run-e2e.sh"]
