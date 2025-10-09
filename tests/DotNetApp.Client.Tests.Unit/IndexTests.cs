@@ -3,6 +3,7 @@ using Xunit;
 using DotNetApp.Client.Pages;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client;
+using DotNetApp.Core.Models;
 using System.Threading.Tasks;
 
 namespace DotNetApp.Client.Tests.Unit;
@@ -31,7 +32,7 @@ public class IndexTests
         // Arrange
         using var ctx = new TestContext();
         // Use a delayed handler to keep the loading state visible
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", System.Net.HttpStatusCode.OK, delayMs: 5000);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler($"{{ \"status\": \"{HealthStatus.Healthy.Status}\" }}", System.Net.HttpStatusCode.OK, delayMs: 5000);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
 
         // Act
@@ -40,7 +41,7 @@ public class IndexTests
         // Assert - initially shows loading state
         var markup = cut.Markup;
         Assert.Contains("<em>Checking API...</em>", markup);
-        Assert.DoesNotContain("Healthy", markup);
+        Assert.DoesNotContain(HealthStatus.Healthy.Status, markup);
     }
 
     [Fact]
@@ -48,7 +49,7 @@ public class IndexTests
     {
         // Arrange
         using var ctx = new TestContext();
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", System.Net.HttpStatusCode.OK);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler($"{{ \"status\": \"{HealthStatus.Healthy.Status}\" }}", System.Net.HttpStatusCode.OK);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
 
         // Act
@@ -58,7 +59,7 @@ public class IndexTests
 
         // Assert
         var markup = cut.Markup;
-        Assert.Contains("Healthy", markup);
+        Assert.Contains(HealthStatus.Healthy.Status, markup);
         Assert.Contains("text-success", markup);
         Assert.DoesNotContain("Checking API", markup);
     }

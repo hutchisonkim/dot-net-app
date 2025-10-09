@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\DotNetApp.Client\DotNetApp.Client.csproj" />
+    <ProjectReference Include="..\..\src\DotNetApp.Server\DotNetApp.Server.csproj" />
   </ItemGroup>
 
 </Project>

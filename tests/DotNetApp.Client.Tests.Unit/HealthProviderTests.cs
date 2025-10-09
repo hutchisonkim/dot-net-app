@@ -5,6 +5,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetApp.Client;
 using DotNetApp.Client.Contracts;
+using DotNetApp.Core.Models;
 using Moq;
 
 namespace DotNetApp.Client.Tests.Unit;
@@ -17,7 +18,7 @@ public class HealthProviderTests
     {
         // Arrange
         using var ctx = new Bunit.TestContext();
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", System.Net.HttpStatusCode.OK);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler($"{{ \"status\": \"{HealthStatus.Healthy.Status}\" }}", System.Net.HttpStatusCode.OK);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
 
         // Act
@@ -25,7 +26,7 @@ public class HealthProviderTests
         var status = await provider.FetchStatusAsync();
 
         // Assert
-        Assert.Equal("Healthy", status);
+        Assert.Equal(HealthStatus.Healthy.Status, status);
     }
 
     [Fact]
@@ -33,7 +34,7 @@ public class HealthProviderTests
     {
         // Arrange
         using var ctx = new Bunit.TestContext();
-        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler("{ \"status\": \"Healthy\" }", System.Net.HttpStatusCode.OK);
+        var handler = new DotNetApp.Client.Tests.TestHttpMessageHandler($"{{ \"status\": \"{HealthStatus.Healthy.Status}\" }}", System.Net.HttpStatusCode.OK);
         ctx.Services.AddPlatformApi(handler, "http://localhost/");
         using var cts = new CancellationTokenSource();
 
@@ -42,7 +43,7 @@ public class HealthProviderTests
         var status = await provider.FetchStatusAsync(cts.Token);
 
         // Assert
-        Assert.Equal("Healthy", status);
+        Assert.Equal(HealthStatus.Healthy.Status, status);
     }
 
     [Fact]

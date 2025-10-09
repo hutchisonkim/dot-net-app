@@ -49,6 +49,6 @@ public class DefaultHealthServiceTests
         var result = await sut.GetStatusAsync();
 
         // Assert - Verify exact casing: "Healthy" not "healthy"
-        Assert.Equal("Healthy", result);
+        Assert.Equal(HealthStatus.Healthy.Status, result);
     }
 }
