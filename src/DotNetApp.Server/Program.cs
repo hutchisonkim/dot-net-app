@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
-using DotNetApp.Core;
-using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,8 +11,7 @@ builder.Services.AddSwaggerGen();
 // Core + application services
 // Register core-like services directly (DotNetApp.Core project removed in this workspace).
 builder.Services
-    .AddScoped<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Server.Services.DefaultHealthService>()
-    .AddSingleton<DotNetApp.Core.Abstractions.IClientAssetConfigurator, DotNetApp.Server.Services.BlazorClientAssetConfigurator>();
+    .AddScoped<DotNetApp.Core.Abstractions.IHealthService, DotNetApp.Server.Services.DefaultHealthService>();
 
 // Allow CORS for local testing (replace with tighter policy in prod)
 builder.Services.AddCors(options =>
@@ -28,9 +24,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Allow pluggable client asset configuration (BlazorClientAssetConfigurator will discover and wire static files)
-var assetConfigurator = app.Services.GetRequiredService<DotNetApp.Core.Abstractions.IClientAssetConfigurator>();
-assetConfigurator.Configure(app);
+// Client assets retired: server now serves API only. If you need static files, call UseStaticFiles() here.
 
 app.UseSwagger();
 app.UseSwaggerUI();

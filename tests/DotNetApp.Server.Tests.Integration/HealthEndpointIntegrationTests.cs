@@ -33,12 +33,7 @@ public class HealthEndpointIntegrationTests : IClassFixture<HealthEndpointIntegr
     Assert.Equal(FakeHealthService.CustomStatus, json.GetProperty("status").GetString());
     }
 
-    [Fact]
-    public async Task RootRequest_WhenFrontendConfigured_ReturnsFakeIndex()
-    {
-    var html = await _client.GetStringAsync("/");
-    Assert.Contains("Fake Frontend", html);
-    }
+    // Frontend no longer hosted by the server. If you expect SPA content, run the frontend separately and configure CORS.
 
     public class CustomWebAppFactory : WebApplicationFactory<Program>
     {
@@ -47,32 +42,9 @@ public class HealthEndpointIntegrationTests : IClassFixture<HealthEndpointIntegr
             builder.ConfigureServices(services =>
             {
                 // Replace real services with fakes
-                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IClientAssetConfigurator));
-                if (descriptor != null) services.Remove(descriptor);
-                services.AddSingleton<IClientAssetConfigurator, FakeClientAssetConfigurator>();
-
                 var healthDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IHealthService));
                 if (healthDescriptor != null) services.Remove(healthDescriptor);
                 services.AddSingleton<IHealthService, FakeHealthService>();
-            });
-        }
-    }
-
-    private class FakeClientAssetConfigurator : IClientAssetConfigurator
-    {
-        public const string Html = "<html><head><title>Fake Index</title></head><body><h1>Fake Frontend</h1></body></html>";
-        public void Configure(object appBuilder)
-        {
-            if (appBuilder is not IApplicationBuilder app) return;
-            app.Use(async (ctx, next) =>
-            {
-                if (ctx.Request.Path == "/" || ctx.Request.Path == "/index.html")
-                {
-                    ctx.Response.ContentType = "text/html";
-                    await ctx.Response.WriteAsync(Html);
-                    return;
-                }
-                await next();
             });
         }
     }
