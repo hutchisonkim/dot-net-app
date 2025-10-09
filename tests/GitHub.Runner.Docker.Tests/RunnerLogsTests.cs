@@ -9,7 +9,7 @@ using GitHub.Runner.Docker;
 namespace GitHub.Runner.Docker.Tests
 {
     [Trait("Category", "Integration")]
-    public class RunnerLogsIntegrationTests
+    public class RunnerLogsTests
     {
     [Fact]
         public async Task RunnerLogs_Contain_ListeningForJobs_IntegrationOrMock()
@@ -44,7 +44,7 @@ namespace GitHub.Runner.Docker.Tests
 
         private static async Task RunMockPathAsync()
         {
-            var fake = new FakeRunnerService(new[] { true });
+            var fake = new FakeRunner(new[] { true });
             var manager = new RunnerManager(fake, new TestLogger<RunnerManager>());
 
             var env = new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app" };

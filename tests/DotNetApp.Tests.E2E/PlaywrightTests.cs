@@ -9,8 +9,8 @@ namespace DotNetApp.Tests.E2E;
 [Collection("Playwright E2E")] // Leverage shared browser instance
 public class PlaywrightTests
 {
-    private readonly PlaywrightSharedFixture _fx;
-    public PlaywrightTests(PlaywrightSharedFixture fx) => _fx = fx;
+    private readonly PlaywrightFixture _fx;
+    public PlaywrightTests(PlaywrightFixture fx) => _fx = fx;
 
     [Fact]
     [Trait("Category", "E2E")]

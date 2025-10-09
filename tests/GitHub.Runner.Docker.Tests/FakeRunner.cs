@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace GitHub.Runner.Docker.Tests
 {
-    public class FakeRunnerService : IRunnerService
+    public class FakeRunner : IRunnerService
     {
         private readonly Queue<bool> _registerResults;
         public int RegisterCallCount { get; private set; } = 0;
@@ -13,7 +13,7 @@ namespace GitHub.Runner.Docker.Tests
         public int UnregisterCallCount { get; private set; } = 0;
     public string[] LastStartedEnv { get; private set; } = Array.Empty<string>();
 
-        public FakeRunnerService(IEnumerable<bool> registerResults)
+        public FakeRunner(IEnumerable<bool> registerResults)
         {
             _registerResults = new Queue<bool>(registerResults ?? Array.Empty<bool>());
         }

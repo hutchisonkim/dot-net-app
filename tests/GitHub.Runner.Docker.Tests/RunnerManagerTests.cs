@@ -21,7 +21,7 @@ namespace GitHub.Runner.Docker.Tests
     public async Task StartWithRetries_WhenTransientFailureThenSuccess_LogsAndReturnsTrue()
         {
             // Arrange: create a fake service that fails once then succeeds to trigger retry logs
-            var fake = new FakeRunnerService(new[] { false, true });
+            var fake = new FakeRunner(new[] { false, true });
             var testLogger = new TestLogger<RunnerManager>(rollingCapacity: 50);
             var manager = new RunnerManager(fake, testLogger);
 
@@ -45,7 +45,7 @@ namespace GitHub.Runner.Docker.Tests
         [Fact]
         public async Task StartWithRetries_WhenFailsThenSucceeds_AttemptsUntilSuccess()
         {
-            var fake = new FakeRunnerService(new[] { false, false, true });
+            var fake = new FakeRunner(new[] { false, false, true });
             var manager = new RunnerManager(fake);
 
             var result = await manager.StartWithRetriesAsync("t", "owner/repo", "https://github.com", maxRetries: 5, baseDelayMs: 1);
@@ -57,7 +57,7 @@ namespace GitHub.Runner.Docker.Tests
         [Fact]
         public async Task StartWithRetries_WhenAlwaysFails_ReturnsFalseAfterMaxRetries()
         {
-            var fake = new FakeRunnerService(new[] { false, false, false, false });
+            var fake = new FakeRunner(new[] { false, false, false, false });
             var manager = new RunnerManager(fake);
 
             var result = await manager.StartWithRetriesAsync("t", "owner/repo", "https://github.com", maxRetries: 4, baseDelayMs: 1);
@@ -69,7 +69,7 @@ namespace GitHub.Runner.Docker.Tests
         [Fact]
         public async Task StartRunnerStackAsync_WithValidEnv_DelegatesToServiceAndReturnsTrue()
         {
-            var fake = new FakeRunnerService(new[] { true });
+            var fake = new FakeRunner(new[] { true });
             var manager = new RunnerManager(fake);
             var env = new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app", "RUNNER_NAME=runner01" };
 
@@ -258,20 +258,20 @@ namespace GitHub.Runner.Docker.Tests
             }
             else
             {
-                // Mock-based integration: validate orchestration wiring using FakeRunnerService
-                var fake = new FakeRunnerService(new[] { true });
+                // Mock-based integration: validate orchestration wiring using FakeRunner
+                var fake = new FakeRunner(new[] { true });
                 var testLogger = new TestLogger<RunnerManager>();
                 var manager = new RunnerManager(fake, testLogger);
 
                 var env = new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app" };
                 var ok = await manager.OrchestrateStartAsync("token", "hutchisonkim/dot-net-app", "https://github.com", env, maxRetries: 1, baseDelayMs: 1);
-                AssertWithLogs.True(ok, "OrchestrateStartAsync should succeed with FakeRunnerService", _output, testLogger);
-                AssertWithLogs.Equal(1, fake.RegisterCallCount, "RegisterCallCount mismatch", _output, testLogger);
-                AssertWithLogs.Equal(1, fake.StartCallCount, "StartCallCount mismatch", _output, testLogger);
+                LoggingAssertions.True(ok, "OrchestrateStartAsync should succeed with FakeRunner", _output, testLogger);
+                LoggingAssertions.Equal(1, fake.RegisterCallCount, "RegisterCallCount mismatch", _output, testLogger);
+                LoggingAssertions.Equal(1, fake.StartCallCount, "StartCallCount mismatch", _output, testLogger);
 
                 var stopped = await manager.OrchestrateStopAsync();
-                AssertWithLogs.True(stopped, "OrchestrateStopAsync should succeed with FakeRunnerService", _output, testLogger);
-                AssertWithLogs.Equal(1, fake.StopCallCount, "StopCallCount mismatch", _output, testLogger);
+                LoggingAssertions.True(stopped, "OrchestrateStopAsync should succeed with FakeRunner", _output, testLogger);
+                LoggingAssertions.Equal(1, fake.StopCallCount, "StopCallCount mismatch", _output, testLogger);
             }
         }
 
@@ -284,7 +284,7 @@ namespace GitHub.Runner.Docker.Tests
         [Fact]
         public async Task StartWithRetries_WhenMaxRetriesIsNotPositive_ThrowsArgumentOutOfRange()
         {
-            var fake = new FakeRunnerService(new[] { true });
+            var fake = new FakeRunner(new[] { true });
             var manager = new RunnerManager(fake);
 
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => manager.StartWithRetriesAsync("t", "r", "u", maxRetries: 0));
@@ -308,7 +308,7 @@ namespace GitHub.Runner.Docker.Tests
         [Fact]
         public async Task OrchestrateStart_WhenEnvVarsIsNull_ThrowsArgumentNullException()
         {
-            var fake = new FakeRunnerService(new[] { true });
+            var fake = new FakeRunner(new[] { true });
             var manager = new RunnerManager(fake);
 
             await Assert.ThrowsAsync<ArgumentNullException>(() => manager.OrchestrateStartAsync("t", "r", "u", null!));

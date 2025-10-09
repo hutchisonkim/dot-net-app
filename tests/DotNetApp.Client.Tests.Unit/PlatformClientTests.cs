@@ -9,7 +9,7 @@ using DotNetApp.Client.Contracts;
 namespace DotNetApp.Client.Tests.Unit;
 
 [Trait("Category", "Unit")]
-public class PlatformApiClientTests
+public class PlatformClientTests
 {
     [Fact]
     public async Task GetHealthStatusAsync_ReturnsHealthStatusDto()

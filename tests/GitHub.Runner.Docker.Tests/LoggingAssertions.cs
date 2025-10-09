@@ -6,7 +6,7 @@ using Xunit;
 
 namespace GitHub.Runner.Docker.Tests
 {
-    public static class AssertWithLogs
+    public static class LoggingAssertions
     {
         public static void Contains(ITestLogger logger, string substring)
         {
