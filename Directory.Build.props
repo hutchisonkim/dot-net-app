@@ -5,8 +5,6 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
   <Nullable>enable</Nullable>
-    <!-- Speed up CI builds by disabling generation of assembly info where not needed -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
