@@ -6,12 +6,12 @@ using GitHub.Runner.Docker;
 namespace GitHub.Runner.Docker.Tests
 {
     [Trait("Category", "Unit")]
-    public class StopContainersTests
+    public class ContainerStopTests
     {
         [Fact]
         public async Task StopContainersAsync_WithMockService_DelegatesToService()
         {
-            var fake = new FakeRunnerService(new[] { true });
+            var fake = new FakeRunner(new[] { true });
             var manager = new RunnerManager(fake);
             var ok = await manager.OrchestrateStopAsync(CancellationToken.None);
             Assert.True(ok);

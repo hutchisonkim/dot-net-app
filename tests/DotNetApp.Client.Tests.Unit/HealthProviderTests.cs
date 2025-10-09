@@ -10,7 +10,7 @@ using Moq;
 namespace DotNetApp.Client.Tests.Unit;
 
 [Trait("Category","Unit")]
-public class HealthStatusProviderTests
+public class HealthProviderTests
 {
     [Fact]
     public async Task FetchStatusAsync_WhenCalled_ReturnsHealthy()

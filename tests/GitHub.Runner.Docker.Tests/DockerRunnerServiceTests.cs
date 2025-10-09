@@ -8,7 +8,7 @@ using Dn = global::Docker.DotNet;
 namespace GitHub.Runner.Docker.Tests
 {
     [Trait("Category", "Integration")]
-    public class DockerRunnerServiceIntegrationOrchestrationTests
+    public class DockerRunnerServiceTests
     {
         [Fact]
         public async Task DockerRunnerService_GatedIntegrationOrMock_Works()
@@ -69,7 +69,7 @@ namespace GitHub.Runner.Docker.Tests
 
             async Task RunMockAsync()
             {
-                var fake = new FakeRunnerService(new[] { true });
+                var fake = new FakeRunner(new[] { true });
                 var manager = new RunnerManager(fake, new TestLogger<RunnerManager>());
 
                 var env = new[] { "GITHUB_REPOSITORY=hutchisonkim/dot-net-app" };

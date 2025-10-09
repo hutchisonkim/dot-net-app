@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace DotNetApp.Tests.Shared;
 
-public static class HttpRetry
+public static class HttpRetryPolicy
 {
     // Try the provided action until it returns a successful HttpResponseMessage or the timeout is reached.
     public static async Task<HttpResponseMessage> WaitForSuccessAsync(Func<Task<HttpResponseMessage>> action, TimeSpan timeout, TimeSpan retryDelay, CancellationToken cancellationToken = default)

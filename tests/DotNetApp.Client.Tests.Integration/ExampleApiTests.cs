@@ -6,11 +6,11 @@ using DotNetApp.Client.Contracts;
 namespace DotNetApp.Client.Tests.Integration;
 
 [Trait("Category", "Integration")]
-public class ExampleApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+public class ExampleApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
 
-    public ExampleApiIntegrationTests(WebApplicationFactory<Program> factory)
+    public ExampleApiTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
     }
