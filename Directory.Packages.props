@@ -1,8 +1,31 @@
 <Project>
+  <PropertyGroup>
+    <!-- Enable central package version management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- Central package management for common dependencies to reduce version drift -->
     <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   <!-- FluentAssertions removed: tests refactored to use xUnit Assert -->
+    
+    <!-- Analyzers -->
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.5.0" />
+    
+    <!-- Test Framework Packages (centralized versions) -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+    <PackageVersion Include="xunit" Version="2.5.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.0" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    
+    <!-- Additional Test Dependencies -->
+    <PackageVersion Include="bunit" Version="1.40.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+    <PackageVersion Include="DotNet.Testcontainers" Version="1.6.0" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.41.1" />
   </ItemGroup>
 </Project>
