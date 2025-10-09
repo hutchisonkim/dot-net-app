@@ -454,13 +454,28 @@ RUN curl -o actions-runner-linux-x64-2.328.0.tar.gz -L https://github.com/action
         private async Task<bool> RunCliAsync(string cmd, CancellationToken cancellationToken)
         {
             _logger?.LogInformation("Executing CLI: {Cmd}", cmd);
-            var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+            
+            ProcessStartInfo psi;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
+            else
+            {
+                psi = new ProcessStartInfo("/bin/bash", $"-c \"{cmd}\"")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
 
             using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
 
@@ -492,13 +507,27 @@ RUN curl -o actions-runner-linux-x64-2.328.0.tar.gz -L https://github.com/action
 
         private async Task<string> RunCliCaptureOutputAsync(string cmd, CancellationToken cancellationToken)
         {
-            var psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+            ProcessStartInfo psi;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                psi = new ProcessStartInfo("cmd.exe", $"/c {cmd}")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
+            else
+            {
+                psi = new ProcessStartInfo("/bin/bash", $"-c \"{cmd}\"")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
 
             using var proc = Process.Start(psi)!;
             var stdOutTask = proc.StandardOutput.ReadToEndAsync();

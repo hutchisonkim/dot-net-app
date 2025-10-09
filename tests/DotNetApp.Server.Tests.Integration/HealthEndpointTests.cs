@@ -60,7 +60,7 @@ public class HealthEndpointTests : IClassFixture<HealthEndpointTests.CustomWebAp
 
     // Frontend no longer hosted by the server. If you expect SPA content, run the frontend separately and configure CORS.
 
-    public class CustomWebAppFactory : WebApplicationFactory<Program>
+    public class CustomWebAppFactory : WebApplicationFactory<DotNetApp.Server.Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
