@@ -5,12 +5,14 @@
     <Nullable>enable</Nullable>
   <AssemblyName>DotNetApp.Server</AssemblyName>
   <RootNamespace>DotNetApp.Server</RootNamespace>
+    <!-- Disable SDK-generated assembly attributes to avoid duplicate attribute errors in container builds -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Also avoid the SDK generating the TargetFramework attribute in generated assembly files -->
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
