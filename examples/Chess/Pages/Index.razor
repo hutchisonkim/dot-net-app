@@ -1,0 +1,126 @@
+@page "/"
+@using DotNetApp.Core.Models
+@inject HttpClient Http
+
+<h1>Chess Game - Persistence Example</h1>
+
+<p>This is a minimal example demonstrating persistence-first game architecture using IGameStateService.</p>
+
+<div>
+    <button @onclick="CreateNewGame">New Game</button>
+    <button @onclick="LoadGame" disabled="@string.IsNullOrEmpty(gameId)">Load Game</button>
+    <button @onclick="SaveGame" disabled="@string.IsNullOrEmpty(gameId)">Save Game</button>
+    <button @onclick="MakeExampleMove" disabled="@string.IsNullOrEmpty(gameId)">Make Move</button>
+</div>
+
+@if (!string.IsNullOrEmpty(gameId))
+{
+    <div>
+        <h3>Game ID: @gameId</h3>
+        <p>Game Type: @gameType</p>
+        <p>Last Updated: @lastUpdated</p>
+    </div>
+
+    <div class="chess-board">
+        @for (int row = 0; row < 8; row++)
+        {
+            @for (int col = 0; col < 8; col++)
+            {
+                var isLight = (row + col) % 2 == 0;
+                <div class="chess-square @(isLight ? "light" : "dark")">
+                    @GetPiece(row, col)
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    private string? gameId;
+    private string gameType = "Chess";
+    private DateTime lastUpdated;
+    private Dictionary<(int row, int col), string> boardState = new();
+    private int moveCount = 0;
+
+    private void CreateNewGame()
+    {
+        gameId = Guid.NewGuid().ToString();
+        gameType = "Chess";
+        lastUpdated = DateTime.UtcNow;
+        moveCount = 0;
+        InitializeBoard();
+    }
+
+    private void InitializeBoard()
+    {
+        boardState.Clear();
+        
+        // Initial chess position
+        // Black pieces (row 0 and 1)
+        boardState[(0, 0)] = "♜"; boardState[(0, 7)] = "♜"; // Rooks
+        boardState[(0, 1)] = "♞"; boardState[(0, 6)] = "♞"; // Knights
+        boardState[(0, 2)] = "♝"; boardState[(0, 5)] = "♝"; // Bishops
+        boardState[(0, 3)] = "♛"; // Queen
+        boardState[(0, 4)] = "♚"; // King
+        for (int col = 0; col < 8; col++)
+        {
+            boardState[(1, col)] = "♟"; // Black pawns
+        }
+        
+        // White pieces (row 6 and 7)
+        for (int col = 0; col < 8; col++)
+        {
+            boardState[(6, col)] = "♙"; // White pawns
+        }
+        boardState[(7, 0)] = "♖"; boardState[(7, 7)] = "♖"; // Rooks
+        boardState[(7, 1)] = "♘"; boardState[(7, 6)] = "♘"; // Knights
+        boardState[(7, 2)] = "♗"; boardState[(7, 5)] = "♗"; // Bishops
+        boardState[(7, 3)] = "♕"; // Queen
+        boardState[(7, 4)] = "♔"; // King
+    }
+
+    public void MakeExampleMove()
+    {
+        // Make a simple move: advance e2 pawn to e4 (for demonstration)
+        if (moveCount == 0 && boardState.ContainsKey((6, 4)))
+        {
+            boardState[(4, 4)] = boardState[(6, 4)]; // Move piece
+            boardState.Remove((6, 4)); // Remove from old position
+            moveCount++;
+            lastUpdated = DateTime.UtcNow;
+        }
+        // Make another move: advance e7 pawn to e5
+        else if (moveCount == 1 && boardState.ContainsKey((1, 4)))
+        {
+            boardState[(3, 4)] = boardState[(1, 4)]; // Move piece
+            boardState.Remove((1, 4)); // Remove from old position
+            moveCount++;
+            lastUpdated = DateTime.UtcNow;
+        }
+    }
+
+    private async Task SaveGame()
+    {
+        if (string.IsNullOrEmpty(gameId)) return;
+        
+        // In a real implementation, this would call the IGameStateService API
+        // For this minimal example, we just update the timestamp
+        lastUpdated = DateTime.UtcNow;
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadGame()
+    {
+        if (string.IsNullOrEmpty(gameId)) return;
+        
+        // In a real implementation, this would call the IGameStateService API
+        // For this minimal example, we just simulate loading
+        lastUpdated = DateTime.UtcNow;
+        await Task.CompletedTask;
+    }
+
+    private string GetPiece(int row, int col)
+    {
+        return boardState.TryGetValue((row, col), out var piece) ? piece : "";
+    }
+}

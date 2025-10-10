@@ -34,6 +34,18 @@ jobs:
         run: |
           dotnet test --collect:"XPlat Code Coverage" --results-directory ./TestResults
 
+      - name: Run UI tests and generate screenshots
+        run: |
+          dotnet test tests/Examples.Tests.UI --no-build --verbosity normal
+
+      - name: Upload screenshots as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-screenshots
+          path: tests/Examples.Tests.UI/bin/Debug/net8.0/screenshots/
+          retention-days: 30
+
       - name: Aggregate coverage summary
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/aggregate_coverage.ps1
 
@@ -42,6 +54,16 @@ jobs:
 
       - name: Generate SVG coverage summary
         run: pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/generate_coverage_svg.ps1
+
+      - name: Copy screenshots to coverage report
+        run: |
+          mkdir -p coverage-report/screenshots
+          if [ -d "tests/Examples.Tests.UI/bin/Debug/net8.0/screenshots" ]; then
+            cp -r tests/Examples.Tests.UI/bin/Debug/net8.0/screenshots/* coverage-report/screenshots/ || true
+          fi
+
+      - name: Generate screenshot gallery HTML
+        run: pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/generate_screenshot_gallery.ps1
 
       - name: Upload coverage report as Pages artifact
         uses: actions/upload-pages-artifact@v3

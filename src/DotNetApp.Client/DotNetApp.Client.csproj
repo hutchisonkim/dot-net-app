@@ -13,10 +13,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.Extensions.Http" />
   </ItemGroup>
   <ItemGroup>
     <!-- Shared types moved into this project; no project reference needed -->
+    <ProjectReference Include="..\Shared\DotNetApp.Core\DotNetApp.Core.csproj" />
   </ItemGroup>
 </Project>
 

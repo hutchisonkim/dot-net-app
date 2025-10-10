@@ -8,6 +8,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// SignalR for real-time game communication
+builder.Services.AddSignalR();
+
 // Core + application services
 // Register core-like services directly (DotNetApp.Core project removed in this workspace).
 builder.Services
@@ -30,6 +33,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
 app.MapControllers();
+app.MapHub<DotNetApp.Server.Hubs.GameHub>("/gamehub");
 
 app.Run();
 
