@@ -20,6 +20,8 @@ public static class HttpRetryPolicy
             {
                 var res = await action();
                 if (res != null && res.IsSuccessStatusCode) return res;
+                // Dispose non-success response to avoid socket leaks
+                res?.Dispose();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
