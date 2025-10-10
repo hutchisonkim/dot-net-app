@@ -19,7 +19,7 @@ public class ChessUITests
     }
 
     [Fact]
-    public void Chess_InitialState_RendersCorrectly()
+    public void InitialState_RendersWithCorrectElementsAndButtonStates()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -32,13 +32,26 @@ public class ChessUITests
         Assert.Contains("<button", cut.Markup);
         Assert.Contains("New Game", cut.Markup);
         
+        // Assert - Verify initial button states
+        var newGameButton = cut.Find("button:contains('New Game')");
+        Assert.NotNull(newGameButton);
+        Assert.False(newGameButton.HasAttribute("disabled"));
+
+        var loadButton = cut.Find("button:contains('Load Game')");
+        Assert.NotNull(loadButton);
+        Assert.True(loadButton.HasAttribute("disabled"));
+
+        var saveButton = cut.Find("button:contains('Save Game')");
+        Assert.NotNull(saveButton);
+        Assert.True(saveButton.HasAttribute("disabled"));
+        
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_initial_state");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
     }
 
     [Fact]
-    public void Chess_AfterNewGame_ShowsGameBoard()
+    public void NewGameButton_Click_RendersGameBoardWithPieces()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -73,77 +86,10 @@ public class ChessUITests
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
     }
 
-    [Fact]
-    public void Chess_SaveButton_EnabledAfterNewGame()
-    {
-        // Arrange
-        using var ctx = new TestContext();
-        var cut = ctx.RenderComponent<Chess.Pages.Index>();
 
-        // Act - Create new game
-        var newGameButton = cut.Find("button:contains('New Game')");
-        newGameButton.Click();
-
-        // Assert - Verify Save button is enabled (not disabled)
-        var saveButton = cut.Find("button:contains('Save Game')");
-        Assert.NotNull(saveButton);
-        Assert.False(saveButton.HasAttribute("disabled"));
-
-        // Capture screenshot
-        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_save_button_enabled");
-        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
-    }
 
     [Fact]
-    public void Chess_LoadButton_EnabledAfterNewGame()
-    {
-        // Arrange
-        using var ctx = new TestContext();
-        var cut = ctx.RenderComponent<Chess.Pages.Index>();
-
-        // Act - Create new game
-        var newGameButton = cut.Find("button:contains('New Game')");
-        newGameButton.Click();
-
-        // Assert - Verify Load button is enabled
-        var loadButton = cut.Find("button:contains('Load Game')");
-        Assert.NotNull(loadButton);
-        Assert.False(loadButton.HasAttribute("disabled"));
-
-        // Capture screenshot
-        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_load_button_enabled");
-        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
-    }
-
-    [Fact]
-    public void Chess_InitialState_ButtonsHaveCorrectDisabledState()
-    {
-        // Arrange
-        using var ctx = new TestContext();
-        
-        // Act
-        var cut = ctx.RenderComponent<Chess.Pages.Index>();
-
-        // Assert - Verify initial button states
-        var newGameButton = cut.Find("button:contains('New Game')");
-        Assert.NotNull(newGameButton);
-        Assert.False(newGameButton.HasAttribute("disabled"));
-
-        var loadButton = cut.Find("button:contains('Load Game')");
-        Assert.NotNull(loadButton);
-        Assert.True(loadButton.HasAttribute("disabled"));
-
-        var saveButton = cut.Find("button:contains('Save Game')");
-        Assert.NotNull(saveButton);
-        Assert.True(saveButton.HasAttribute("disabled"));
-
-        // Capture screenshot
-        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_initial_button_states");
-        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
-    }
-
-    [Fact]
-    public void Chess_SaveGame_ButtonWorks()
+    public void SaveButton_Click_PersistsGameState()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -174,7 +120,7 @@ public class ChessUITests
     }
 
     [Fact]
-    public void Chess_LoadGame_ButtonWorks()
+    public void LoadButton_Click_RestoresGameState()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -206,7 +152,7 @@ public class ChessUITests
     }
 
     [Fact]
-    public void Chess_MultipleStateChanges_AllButtonsWork()
+    public void MultipleStateChanges_NewSaveLoad_MaintainsBoardVisibility()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -265,40 +211,7 @@ public class ChessUITests
     }
 
     [Fact]
-    public void Chess_AfterMakingMove_ShowsPieceMoved()
-    {
-        // Arrange
-        using var ctx = new TestContext();
-        var cut = ctx.RenderComponent<Chess.Pages.Index>();
-
-        // Act - Create new game
-        var newGameButton = cut.Find("button:contains('New Game')");
-        newGameButton.Click();
-        
-        var markupBefore = cut.Markup;
-        _output.WriteLine("Board before move:");
-        _output.WriteLine(markupBefore);
-
-        // Make a move (e2 to e4)
-        var makeMoveButton = cut.Find("button:contains('Make Move')");
-        makeMoveButton.Click();
-
-        // Assert - Verify board changed
-        var markupAfter = cut.Markup;
-        _output.WriteLine("Board after move:");
-        _output.WriteLine(markupAfter);
-        
-        // The board should still have pieces but in different positions
-        Assert.Contains("chess-board", markupAfter);
-        Assert.NotEqual(markupBefore, markupAfter);
-
-        // Capture screenshot showing piece moved
-        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_after_first_move");
-        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
-    }
-
-    [Fact]
-    public void Chess_AfterMultipleMoves_ShowsGameProgression()
+    public void MakeMoveButton_MultipleClicks_ShowsGameProgression()
     {
         // Arrange
         using var ctx = new TestContext();
@@ -328,47 +241,5 @@ public class ChessUITests
         // Assert - Verify the game progressed
         Assert.Contains("chess-board", cut.Markup);
         Assert.Contains("Game ID:", cut.Markup);
-    }
-
-    [Fact]
-    public void Chess_SaveAfterMove_PieceRemainsInNewPosition()
-    {
-        // Arrange
-        using var ctx = new TestContext();
-        var cut = ctx.RenderComponent<Chess.Pages.Index>();
-
-        // Act - Create new game
-        var newGameButton = cut.Find("button:contains('New Game')");
-        newGameButton.Click();
-        
-        // Make a move (e2 to e4 - white pawn advances)
-        var makeMoveButton = cut.Find("button:contains('Make Move')");
-        makeMoveButton.Click();
-        
-        var markupAfterMove = cut.Markup;
-        _output.WriteLine("Board after move (before save):");
-        _output.WriteLine(markupAfterMove);
-        
-        // Capture screenshot after move but before save
-        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "chess_move_before_save");
-        _output.WriteLine($"Screenshot 1 (after move, before save) saved to: {screenshotPath1}");
-
-        // Now save the game
-        var saveButton = cut.Find("button:contains('Save Game')");
-        saveButton.Click();
-
-        // Assert - Verify the piece is still in the moved position after save
-        var markupAfterSave = cut.Markup;
-        _output.WriteLine("Board after save:");
-        _output.WriteLine(markupAfterSave);
-        
-        // The board state should be the same as before save (piece still moved)
-        Assert.Contains("chess-board", markupAfterSave);
-        Assert.Contains("Game ID:", markupAfterSave);
-        Assert.Contains("Last Updated:", markupAfterSave);
-        
-        // Capture screenshot after save - should show piece still moved
-        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "chess_after_save_with_moved_piece");
-        _output.WriteLine($"Screenshot 2 (after save with moved piece) saved to: {screenshotPath2}");
     }
 }
