@@ -1,0 +1,84 @@
+@page "/"
+@using DotNetApp.Core.Models
+@inject HttpClient Http
+
+<h1>Chess Game - Persistence Example</h1>
+
+<p>This is a minimal example demonstrating persistence-first game architecture using IGameStateService.</p>
+
+<div>
+    <button @onclick="CreateNewGame">New Game</button>
+    <button @onclick="LoadGame" disabled="@string.IsNullOrEmpty(gameId)">Load Game</button>
+    <button @onclick="SaveGame" disabled="@string.IsNullOrEmpty(gameId)">Save Game</button>
+</div>
+
+@if (!string.IsNullOrEmpty(gameId))
+{
+    <div>
+        <h3>Game ID: @gameId</h3>
+        <p>Game Type: @gameType</p>
+        <p>Last Updated: @lastUpdated</p>
+    </div>
+
+    <div class="chess-board">
+        @for (int row = 0; row < 8; row++)
+        {
+            @for (int col = 0; col < 8; col++)
+            {
+                var isLight = (row + col) % 2 == 0;
+                <div class="chess-square @(isLight ? "light" : "dark")">
+                    @GetPiece(row, col)
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    private string? gameId;
+    private string gameType = "Chess";
+    private DateTime lastUpdated;
+
+    private void CreateNewGame()
+    {
+        gameId = Guid.NewGuid().ToString();
+        gameType = "Chess";
+        lastUpdated = DateTime.UtcNow;
+    }
+
+    private async Task SaveGame()
+    {
+        if (string.IsNullOrEmpty(gameId)) return;
+        
+        // In a real implementation, this would call the IGameStateService API
+        // For this minimal example, we just update the timestamp
+        lastUpdated = DateTime.UtcNow;
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadGame()
+    {
+        if (string.IsNullOrEmpty(gameId)) return;
+        
+        // In a real implementation, this would call the IGameStateService API
+        // For this minimal example, we just simulate loading
+        lastUpdated = DateTime.UtcNow;
+        await Task.CompletedTask;
+    }
+
+    private string GetPiece(int row, int col)
+    {
+        // Simplified piece rendering - just show placeholder pieces
+        if (row == 1) return "♟"; // Black pawns
+        if (row == 6) return "♙"; // White pawns
+        if (row == 0 || row == 7)
+        {
+            if (col == 0 || col == 7) return row == 0 ? "♜" : "♖"; // Rooks
+            if (col == 1 || col == 6) return row == 0 ? "♞" : "♘"; // Knights
+            if (col == 2 || col == 5) return row == 0 ? "♝" : "♗"; // Bishops
+            if (col == 3) return row == 0 ? "♛" : "♕"; // Queens
+            if (col == 4) return row == 0 ? "♚" : "♔"; // Kings
+        }
+        return "";
+    }
+}

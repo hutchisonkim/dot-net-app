@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess Game Example</title>
+    <base href="/" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .chess-board { display: grid; grid-template-columns: repeat(8, 50px); gap: 0; margin: 20px 0; }
+        .chess-square { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+        .chess-square.light { background-color: #f0d9b5; }
+        .chess-square.dark { background-color: #b58863; }
+    </style>
+</head>
+<body>
+    <div id="app">Loading...</div>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+</html>

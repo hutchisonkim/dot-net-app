@@ -1,0 +1,132 @@
+@page "/"
+@using Microsoft.AspNetCore.SignalR.Client
+@using DotNetApp.Core.Messages
+@implements IAsyncDisposable
+
+<div class="game-container">
+    <h1>Pong Game - SignalR Real-time Example</h1>
+
+    <p>This is a minimal example demonstrating real-time game architecture using SignalR.</p>
+
+    <div>
+        <button @onclick="ConnectToHub" disabled="@(isConnected)">Connect</button>
+        <button @onclick="JoinGame" disabled="@(!isConnected || string.IsNullOrEmpty(gameId))">Join Game</button>
+        <button @onclick="LeaveGame" disabled="@(!isJoined)">Leave Game</button>
+    </div>
+
+    <div>
+        <label>
+            Game ID:
+            <input @bind="gameId" placeholder="Enter game ID" />
+        </label>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <h3>Connection Status: @(isConnected ? "Connected" : "Disconnected")</h3>
+        @if (isJoined)
+        {
+            <p>Joined game: @gameId</p>
+        }
+    </div>
+
+    <div class="pong-canvas" style="width: 600px; height: 400px; position: relative;">
+        <!-- Simplified pong display -->
+        <div style="position: absolute; left: 10px; top: 180px; width: 10px; height: 60px; background: white;"></div>
+        <div style="position: absolute; right: 10px; top: 180px; width: 10px; height: 60px; background: white;"></div>
+        <div style="position: absolute; left: 295px; top: 195px; width: 10px; height: 10px; background: white; border-radius: 50%;"></div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <h3>Events Log:</h3>
+        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 10px; background-color: #111;">
+            @foreach (var evt in events)
+            {
+                <div>@evt</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private HubConnection? hubConnection;
+    private string gameId = "pong-room-1";
+    private bool isConnected = false;
+    private bool isJoined = false;
+    private List<string> events = new();
+
+    private async Task ConnectToHub()
+    {
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl("http://localhost:5000/gamehub")
+                .Build();
+
+            hubConnection.On<string, DateTime>("PlayerJoined", (connectionId, timestamp) =>
+            {
+                events.Add($"[{timestamp:HH:mm:ss}] Player joined: {connectionId}");
+                StateHasChanged();
+            });
+
+            hubConnection.On<string, DateTime>("PlayerLeft", (connectionId, timestamp) =>
+            {
+                events.Add($"[{timestamp:HH:mm:ss}] Player left: {connectionId}");
+                StateHasChanged();
+            });
+
+            hubConnection.On<GameMessage>("ReceiveGameMessage", (message) =>
+            {
+                events.Add($"[{message.Timestamp:HH:mm:ss}] Message: {message.MessageType}");
+                StateHasChanged();
+            });
+
+            await hubConnection.StartAsync();
+            isConnected = true;
+            events.Add("Connected to SignalR hub");
+        }
+        catch (Exception ex)
+        {
+            events.Add($"Error connecting: {ex.Message}");
+        }
+    }
+
+    private async Task JoinGame()
+    {
+        if (hubConnection is null || string.IsNullOrEmpty(gameId)) return;
+
+        try
+        {
+            await hubConnection.InvokeAsync("JoinGame", gameId);
+            isJoined = true;
+            events.Add($"Joined game: {gameId}");
+        }
+        catch (Exception ex)
+        {
+            events.Add($"Error joining game: {ex.Message}");
+        }
+    }
+
+    private async Task LeaveGame()
+    {
+        if (hubConnection is null || string.IsNullOrEmpty(gameId)) return;
+
+        try
+        {
+            await hubConnection.InvokeAsync("LeaveGame", gameId);
+            isJoined = false;
+            events.Add($"Left game: {gameId}");
+        }
+        catch (Exception ex)
+        {
+            events.Add($"Error leaving game: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
