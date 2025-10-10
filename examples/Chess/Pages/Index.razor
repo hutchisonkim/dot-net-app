@@ -41,6 +41,9 @@
     private DateTime lastUpdated;
     private Dictionary<(int row, int col), string> boardState = new();
     private int moveCount = 0;
+    
+    // Simple in-memory storage for demo purposes
+    private static Dictionary<string, (Dictionary<(int row, int col), string> board, int moves)> savedGames = new();
 
     private void CreateNewGame()
     {
@@ -103,8 +106,10 @@
     {
         if (string.IsNullOrEmpty(gameId)) return;
         
-        // In a real implementation, this would call the IGameStateService API
-        // For this minimal example, we just update the timestamp
+        // Save the current board state and move count to in-memory storage
+        var boardCopy = new Dictionary<(int row, int col), string>(boardState);
+        savedGames[gameId] = (boardCopy, moveCount);
+        
         lastUpdated = DateTime.UtcNow;
         await Task.CompletedTask;
     }
@@ -113,8 +118,13 @@
     {
         if (string.IsNullOrEmpty(gameId)) return;
         
-        // In a real implementation, this would call the IGameStateService API
-        // For this minimal example, we just simulate loading
+        // Load the saved board state and move count from in-memory storage
+        if (savedGames.TryGetValue(gameId, out var savedGame))
+        {
+            boardState = new Dictionary<(int row, int col), string>(savedGame.board);
+            moveCount = savedGame.moves;
+        }
+        
         lastUpdated = DateTime.UtcNow;
         await Task.CompletedTask;
     }

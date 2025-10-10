@@ -280,48 +280,52 @@ public class ChessUITests
         
         System.Threading.Thread.Sleep(100);
 
-        // Step 3: Save - Save the game state
+        // Step 3: Save - Save the game state with the moved pawn
         var saveButton = cut.Find("button:contains('Save Game')");
         saveButton.Click();
         var screenshotPath3 = ScreenshotHelper.CaptureHtml(cut, "chess_flow_3_save");
         screenshots.Add(screenshotPath3);
         _output.WriteLine($"Step 3 (Save): Screenshot saved to {screenshotPath3}");
         
-        // Store the board state after move for comparison
-        var boardAfterMove = cut.Markup;
-        Assert.Contains("Last Updated:", boardAfterMove);
+        // Store the board state after first move for comparison
+        var boardAfterFirstMove = cut.Markup;
+        Assert.Contains("Last Updated:", boardAfterFirstMove);
         
         System.Threading.Thread.Sleep(100);
 
-        // Step 4: New - Create a new game (should reset board)
-        newGameButton = cut.Find("button:contains('New Game')");
-        newGameButton.Click();
-        var screenshotPath4 = ScreenshotHelper.CaptureHtml(cut, "chess_flow_4_new");
+        // Step 4: Make another move (this will move black pawn from e7 to e5)
+        var makeMoveButton2 = cut.Find("button:contains('Make Move')");
+        makeMoveButton2.Click();
+        var screenshotPath4 = ScreenshotHelper.CaptureHtml(cut, "chess_flow_4_second_move");
         screenshots.Add(screenshotPath4);
-        _output.WriteLine($"Step 4 (New): Screenshot saved to {screenshotPath4}");
+        _output.WriteLine($"Step 4 (Second Move): Screenshot saved to {screenshotPath4}");
         
-        // Verify new game created with different ID
-        var markupAfterNew = cut.Markup;
-        var gameIdNew = ExtractGameId(markupAfterNew);
-        Assert.NotNull(gameIdNew);
-        Assert.NotEqual(gameIdOriginal, gameIdNew); // Different game ID
+        // Verify second move was made - board should be different from after first move
+        var markupAfterSecondMove = cut.Markup;
+        Assert.Contains("chess-board", markupAfterSecondMove);
+        Assert.NotEqual(boardAfterFirstMove, markupAfterSecondMove); // Board changed again
         
         System.Threading.Thread.Sleep(100);
 
-        // Step 5: Load - Load the previous game (simulated)
+        // Step 5: Load - Load the saved game state (should restore to after first move only)
         var loadButton = cut.Find("button:contains('Load Game')");
         loadButton.Click();
         var screenshotPath5 = ScreenshotHelper.CaptureHtml(cut, "chess_flow_5_load");
         screenshots.Add(screenshotPath5);
         _output.WriteLine($"Step 5 (Load): Screenshot saved to {screenshotPath5}");
         
-        // Verify game loaded
+        // Verify game loaded and board state restored to after-first-move state
         var markupAfterLoad = cut.Markup;
         Assert.Contains("chess-board", markupAfterLoad);
         Assert.Contains("Last Updated:", markupAfterLoad);
         
-        // Note: In this minimal implementation, Load doesn't restore the exact board state
-        // as there's no actual backend persistence. But the test verifies the flow works.
+        // The key verification: board should match the saved state (after first move)
+        // This proves the pawn position (white pawn at e4) was restored
+        Assert.Equal(boardAfterFirstMove, markupAfterLoad); // Board matches saved state
+        Assert.NotEqual(markupAfterStart, markupAfterLoad); // Board NOT at initial state
+        Assert.NotEqual(markupAfterSecondMove, markupAfterLoad); // Board NOT at second move state
+        
+        _output.WriteLine("Verified: Pawn position restored correctly - white pawn at e4, black pawn at e7");
         
         // Create GIF from screenshots
         var gifPath = CreateGifFromScreenshots(screenshots, "chess_complete_flow");
@@ -498,7 +502,7 @@ def create_gif(html_files, output_path, merged_output_path, duration=1500):
             f.write(b'')
         return
         
-    step_names = ['1. Start', '2. Move', '3. Save', '4. New Game', '5. Load']
+    step_names = ['1. Start', '2. First Move', '3. Save', '4. Second Move', '5. Load']
     images = []
     temp_dir = os.path.dirname(output_path)
     
