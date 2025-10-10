@@ -49,6 +49,30 @@ public static class ScreenshotHelper
     }
 
     /// <summary>
+    /// Captures raw HTML content and saves it as an HTML file.
+    /// Useful for creating mock states for screenshot purposes.
+    /// </summary>
+    /// <param name="htmlMarkup">The HTML markup to capture</param>
+    /// <param name="fileName">Base name for the screenshot file (without extension)</param>
+    public static string CaptureHtmlContent(string htmlMarkup, string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(htmlMarkup))
+            throw new ArgumentException("HTML markup cannot be null or whitespace.", nameof(htmlMarkup));
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("File name cannot be null or whitespace.", nameof(fileName));
+
+        var sanitizedFileName = SanitizeFileName(fileName);
+        var filePath = Path.Combine(ScreenshotDirectory, $"{sanitizedFileName}.html");
+
+        // Create a complete HTML document with styles
+        var htmlContent = CreateCompleteHtmlDocument(htmlMarkup);
+
+        File.WriteAllText(filePath, htmlContent, Encoding.UTF8);
+
+        return filePath;
+    }
+
+    /// <summary>
     /// Creates a complete HTML document with the component markup embedded.
     /// </summary>
     private static string CreateCompleteHtmlDocument(string componentMarkup)
