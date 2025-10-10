@@ -16,8 +16,8 @@ This repository is a **Blazor/.NET 8 Game Template** for building multiplayer ga
 - `src/Shared/DotNetApp.Core/` - Core abstractions and services (game state, messaging)
 - `src/DotNetApp.Server/` - ASP.NET Core server with SignalR hub and REST API
 - `src/DotNetApp.Client/` - Blazor WebAssembly client library
-- `examples/Chess/` - Example turn-based game using persistence
-- `examples/Pong/` - Example real-time game using SignalR
+- `examples/Chess/` - Turn-based persistence example
+- `examples/Pong/` - Real-time SignalR example
 - `tests/` - Unit, integration, and E2E tests for all projects
 
 ### Key Abstractions
