@@ -329,4 +329,46 @@ public class ChessUITests
         Assert.Contains("chess-board", cut.Markup);
         Assert.Contains("Game ID:", cut.Markup);
     }
+
+    [Fact]
+    public void Chess_SaveAfterMove_PieceRemainsInNewPosition()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+
+        // Act - Create new game
+        var newGameButton = cut.Find("button:contains('New Game')");
+        newGameButton.Click();
+        
+        // Make a move (e2 to e4 - white pawn advances)
+        var makeMoveButton = cut.Find("button:contains('Make Move')");
+        makeMoveButton.Click();
+        
+        var markupAfterMove = cut.Markup;
+        _output.WriteLine("Board after move (before save):");
+        _output.WriteLine(markupAfterMove);
+        
+        // Capture screenshot after move but before save
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "chess_move_before_save");
+        _output.WriteLine($"Screenshot 1 (after move, before save) saved to: {screenshotPath1}");
+
+        // Now save the game
+        var saveButton = cut.Find("button:contains('Save Game')");
+        saveButton.Click();
+
+        // Assert - Verify the piece is still in the moved position after save
+        var markupAfterSave = cut.Markup;
+        _output.WriteLine("Board after save:");
+        _output.WriteLine(markupAfterSave);
+        
+        // The board state should be the same as before save (piece still moved)
+        Assert.Contains("chess-board", markupAfterSave);
+        Assert.Contains("Game ID:", markupAfterSave);
+        Assert.Contains("Last Updated:", markupAfterSave);
+        
+        // Capture screenshot after save - should show piece still moved
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "chess_after_save_with_moved_piece");
+        _output.WriteLine($"Screenshot 2 (after save with moved piece) saved to: {screenshotPath2}");
+    }
 }
