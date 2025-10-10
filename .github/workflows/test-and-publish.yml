@@ -62,6 +62,9 @@ jobs:
             cp -r tests/Examples.Tests.UI/bin/Debug/net8.0/screenshots/* coverage-report/screenshots/ || true
           fi
 
+      - name: Generate screenshot gallery HTML
+        run: pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/generate_screenshot_gallery.ps1
+
       - name: Upload coverage report as Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
