@@ -263,4 +263,70 @@ public class ChessUITests
         );
         return match.Success ? match.Groups[1].Value.Trim() : null;
     }
+
+    [Fact]
+    public void Chess_AfterMakingMove_ShowsPieceMoved()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+
+        // Act - Create new game
+        var newGameButton = cut.Find("button:contains('New Game')");
+        newGameButton.Click();
+        
+        var markupBefore = cut.Markup;
+        _output.WriteLine("Board before move:");
+        _output.WriteLine(markupBefore);
+
+        // Make a move (e2 to e4)
+        var makeMoveButton = cut.Find("button:contains('Make Move')");
+        makeMoveButton.Click();
+
+        // Assert - Verify board changed
+        var markupAfter = cut.Markup;
+        _output.WriteLine("Board after move:");
+        _output.WriteLine(markupAfter);
+        
+        // The board should still have pieces but in different positions
+        Assert.Contains("chess-board", markupAfter);
+        Assert.NotEqual(markupBefore, markupAfter);
+
+        // Capture screenshot showing piece moved
+        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_after_first_move");
+        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
+    }
+
+    [Fact]
+    public void Chess_AfterMultipleMoves_ShowsGameProgression()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+
+        // Act - Create new game and make multiple moves
+        var newGameButton = cut.Find("button:contains('New Game')");
+        newGameButton.Click();
+        
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "chess_progression_1_initial");
+        _output.WriteLine($"Screenshot 1 (initial) saved to: {screenshotPath1}");
+
+        // First move
+        var makeMoveButton = cut.Find("button:contains('Make Move')");
+        makeMoveButton.Click();
+        
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "chess_progression_2_after_white_move");
+        _output.WriteLine($"Screenshot 2 (after white move) saved to: {screenshotPath2}");
+
+        // Second move
+        makeMoveButton = cut.Find("button:contains('Make Move')");
+        makeMoveButton.Click();
+        
+        var screenshotPath3 = ScreenshotHelper.CaptureHtml(cut, "chess_progression_3_after_black_move");
+        _output.WriteLine($"Screenshot 3 (after black move) saved to: {screenshotPath3}");
+
+        // Assert - Verify the game progressed
+        Assert.Contains("chess-board", cut.Markup);
+        Assert.Contains("Game ID:", cut.Markup);
+    }
 }

@@ -10,6 +10,7 @@
     <button @onclick="CreateNewGame">New Game</button>
     <button @onclick="LoadGame" disabled="@string.IsNullOrEmpty(gameId)">Load Game</button>
     <button @onclick="SaveGame" disabled="@string.IsNullOrEmpty(gameId)">Save Game</button>
+    <button @onclick="MakeExampleMove" disabled="@string.IsNullOrEmpty(gameId)">Make Move</button>
 </div>
 
 @if (!string.IsNullOrEmpty(gameId))
@@ -38,12 +39,64 @@
     private string? gameId;
     private string gameType = "Chess";
     private DateTime lastUpdated;
+    private Dictionary<(int row, int col), string> boardState = new();
+    private int moveCount = 0;
 
     private void CreateNewGame()
     {
         gameId = Guid.NewGuid().ToString();
         gameType = "Chess";
         lastUpdated = DateTime.UtcNow;
+        moveCount = 0;
+        InitializeBoard();
+    }
+
+    private void InitializeBoard()
+    {
+        boardState.Clear();
+        
+        // Initial chess position
+        // Black pieces (row 0 and 1)
+        boardState[(0, 0)] = "♜"; boardState[(0, 7)] = "♜"; // Rooks
+        boardState[(0, 1)] = "♞"; boardState[(0, 6)] = "♞"; // Knights
+        boardState[(0, 2)] = "♝"; boardState[(0, 5)] = "♝"; // Bishops
+        boardState[(0, 3)] = "♛"; // Queen
+        boardState[(0, 4)] = "♚"; // King
+        for (int col = 0; col < 8; col++)
+        {
+            boardState[(1, col)] = "♟"; // Black pawns
+        }
+        
+        // White pieces (row 6 and 7)
+        for (int col = 0; col < 8; col++)
+        {
+            boardState[(6, col)] = "♙"; // White pawns
+        }
+        boardState[(7, 0)] = "♖"; boardState[(7, 7)] = "♖"; // Rooks
+        boardState[(7, 1)] = "♘"; boardState[(7, 6)] = "♘"; // Knights
+        boardState[(7, 2)] = "♗"; boardState[(7, 5)] = "♗"; // Bishops
+        boardState[(7, 3)] = "♕"; // Queen
+        boardState[(7, 4)] = "♔"; // King
+    }
+
+    public void MakeExampleMove()
+    {
+        // Make a simple move: advance e2 pawn to e4 (for demonstration)
+        if (moveCount == 0 && boardState.ContainsKey((6, 4)))
+        {
+            boardState[(4, 4)] = boardState[(6, 4)]; // Move piece
+            boardState.Remove((6, 4)); // Remove from old position
+            moveCount++;
+            lastUpdated = DateTime.UtcNow;
+        }
+        // Make another move: advance e7 pawn to e5
+        else if (moveCount == 1 && boardState.ContainsKey((1, 4)))
+        {
+            boardState[(3, 4)] = boardState[(1, 4)]; // Move piece
+            boardState.Remove((1, 4)); // Remove from old position
+            moveCount++;
+            lastUpdated = DateTime.UtcNow;
+        }
     }
 
     private async Task SaveGame()
@@ -68,17 +121,6 @@
 
     private string GetPiece(int row, int col)
     {
-        // Simplified piece rendering - just show placeholder pieces
-        if (row == 1) return "♟"; // Black pawns
-        if (row == 6) return "♙"; // White pawns
-        if (row == 0 || row == 7)
-        {
-            if (col == 0 || col == 7) return row == 0 ? "♜" : "♖"; // Rooks
-            if (col == 1 || col == 6) return row == 0 ? "♞" : "♘"; // Knights
-            if (col == 2 || col == 5) return row == 0 ? "♝" : "♗"; // Bishops
-            if (col == 3) return row == 0 ? "♛" : "♕"; // Queens
-            if (col == 4) return row == 0 ? "♚" : "♔"; // Kings
-        }
-        return "";
+        return boardState.TryGetValue((row, col), out var piece) ? piece : "";
     }
 }
