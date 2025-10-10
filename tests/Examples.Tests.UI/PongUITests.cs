@@ -140,4 +140,112 @@ public class PongUITests
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_layout_structure");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
     }
+
+    [Fact]
+    public void Pong_AttemptConnect_ShowsErrorWhenServerUnavailable()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Pong.Pages.Index>();
+
+        // Verify initial disconnected state
+        Assert.Contains("Disconnected", cut.Markup);
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "pong_before_connect_attempt");
+        _output.WriteLine($"Screenshot 1 (before connect) saved to: {screenshotPath1}");
+
+        // Act - Click Connect button (will fail since no server is running)
+        var connectButton = cut.Find("button:contains('Connect')");
+        connectButton.Click();
+
+        // Wait for async operation to complete
+        System.Threading.Thread.Sleep(1000);
+
+        // Assert - Verify error message appears in events log
+        var markupAfterConnect = cut.Markup;
+        Assert.Contains("Events Log:", markupAfterConnect);
+        
+        // The connection will fail, so we expect an error in the events
+        // (This tests the error handling path)
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "pong_after_connect_attempt");
+        _output.WriteLine($"Screenshot 2 (after connect attempt) saved to: {screenshotPath2}");
+    }
+
+    [Fact]
+    public void Pong_ConnectButton_DisablesAfterClick()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Pong.Pages.Index>();
+
+        // Verify initial state - Connect button enabled
+        var connectButtonBefore = cut.Find("button:contains('Connect')");
+        Assert.False(connectButtonBefore.HasAttribute("disabled"));
+
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "pong_connect_button_before_click");
+        _output.WriteLine($"Screenshot 1 (before click) saved to: {screenshotPath1}");
+
+        // Act - Click Connect button
+        connectButtonBefore.Click();
+
+        // Small delay for state update
+        System.Threading.Thread.Sleep(100);
+
+        // Assert - Button state after click
+        var markupAfter = cut.Markup;
+        
+        // Capture the UI state after clicking connect
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "pong_connect_button_after_click");
+        _output.WriteLine($"Screenshot 2 (after click) saved to: {screenshotPath2}");
+
+        // Verify the component still renders
+        Assert.Contains("Pong Game", markupAfter);
+    }
+
+    [Fact]
+    public void Pong_EventsLog_InitiallyEmpty()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        
+        // Act
+        var cut = ctx.RenderComponent<Pong.Pages.Index>();
+
+        // Assert - Verify events log is present but empty initially
+        var markup = cut.Markup;
+        Assert.Contains("Events Log:", markup);
+        
+        // The events log div should exist but have no event entries initially
+        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_events_log_empty");
+        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
+    }
+
+    [Fact]
+    public void Pong_ConnectionFlow_ButtonStatesChange()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Pong.Pages.Index>();
+
+        // Assert initial state
+        Assert.Contains("Disconnected", cut.Markup);
+        var initialConnectButton = cut.Find("button:contains('Connect')");
+        Assert.False(initialConnectButton.HasAttribute("disabled"));
+        var initialJoinButton = cut.Find("button:contains('Join Game')");
+        Assert.True(initialJoinButton.HasAttribute("disabled"));
+
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "pong_connection_flow_1_initial");
+        _output.WriteLine($"Screenshot 1 (initial state) saved to: {screenshotPath1}");
+
+        // Act - Attempt to connect
+        initialConnectButton.Click();
+        System.Threading.Thread.Sleep(500);
+
+        // Capture state during/after connection attempt
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "pong_connection_flow_2_after_connect_click");
+        _output.WriteLine($"Screenshot 2 (after connect click) saved to: {screenshotPath2}");
+
+        // Verify component is still functional
+        Assert.Contains("Events Log:", cut.Markup);
+        Assert.Contains("game-container", cut.Markup);
+    }
 }

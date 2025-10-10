@@ -141,4 +141,126 @@ public class ChessUITests
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_initial_button_states");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
     }
+
+    [Fact]
+    public void Chess_SaveGame_ButtonWorks()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+
+        // Act - Create new game
+        var newGameButton = cut.Find("button:contains('New Game')");
+        newGameButton.Click();
+        
+        // Verify game was created
+        Assert.Contains("Game ID:", cut.Markup);
+        Assert.Contains("Last Updated:", cut.Markup);
+
+        // Click Save button - should not throw
+        var saveButton = cut.Find("button:contains('Save Game')");
+        saveButton.Click();
+
+        // Assert - Verify game state persists (UI still shows game info)
+        var markupAfterSave = cut.Markup;
+        Assert.Contains("Game ID:", markupAfterSave);
+        Assert.Contains("Last Updated:", markupAfterSave);
+        Assert.Contains("Game Type: Chess", markupAfterSave);
+        Assert.Contains("chess-board", markupAfterSave);
+
+        // Capture screenshot
+        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_after_save");
+        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
+    }
+
+    [Fact]
+    public void Chess_LoadGame_ButtonWorks()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+
+        // Act - Create new game
+        var newGameButton = cut.Find("button:contains('New Game')");
+        newGameButton.Click();
+        
+        // Verify game was created
+        var gameIdBefore = ExtractGameId(cut.Markup);
+        Assert.NotNull(gameIdBefore);
+
+        // Click Load button - should not throw
+        var loadButton = cut.Find("button:contains('Load Game')");
+        loadButton.Click();
+
+        // Assert - Verify game state is maintained (same game ID, board still visible)
+        var markupAfterLoad = cut.Markup;
+        var gameIdAfter = ExtractGameId(markupAfterLoad);
+        Assert.Equal(gameIdBefore, gameIdAfter); // Game ID should not change
+        Assert.Contains("Game Type: Chess", markupAfterLoad);
+        Assert.Contains("chess-board", markupAfterLoad);
+        Assert.Contains("Last Updated:", markupAfterLoad);
+
+        // Capture screenshot
+        var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_after_load");
+        _output.WriteLine($"Screenshot saved to: {screenshotPath}");
+    }
+
+    [Fact]
+    public void Chess_MultipleStateChanges_AllButtonsWork()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+
+        // Act & Assert - New Game
+        var newGameButton = cut.Find("button:contains('New Game')");
+        newGameButton.Click();
+        Assert.Contains("Game ID:", cut.Markup);
+        
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "chess_state_change_1_new_game");
+        _output.WriteLine($"Screenshot 1 saved to: {screenshotPath1}");
+
+        // Small delay
+        System.Threading.Thread.Sleep(50);
+
+        // Act & Assert - Save
+        var saveButton = cut.Find("button:contains('Save Game')");
+        saveButton.Click();
+        Assert.Contains("Last Updated:", cut.Markup);
+        
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "chess_state_change_2_after_save");
+        _output.WriteLine($"Screenshot 2 saved to: {screenshotPath2}");
+
+        // Small delay
+        System.Threading.Thread.Sleep(50);
+
+        // Act & Assert - Load
+        var loadButton = cut.Find("button:contains('Load Game')");
+        loadButton.Click();
+        Assert.Contains("Last Updated:", cut.Markup);
+        
+        var screenshotPath3 = ScreenshotHelper.CaptureHtml(cut, "chess_state_change_3_after_load");
+        _output.WriteLine($"Screenshot 3 saved to: {screenshotPath3}");
+
+        // Verify board is still visible throughout
+        Assert.Contains("chess-board", cut.Markup);
+    }
+
+    private static string? ExtractTimestamp(string markup)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            markup, 
+            @"Last Updated:\s*([^<]+)"
+        );
+        return match.Success ? match.Groups[1].Value.Trim() : null;
+    }
+
+    private static string? ExtractGameId(string markup)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            markup, 
+            @"Game ID:\s*([^<]+)"
+        );
+        return match.Success ? match.Groups[1].Value.Trim() : null;
+    }
 }
