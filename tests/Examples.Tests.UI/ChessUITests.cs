@@ -249,8 +249,11 @@ public class ChessUITests
     }
 
     [Fact]
-    public void CompleteFlow_StartMoveSaveNewLoad_RestoresPawnPosition()
+    public void CompleteFlow_StartMoveSaveMoveLoad_RestoresPawnPosition()
     {
+        // This test verifies the flow: start -> move -> save -> move -> load
+        // Expected result: After load, should show a single white pawn moved once (at e4)
+        
         // Arrange
         using var ctx = new TestContext();
         var cut = ctx.RenderComponent<Chess.Pages.Index>();

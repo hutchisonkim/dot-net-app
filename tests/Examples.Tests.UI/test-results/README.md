@@ -4,7 +4,7 @@ This directory contains test results from the chess persistence UI tests that ve
 
 ## Test Flows
 
-### Test 1: CompleteFlow_StartMoveSaveNewLoad_RestoresPawnPosition (Original)
+### Test 1: CompleteFlow_StartMoveSaveMoveLoad_RestoresPawnPosition
 
 **Flow**: start → move → save → move → load
 
@@ -14,10 +14,10 @@ This directory contains test results from the chess persistence UI tests that ve
 1. **Start** - Create a new chess game with initial board setup
 2. **First Move** - Make a move (white pawn from e2 to e4)
 3. **Save** - Save the game state (with white pawn at e4)
-4. **Second Move** - Make another move (white pawn from e4 to e5)
-5. **Load** - Load the saved game state, restoring to step 3 (white pawn at e4)
+4. **Second Move** - Make another move (black pawn from e7 to e5)
+5. **Load** - Load the saved game state, restoring to step 3 (white pawn at e4, black pawn at e7)
 
-**Key Verification**: After loading, the board returns to the saved state with white pawn at e4, not at e5.
+**Key Verification**: After loading, the board returns to the saved state with white pawn at e4 and black pawn at e7 (not at e5).
 
 **Files**:
 - `chess_complete_flow.gif` - Animated GIF showing all 5 steps
@@ -26,7 +26,7 @@ This directory contains test results from the chess persistence UI tests that ve
 
 ---
 
-### Test 2: CompleteFlow_StartMoveSaveNewLoad_ShowsSinglePawnMoved (New)
+### Test 2: CompleteFlow_StartMoveSaveNewLoad_ShowsSinglePawnMoved
 
 **Flow**: start → move → save → new → load
 
@@ -48,7 +48,7 @@ This directory contains test results from the chess persistence UI tests that ve
 
 ---
 
-### Test 3: CompleteFlow_StartMoveMoveEatSaveNewLoad_ShowsPawnMovedTwiceAndEaten (New)
+### Test 3: CompleteFlow_StartMoveMoveEatSaveNewLoad_ShowsPawnMovedTwiceAndEaten
 
 **Flow**: start → move → move → eat → save → new → load
 
@@ -57,15 +57,16 @@ This directory contains test results from the chess persistence UI tests that ve
 **Steps**:
 1. **Start** - Create a new chess game with initial board setup
 2. **First Move** - Move white pawn from e2 to e4
-3. **Second Move** - Move white pawn from e4 to e5
-4. **Eat** - Move white pawn from e5 to d6, capturing the black pawn at d7
+3. **Second Move** - Move black pawn from e7 to e5
+4. **Eat** - Move white pawn from e4 to d6, capturing the black pawn at d7
 5. **Save** - Save the game state (with white pawn at d6, black pawn at d7 captured)
 6. **New** - Click "New Game" to reset the board to initial state
 7. **Load** - Load the saved game state, restoring the captured piece state
 
 **Key Verification**: After loading, the board shows:
-- White pawn at d6 (moved twice from e2 → e4 → e5 → d6)
+- White pawn at d6 (moved twice from e2 → e4, then capturing d7 → d6)
 - Black pawn at d7 is missing (captured)
+- Black pawn at e7 moved to e5
 - All other pieces remain in their initial positions
 
 **Files**:
@@ -83,12 +84,17 @@ This directory contains test results from the chess persistence UI tests that ve
 - Load restores both the board configuration and move count
 
 ### Game ID Preservation
-- The "New Game" button now preserves the existing game ID (if one exists)
+- The "New Game" button preserves the existing game ID (if one exists)
 - This allows save/load to work correctly when resetting the board
 - First click of "New Game" generates a new ID; subsequent clicks reuse it
 
+### Move Sequence
+- Move 1: White pawn advances from e2 to e4
+- Move 2: Black pawn advances from e7 to e5 (alternating turns as in real chess)
+- Move 3: White pawn captures black d7 pawn by moving from e4 to d6
+
 ### Capture Functionality
-- Added third move pattern: white pawn captures black pawn (e5 to d6, removing d7)
+- Third move pattern: white pawn captures black pawn (e4 to d6, removing d7)
 - Demonstrates that save/load preserves both piece positions and captured pieces
 
 ## Visualizations
