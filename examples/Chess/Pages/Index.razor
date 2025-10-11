@@ -59,7 +59,9 @@
         boardState.Clear();
         
         // Initial chess position
-        // Black pieces (row 0 and 1)
+        // Board coordinate system: (row, col) where row 0 = rank 8, row 7 = rank 1
+        // Example: (0, 4) = a8, (1, 4) = e7, (6, 4) = e2, (7, 4) = e1
+        // Black pieces (row 0 and 1 = ranks 8 and 7)
         boardState[(0, 0)] = "♜"; boardState[(0, 7)] = "♜"; // Rooks
         boardState[(0, 1)] = "♞"; boardState[(0, 6)] = "♞"; // Knights
         boardState[(0, 2)] = "♝"; boardState[(0, 5)] = "♝"; // Bishops
@@ -70,7 +72,7 @@
             boardState[(1, col)] = "♟"; // Black pawns
         }
         
-        // White pieces (row 6 and 7)
+        // White pieces (row 6 and 7 = ranks 2 and 1)
         for (int col = 0; col < 8; col++)
         {
             boardState[(6, col)] = "♙"; // White pawns
@@ -84,7 +86,9 @@
 
     public void MakeExampleMove()
     {
-        // Make a simple move: advance e2 pawn to e4 (for demonstration)
+        // Move 1: White pawn advances from e2 to e4
+        // Board coordinates: row 6 (e2 in chess notation) to row 4 (e4)
+        // This is White's first move in a standard chess opening
         if (moveCount == 0 && boardState.ContainsKey((6, 4)))
         {
             boardState[(4, 4)] = boardState[(6, 4)]; // Move piece
@@ -92,7 +96,10 @@
             moveCount++;
             lastUpdated = DateTime.UtcNow;
         }
-        // Make another move: advance e7 pawn to e5
+        // Move 2: Black pawn advances from e7 to e5
+        // Board coordinates: row 1 (e7 in chess notation) to row 3 (e5)
+        // This is Black's response, alternating turns as in a real chess game
+        // Note: row 1 = e7 (black's starting pawn row), NOT row 4 (e4)
         else if (moveCount == 1 && boardState.ContainsKey((1, 4)))
         {
             boardState[(3, 4)] = boardState[(1, 4)]; // Move piece
