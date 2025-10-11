@@ -12,7 +12,7 @@ using DotNetApp.Tests.Shared;
 
 namespace DotNetApp.Server.Tests.Integration;
 
-[Trait("Category","Integration")]
+[Trait("Category", "Integration")]
 [Collection("docker-compose")]
 public class ServeFrontendTests
 {
@@ -35,13 +35,13 @@ public class ServeFrontendTests
     {
         var env = Environment.GetEnvironmentVariable("FRONTEND_URL");
         if (!string.IsNullOrWhiteSpace(env)) return new[] { env };
-    // Inside docker-compose the backend API service is named 'api' (internal port 8080) and the frontend 'client' listens on port 80
-    // Prefer localhost first for local runs; keep api and client as fallbacks
-    return new[] { "http://localhost:8080/" };
+        // Inside docker-compose the backend API service is named 'api' (internal port 8080) and the frontend 'client' listens on port 80
+        // Prefer localhost first for local runs; keep api and client as fallbacks
+        return new[] { "http://localhost:8080/" };
     }
 
     [Fact]
-    [Trait("Category","Integration")]
+    [Trait("Category", "Integration")]
     public async Task ClientRootRequest_WhenServed_MatchesExpectedIndex()
     {
         // Configurable overall timeout for the test (seconds). Defaults to 20s to avoid flakiness.
@@ -58,7 +58,7 @@ public class ServeFrontendTests
 
         HttpResponseMessage res = null!;
         // Try each candidate URL until one responds with success or we hit the overall timeout
-    foreach (var baseUrl in CandidateUrls)
+        foreach (var baseUrl in CandidateUrls)
         {
             try
             {
@@ -71,12 +71,12 @@ public class ServeFrontendTests
             }
         }
 
-    Assert.NotNull(res);
+        Assert.NotNull(res);
 
         var served = await res.Content.ReadAsStringAsync();
 
         var expectedPath = FindExpectedIndex();
-    Assert.NotNull(expectedPath);
+        Assert.NotNull(expectedPath);
 
         string expected;
         if (expectedPath!.EndsWith(".razor", StringComparison.OrdinalIgnoreCase))
@@ -101,23 +101,23 @@ public class ServeFrontendTests
         var nExpected = Normalize(expected);
 
         var titleMatch = Regex.Match(expected, "<title>(.*?)</title>", RegexOptions.IgnoreCase);
-            if (titleMatch.Success)
-            {
-                var expectedTitle = titleMatch.Groups[1].Value.Trim();
-                Assert.Contains(expectedTitle, served);
-            }
+        if (titleMatch.Success)
+        {
+            var expectedTitle = titleMatch.Groups[1].Value.Trim();
+            Assert.Contains(expectedTitle, served);
+        }
 
         var baseMatch = Regex.Match(expected, "<base href=\"(.*?)\"", RegexOptions.IgnoreCase);
-            if (baseMatch.Success)
-            {
-                var expectedBase = baseMatch.Groups[1].Value.Trim();
-                Assert.Contains($"<base href=\"{expectedBase}\"", served);
-            }
+        if (baseMatch.Success)
+        {
+            var expectedBase = baseMatch.Groups[1].Value.Trim();
+            Assert.Contains($"<base href=\"{expectedBase}\"", served);
+        }
 
-    // Always check for the Blazor loader
-    Assert.Contains("_framework/blazor.webassembly.js", served);
+        // Always check for the Blazor loader
+        Assert.Contains("_framework/blazor.webassembly.js", served);
 
-    Assert.Contains(nExpected, nServed);
+        Assert.Contains(nExpected, nServed);
     }
 
     private static string? FindExpectedIndex()

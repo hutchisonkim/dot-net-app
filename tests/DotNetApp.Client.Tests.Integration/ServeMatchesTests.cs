@@ -10,7 +10,7 @@ using DotNetApp.Tests.Shared;
 
 namespace DotNetApp.Client.Tests.Integration;
 
-[Trait("Category","Integration")]
+[Trait("Category", "Integration")]
 [Collection("docker-compose")]
 public class ServeMatchesTests
 {
@@ -55,14 +55,14 @@ public class ServeMatchesTests
             }
         }
 
-    Assert.NotNull(res);
-    Assert.True(res!.IsSuccessStatusCode);
+        Assert.NotNull(res);
+        Assert.True(res!.IsSuccessStatusCode);
 
         var served = await res.Content.ReadAsStringAsync();
 
         var expectedPath = FindExpectedIndex();
-    Assert.NotNull(expectedPath);
-    var expected = await File.ReadAllTextAsync(expectedPath!);
+        Assert.NotNull(expectedPath);
+        var expected = await File.ReadAllTextAsync(expectedPath!);
 
         var nServed = Normalize(served);
         var nExpected = Normalize(expected);
@@ -81,8 +81,8 @@ public class ServeMatchesTests
             Assert.Contains($"<base href=\"{expectedBase}\"", served);
         }
 
-    Assert.Contains("_framework/blazor.webassembly.js", served);
-    Assert.Contains(nExpected, nServed);
+        Assert.Contains("_framework/blazor.webassembly.js", served);
+        Assert.Contains(nExpected, nServed);
     }
 
     private static string? FindExpectedIndex()

@@ -21,7 +21,7 @@ public class ExampleApiTests : IClassFixture<WebApplicationFactory<DotNetApp.Ser
         using var client = _factory.CreateClient();
         var apiClient = new PlatformApiClient(client);
         var dto = await apiClient.GetHealthStatusAsync();
-    // API returns "Healthy" (capital H) — tests should match the real API behavior
-    Assert.Equal("Healthy", dto?.status);
+        // API returns "Healthy" (capital H) — tests should match the real API behavior
+        Assert.Equal("Healthy", dto?.status);
     }
 }

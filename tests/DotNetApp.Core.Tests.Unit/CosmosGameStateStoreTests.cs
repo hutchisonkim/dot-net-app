@@ -91,7 +91,7 @@ public class CosmosGameStateStoreTests
     {
         // Arrange
         var mockContainer = new Mock<Container>();
-        
+
         mockContainer
             .Setup(c => c.ReadItemAsync<GameState>(
                 "non-existent",
@@ -138,7 +138,7 @@ public class CosmosGameStateStoreTests
     {
         // Arrange
         var mockContainer = new Mock<Container>();
-        
+
         mockContainer
             .Setup(c => c.DeleteItemAsync<GameState>(
                 "non-existent",

@@ -10,7 +10,7 @@ using Moq;
 
 namespace DotNetApp.Client.Tests.Unit;
 
-[Trait("Category","Unit")]
+[Trait("Category", "Unit")]
 public class HealthProviderTests
 {
     [Fact]

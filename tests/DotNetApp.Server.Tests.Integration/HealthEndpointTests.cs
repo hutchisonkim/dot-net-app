@@ -16,7 +16,7 @@ namespace DotNetApp.Server.Tests.Integration;
 // Integration-style test verifies the ASP.NET Core pipeline + DI wiring using WebApplicationFactory.
 // Per Microsoft guidance, this belongs in an integration test project (not a pure unit test assembly)
 // to keep unit tests fast and isolated.
-[Trait("Category","Integration")]
+[Trait("Category", "Integration")]
 public class HealthEndpointTests : IClassFixture<HealthEndpointTests.CustomWebAppFactory>
 {
     private readonly HttpClient _client;
@@ -29,8 +29,8 @@ public class HealthEndpointTests : IClassFixture<HealthEndpointTests.CustomWebAp
     [Fact]
     public async Task Health_WhenCalled_ReturnsMockedStatus()
     {
-    var json = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/state/health");
-    Assert.Equal(FakeHealthService.CustomStatus, json.GetProperty("status").GetString());
+        var json = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/state/health");
+        Assert.Equal(FakeHealthService.CustomStatus, json.GetProperty("status").GetString());
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class HealthEndpointTests : IClassFixture<HealthEndpointTests.CustomWebAp
         var response = await _client.GetAsync("/api/state/health");
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
-        
+
         // Verify the JSON contains "status" (camelCase) not "Status" (PascalCase)
         Assert.Contains("\"status\":", content);
         Assert.DoesNotContain("\"Status\":", content);
@@ -53,7 +53,7 @@ public class HealthEndpointTests : IClassFixture<HealthEndpointTests.CustomWebAp
         // The API should return the exact status value from HealthStatus (e.g., "Healthy" not "healthy")
         var json = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/state/health");
         var statusValue = json.GetProperty("status").GetString();
-        
+
         // Verify the status value is exactly what the service returns
         Assert.Equal(FakeHealthService.CustomStatus, statusValue);
     }
