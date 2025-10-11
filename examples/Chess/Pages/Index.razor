@@ -47,8 +47,12 @@
 
     private void CreateNewGame()
     {
-        // Always generate a new game ID when starting a new game
-        gameId = Guid.NewGuid().ToString();
+        // Generate a new game ID only if one doesn't exist
+        // This allows save/load to work correctly when resetting the board
+        if (string.IsNullOrEmpty(gameId))
+        {
+            gameId = Guid.NewGuid().ToString();
+        }
         
         gameType = "Chess";
         lastUpdated = DateTime.UtcNow;
@@ -104,8 +108,8 @@
         // Note: row 1 = e7 (black's starting pawn row), NOT row 4 (e4)
         else if (moveCount == 1 && boardState.ContainsKey((1, 4)))
         {
-            boardState[(3, 4)] = boardState[(4, 4)]; // Move piece
-            boardState.Remove((4, 4)); // Remove from old position
+            boardState[(3, 4)] = boardState[(1, 4)]; // Move piece from e7 to e5
+            boardState.Remove((1, 4)); // Remove from old position
             moveCount++;
             lastUpdated = DateTime.UtcNow;
         }
