@@ -23,7 +23,7 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
@@ -33,7 +33,7 @@ public class PongUITests
         Assert.Contains("Connect", cut.Markup);
         Assert.Contains("Connection Status:", cut.Markup);
         Assert.Contains("Disconnected", cut.Markup);
-        
+
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_initial_state");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
@@ -44,7 +44,7 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
@@ -71,18 +71,18 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
         // Assert - Verify game canvas is rendered
         Assert.Contains("pong-canvas", cut.Markup);
-        
+
         // Verify paddles and ball are rendered
         var markup = cut.Markup;
         Assert.Contains("position: absolute", markup); // Paddle/ball positioning
         Assert.Contains("background: white", markup); // Paddle/ball color
-        
+
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_initial_canvas");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
@@ -93,13 +93,13 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
         // Assert - Verify events log section exists
         Assert.Contains("Events Log:", cut.Markup);
-        
+
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_initial_events_log");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
@@ -110,7 +110,7 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
@@ -118,7 +118,7 @@ public class PongUITests
         Assert.Contains("Game ID:", cut.Markup);
         Assert.Contains("<input", cut.Markup);
         Assert.Contains("pong-room-1", cut.Markup); // Default game ID
-        
+
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_initial_game_id_input");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
@@ -129,13 +129,13 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
         // Assert - Verify layout structure
         Assert.Contains("game-container", cut.Markup);
-        
+
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_layout_structure");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
@@ -163,7 +163,7 @@ public class PongUITests
         // Assert - Verify error message appears in events log
         var markupAfterConnect = cut.Markup;
         Assert.Contains("Events Log:", markupAfterConnect);
-        
+
         // The connection will fail, so we expect an error in the events
         // (This tests the error handling path)
         var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "pong_after_connect_attempt");
@@ -192,7 +192,7 @@ public class PongUITests
 
         // Assert - Button state after click
         var markupAfter = cut.Markup;
-        
+
         // Capture the UI state after clicking connect
         var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "pong_connect_button_after_click");
         _output.WriteLine($"Screenshot 2 (after click) saved to: {screenshotPath2}");
@@ -206,14 +206,14 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
         // Assert - Verify events log is present but empty initially
         var markup = cut.Markup;
         Assert.Contains("Events Log:", markup);
-        
+
         // The events log div should exist but have no event entries initially
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_events_log_empty");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");
@@ -254,7 +254,7 @@ public class PongUITests
     {
         // Arrange
         using var ctx = new TestContext();
-        
+
         // Act - Render the component (ball animation starts automatically)
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
@@ -274,7 +274,7 @@ public class PongUITests
 
         // Assert - Ball position should have changed
         Assert.Contains("pong-canvas", afterMovementMarkup);
-        
+
         // The ball's position attributes should be different
         // (Note: in a real implementation, we'd verify actual position values)
         _output.WriteLine("Ball has animated - UI updated successfully");

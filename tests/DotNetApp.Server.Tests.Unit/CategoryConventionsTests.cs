@@ -12,7 +12,7 @@ public class CategoryConventionsTests
     private static readonly string[] AllowedMissingCategoryAttributes = new[] { "Skip" }; // If a test is skipped intentionally, still enforce category unless design changes.
 
     [Fact]
-    [Trait("Category","Unit")]
+    [Trait("Category", "Unit")]
     public void All_Facts_And_Theories_Have_Category_Trait()
     {
         var assembly = typeof(CategoryConventionsTests).Assembly;

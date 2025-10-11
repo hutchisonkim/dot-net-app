@@ -26,13 +26,13 @@ public class StateControllerTests
         var result = await sut.Health(CancellationToken.None);
 
         // Assert
-    var ok = Assert.IsType<OkObjectResult>(result);
-    Assert.NotNull(ok.Value);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(ok.Value);
 
-    // Cast the returned value to the DTO and assert explicitly on the Status property
-    var dto = ok.Value as DotNetApp.Server.Contracts.HealthDto;
-    Assert.NotNull(dto);
-    Assert.Equal(HealthStatus.Healthy.Status, dto!.Status);
+        // Cast the returned value to the DTO and assert explicitly on the Status property
+        var dto = ok.Value as DotNetApp.Server.Contracts.HealthDto;
+        Assert.NotNull(dto);
+        Assert.Equal(HealthStatus.Healthy.Status, dto!.Status);
 
         mockHealth.Verify(h => h.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

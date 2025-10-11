@@ -39,13 +39,13 @@ public class ProgramEntryPointTests
     {
         // Arrange & Act
         var programType = typeof(DotNetApp.Server.Program);
-        
+
         // Assert - In .NET 6+, the explicit partial class declaration allows the implicit
         // Program class from top-level statements to be extended and made public
         // We can't directly test for "partial" keyword via reflection, but we verify
         // the class is accessible, which proves the pattern works
         Assert.NotNull(programType);
-        Assert.True(programType.Assembly.GetName().Name == "DotNetApp.Server", 
+        Assert.True(programType.Assembly.GetName().Name == "DotNetApp.Server",
             "Program class should be in the DotNetApp.Server assembly");
     }
 
@@ -58,7 +58,7 @@ public class ProgramEntryPointTests
 
         // Assert - If Program is correct entry point, we can make a request
         var response = await client.GetAsync("/api/state/health");
-        
+
         // Verify the server started and responded (status code doesn't matter for this test)
         Assert.NotNull(response);
     }
@@ -86,9 +86,9 @@ public class ProgramEntryPointTests
     {
         // Arrange & Act
         var assembly = typeof(DotNetApp.Server.Program).Assembly;
-        
+
         // Assert - Verify this is indeed a web application assembly
-        Assert.Contains("Microsoft.AspNetCore", 
+        Assert.Contains("Microsoft.AspNetCore",
             assembly.GetReferencedAssemblies().Select(a => a.Name ?? string.Empty));
     }
 }
