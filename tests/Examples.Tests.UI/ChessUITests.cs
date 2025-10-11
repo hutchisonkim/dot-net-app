@@ -351,6 +351,198 @@ public class ChessUITests
         Assert.True(System.IO.File.Exists(gifPath), "GIF file should be created");
     }
 
+    [Fact]
+    public void CompleteFlow_StartMoveSaveNewLoad_ShowsSinglePawnMoved()
+    {
+        // This test verifies the flow: start -> move -> save -> new -> load
+        // Expected result: After load, should show a single white pawn moved once (at e4)
+        
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+        var screenshots = new System.Collections.Generic.List<string>();
+
+        // Step 1: Start - Create new game
+        var newGameButton = cut.Find("[data-testid='new-game-button']");
+        newGameButton.Click();
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "chess_flow2_1_start");
+        screenshots.Add(screenshotPath1);
+        _output.WriteLine($"Step 1 (Start): Screenshot saved to {screenshotPath1}");
+        
+        var gameIdElement = cut.Find("[data-testid='game-id']");
+        var gameIdOriginal = gameIdElement.TextContent;
+        Assert.NotNull(gameIdOriginal);
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 2: Move - Make a move (e2 to e4)
+        var makeMoveButton = cut.Find("[data-testid='make-move-button']");
+        makeMoveButton.Click();
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "chess_flow2_2_move");
+        screenshots.Add(screenshotPath2);
+        _output.WriteLine($"Step 2 (Move): Screenshot saved to {screenshotPath2}");
+        
+        var chessBoardAfterMove = cut.Find("[data-testid='chess-board']");
+        var chessBoardHtmlAfterMove = chessBoardAfterMove.OuterHtml;
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 3: Save - Save the game state
+        var saveButton = cut.Find("[data-testid='save-game-button']");
+        saveButton.Click();
+        var screenshotPath3 = ScreenshotHelper.CaptureHtml(cut, "chess_flow2_3_save");
+        screenshots.Add(screenshotPath3);
+        _output.WriteLine($"Step 3 (Save): Screenshot saved to {screenshotPath3}");
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 4: New - Create a new game (this should reset the board but keep same game ID)
+        newGameButton = cut.Find("[data-testid='new-game-button']");
+        newGameButton.Click();
+        var screenshotPath4 = ScreenshotHelper.CaptureHtml(cut, "chess_flow2_4_new");
+        screenshots.Add(screenshotPath4);
+        _output.WriteLine($"Step 4 (New): Screenshot saved to {screenshotPath4}");
+        
+        // Verify the game ID stayed the same (this is important for loading)
+        gameIdElement = cut.Find("[data-testid='game-id']");
+        var gameIdAfterNew = gameIdElement.TextContent;
+        Assert.Equal(gameIdOriginal, gameIdAfterNew);
+        
+        var chessBoardAfterNew = cut.Find("[data-testid='chess-board']");
+        var chessBoardHtmlAfterNew = chessBoardAfterNew.OuterHtml;
+        // The new board should be different from the moved board (it's a fresh game)
+        Assert.NotEqual(chessBoardHtmlAfterMove, chessBoardHtmlAfterNew);
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 5: Load - Load the saved game state (should restore the moved pawn)
+        var loadButton = cut.Find("[data-testid='load-game-button']");
+        loadButton.Click();
+        var screenshotPath5 = ScreenshotHelper.CaptureHtml(cut, "chess_flow2_5_load");
+        screenshots.Add(screenshotPath5);
+        _output.WriteLine($"Step 5 (Load): Screenshot saved to {screenshotPath5}");
+        
+        // Verify the board was restored to the saved state (with moved pawn)
+        var chessBoardAfterLoad = cut.Find("[data-testid='chess-board']");
+        var chessBoardHtmlAfterLoad = chessBoardAfterLoad.OuterHtml;
+        Assert.Equal(chessBoardHtmlAfterMove, chessBoardHtmlAfterLoad);
+        Assert.NotEqual(chessBoardHtmlAfterNew, chessBoardHtmlAfterLoad);
+        
+        _output.WriteLine("Verified: Loaded game restored to saved state with single white pawn moved (e2 to e4)");
+        _output.WriteLine($"Game ID: {gameIdOriginal}");
+        
+        // Create GIF from screenshots
+        var gifPath = CreateGifFromScreenshots(screenshots, "chess_flow2_start_move_save_new");
+        _output.WriteLine($"GIF created: {gifPath}");
+        
+        Assert.True(System.IO.File.Exists(gifPath), "GIF file should be created");
+    }
+
+    [Fact]
+    public void CompleteFlow_StartMoveMoveEatSaveNewLoad_ShowsPawnMovedTwiceAndEaten()
+    {
+        // This test verifies the flow: start -> move -> move -> eat -> save -> new -> load
+        // Expected result: After load, should show white pawn moved twice and black pawn eaten
+        
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Chess.Pages.Index>();
+        var screenshots = new System.Collections.Generic.List<string>();
+
+        // Step 1: Start - Create new game
+        var newGameButton = cut.Find("[data-testid='new-game-button']");
+        newGameButton.Click();
+        var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "chess_flow3_1_start");
+        screenshots.Add(screenshotPath1);
+        _output.WriteLine($"Step 1 (Start): Screenshot saved to {screenshotPath1}");
+        
+        var gameIdElement = cut.Find("[data-testid='game-id']");
+        var gameIdOriginal = gameIdElement.TextContent;
+        Assert.NotNull(gameIdOriginal);
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 2: First Move - Move white pawn from e2 to e4
+        var makeMoveButton = cut.Find("[data-testid='make-move-button']");
+        makeMoveButton.Click();
+        var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "chess_flow3_2_first_move");
+        screenshots.Add(screenshotPath2);
+        _output.WriteLine($"Step 2 (First Move): Screenshot saved to {screenshotPath2}");
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 3: Second Move - Move white pawn from e4 to e5
+        makeMoveButton = cut.Find("[data-testid='make-move-button']");
+        makeMoveButton.Click();
+        var screenshotPath3 = ScreenshotHelper.CaptureHtml(cut, "chess_flow3_3_second_move");
+        screenshots.Add(screenshotPath3);
+        _output.WriteLine($"Step 3 (Second Move): Screenshot saved to {screenshotPath3}");
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 4: Eat - White pawn captures black pawn (e5 to d6, eating d7 pawn)
+        makeMoveButton = cut.Find("[data-testid='make-move-button']");
+        makeMoveButton.Click();
+        var screenshotPath4 = ScreenshotHelper.CaptureHtml(cut, "chess_flow3_4_eat");
+        screenshots.Add(screenshotPath4);
+        _output.WriteLine($"Step 4 (Eat): Screenshot saved to {screenshotPath4}");
+        
+        var chessBoardAfterEat = cut.Find("[data-testid='chess-board']");
+        var chessBoardHtmlAfterEat = chessBoardAfterEat.OuterHtml;
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 5: Save - Save the game state with captured pawn
+        var saveButton = cut.Find("[data-testid='save-game-button']");
+        saveButton.Click();
+        var screenshotPath5 = ScreenshotHelper.CaptureHtml(cut, "chess_flow3_5_save");
+        screenshots.Add(screenshotPath5);
+        _output.WriteLine($"Step 5 (Save): Screenshot saved to {screenshotPath5}");
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 6: New - Create a new game (resets board but keeps same game ID)
+        newGameButton = cut.Find("[data-testid='new-game-button']");
+        newGameButton.Click();
+        var screenshotPath6 = ScreenshotHelper.CaptureHtml(cut, "chess_flow3_6_new");
+        screenshots.Add(screenshotPath6);
+        _output.WriteLine($"Step 6 (New): Screenshot saved to {screenshotPath6}");
+        
+        // Verify the game ID stayed the same
+        gameIdElement = cut.Find("[data-testid='game-id']");
+        var gameIdAfterNew = gameIdElement.TextContent;
+        Assert.Equal(gameIdOriginal, gameIdAfterNew);
+        
+        var chessBoardAfterNew = cut.Find("[data-testid='chess-board']");
+        var chessBoardHtmlAfterNew = chessBoardAfterNew.OuterHtml;
+        // The new board should be different from the board with captured pawn (it's reset)
+        Assert.NotEqual(chessBoardHtmlAfterEat, chessBoardHtmlAfterNew);
+        
+        System.Threading.Thread.Sleep(100);
+
+        // Step 7: Load - Load the saved game state (should restore board with captured pawn)
+        var loadButton = cut.Find("[data-testid='load-game-button']");
+        loadButton.Click();
+        var screenshotPath7 = ScreenshotHelper.CaptureHtml(cut, "chess_flow3_7_load");
+        screenshots.Add(screenshotPath7);
+        _output.WriteLine($"Step 7 (Load): Screenshot saved to {screenshotPath7}");
+        
+        // Verify the board was restored to the saved state (with captured pawn)
+        var chessBoardAfterLoad = cut.Find("[data-testid='chess-board']");
+        var chessBoardHtmlAfterLoad = chessBoardAfterLoad.OuterHtml;
+        Assert.Equal(chessBoardHtmlAfterEat, chessBoardHtmlAfterLoad);
+        Assert.NotEqual(chessBoardHtmlAfterNew, chessBoardHtmlAfterLoad);
+        
+        _output.WriteLine("Verified: Loaded game restored to saved state with white pawn moved twice and black pawn captured");
+        _output.WriteLine($"Game ID: {gameIdOriginal}");
+        
+        // Create GIF from screenshots
+        var gifPath = CreateGifFromScreenshots(screenshots, "chess_flow3_moves_and_capture");
+        _output.WriteLine($"GIF created: {gifPath}");
+        
+        Assert.True(System.IO.File.Exists(gifPath), "GIF file should be created");
+    }
+
     private string CreateGifFromScreenshots(System.Collections.Generic.List<string> screenshotPaths, string outputName)
     {
         var screenshotDir = ScreenshotHelper.GetScreenshotDirectory();
