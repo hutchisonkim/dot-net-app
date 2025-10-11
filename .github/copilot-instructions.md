@@ -93,11 +93,21 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/generate_coverage_html.p
    - **Real-time** (fast-paced): Use SignalR `GameHub`
 
 2. Create new Blazor WebAssembly project:
-   ```bash
-   dotnet new blazorwasm -n MyGame
-   cd MyGame
-   dotnet add reference ../../src/Shared/DotNetApp.Core/DotNetApp.Core.csproj
-   ```
+   > **Choose the appropriate template:**
+   > - For games requiring server interaction (multiplayer, SignalR, REST API), use the **hosted** template:
+   >   ```bash
+   >   dotnet new blazorwasm --hosted -n MyGame
+   >   cd MyGame
+   >   dotnet add reference ../Shared/DotNetApp.Core/DotNetApp.Core.csproj
+   >   # Add server-side references as needed in MyGame.Server
+   >   # Add client-side references in MyGame.Client
+   >   ```
+   > - For purely client-side games, use the **standalone** template:
+   >   ```bash
+   >   dotnet new blazorwasm -n MyGame
+   >   cd MyGame
+   >   dotnet add reference ../../src/Shared/DotNetApp.Core/DotNetApp.Core.csproj
+   >   ```
 
 3. Implement game logic following patterns in `examples/Chess/` or `examples/Pong/`
 
