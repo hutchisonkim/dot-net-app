@@ -47,11 +47,9 @@
 
     private void CreateNewGame()
     {
-        // Only generate a new ID if there isn't one already
-        if (string.IsNullOrEmpty(gameId))
-        {
-            gameId = Guid.NewGuid().ToString();
-        }
+        // Always generate a new game ID when starting a new game
+        gameId = Guid.NewGuid().ToString();
+        
         gameType = "Chess";
         lastUpdated = DateTime.UtcNow;
         moveCount = 0;
