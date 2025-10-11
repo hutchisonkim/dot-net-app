@@ -230,9 +230,9 @@ public class PongUITests
         var eventsLog = cut.Find("[data-testid='events-log']");
         Assert.NotNull(eventsLog);
         
-        // Verify the events log is initially empty (no event entries)
-        var eventEntries = eventsLog.QuerySelectorAll(".event-entry");
-        Assert.Empty(eventEntries);
+        // Verify the events log is initially empty by checking for any child div elements
+        var childDivs = eventsLog.QuerySelectorAll("div");
+        Assert.Empty(childDivs);
         
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_events_log_empty");
