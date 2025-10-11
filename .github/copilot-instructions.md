@@ -115,7 +115,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/generate_coverage_html.p
 
 ### Adding New Services
 - Implement interfaces from `DotNetApp.Core`
-- Register services in `Program.cs` with appropriate lifetime (Scoped, Transient, Singleton)
+- Register services in `Program.cs` with appropriate lifetime:
+  - **Scoped**: For services that should be created once per request (e.g., per-user or per-game session).
+  - **Singleton**: For stateless services or those that should be shared across the entire application lifetime.
+  - **Transient**: For lightweight, stateless services that can be created each time they are requested.
 - Add unit tests for business logic
 - Add integration tests for API endpoints or SignalR hubs
 
