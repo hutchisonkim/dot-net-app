@@ -47,7 +47,9 @@
 
     private void CreateNewGame()
     {
+        // Always generate a new game ID when starting a new game
         gameId = Guid.NewGuid().ToString();
+        
         gameType = "Chess";
         lastUpdated = DateTime.UtcNow;
         moveCount = 0;
@@ -102,8 +104,21 @@
         // Note: row 1 = e7 (black's starting pawn row), NOT row 4 (e4)
         else if (moveCount == 1 && boardState.ContainsKey((1, 4)))
         {
-            boardState[(3, 4)] = boardState[(1, 4)]; // Move piece
-            boardState.Remove((1, 4)); // Remove from old position
+            boardState[(3, 4)] = boardState[(4, 4)]; // Move piece
+            boardState.Remove((4, 4)); // Remove from old position
+            moveCount++;
+            lastUpdated = DateTime.UtcNow;
+        }
+        // Move 3: white e5 pawn captures black d7 pawn (move to d6)
+        else if (moveCount == 2 && boardState.ContainsKey((3, 4)))
+        {
+            // Capture the black pawn at d7 by moving to d6
+            if (boardState.ContainsKey((1, 3)))
+            {
+                boardState.Remove((1, 3)); // Remove captured black pawn
+            }
+            boardState[(2, 3)] = boardState[(3, 4)]; // Move white pawn to d6
+            boardState.Remove((3, 4)); // Remove from old position
             moveCount++;
             lastUpdated = DateTime.UtcNow;
         }

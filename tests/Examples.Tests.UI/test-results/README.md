@@ -1,51 +1,107 @@
-# Chess Complete Flow Test Results
+# Chess Persistence Test Results
 
-This directory contains test results from the `CompleteFlow_StartMoveSaveNewLoad_RestoresPawnPosition` test.
+This directory contains test results from the chess persistence UI tests that verify save/load functionality.
 
-## Test Flow
+## Test Flows
 
-The test demonstrates the complete chess game lifecycle with save/load verification:
+### Test 1: CompleteFlow_StartMoveSaveNewLoad_RestoresPawnPosition (Original)
 
+**Flow**: start → move → save → move → load
+
+**Purpose**: Verifies that loading a saved game restores the exact board state at save time, discarding any moves made after saving.
+
+**Steps**:
 1. **Start** - Create a new chess game with initial board setup
 2. **First Move** - Make a move (white pawn from e2 to e4)
 3. **Save** - Save the game state (with white pawn at e4)
-4. **Second Move** - Make another move (black pawn from e7 to e5)
-5. **Load** - Load the saved game state, restoring to step 3 (white pawn at e4, black pawn still at e7)
+4. **Second Move** - Make another move (white pawn from e4 to e5)
+5. **Load** - Load the saved game state, restoring to step 3 (white pawn at e4)
 
-## Key Verification
+**Key Verification**: After loading, the board returns to the saved state with white pawn at e4, not at e5.
 
-The test verifies that **the pawn position is correctly restored** after loading:
-- After the first move, the white pawn is at e4
-- After saving and making a second move, the black pawn moves to e5
-- **After loading**, the board returns to the saved state: white pawn at e4, black pawn back at e7
-- This proves the save/load functionality correctly preserves and restores piece positions
+**Files**:
+- `chess_complete_flow.gif` - Animated GIF showing all 5 steps
+- `chess_complete_flow_merged.png` - Merged PNG showing all 5 frames side-by-side
+- `chess_flow_1_start.html` through `chess_flow_5_load.html` - Individual HTML screenshots
 
-## Files
+---
 
-- `chess_complete_flow.gif` - Animated GIF showing all 5 steps (1.5 seconds per frame, 119KB, 900x750)
-- `chess_complete_flow_merged.png` - Merged PNG showing all 5 frames side-by-side (57KB, 4500x750)
-- `chess_flow_1_start.html` - HTML screenshot of initial game state
-- `chess_flow_2_move.html` - HTML screenshot after first move (white pawn at e4)
-- `chess_flow_3_save.html` - HTML screenshot after saving game
-- `chess_flow_4_second_move.html` - HTML screenshot after second move (black pawn at e5)
-- `chess_flow_5_load.html` - HTML screenshot after loading (restored to saved state)
+### Test 2: CompleteFlow_StartMoveSaveNewLoad_ShowsSinglePawnMoved (New)
+
+**Flow**: start → move → save → new → load
+
+**Purpose**: Verifies that after creating a new game (which resets the board), loading the saved game restores the previous game state.
+
+**Steps**:
+1. **Start** - Create a new chess game with initial board setup
+2. **Move** - Make a move (white pawn from e2 to e4)
+3. **Save** - Save the game state (with white pawn at e4)
+4. **New** - Click "New Game" to reset the board to initial state
+5. **Load** - Load the saved game state, restoring the moved pawn position
+
+**Key Verification**: After loading, the board shows the white pawn at e4 (saved state), not the initial board from step 4.
+
+**Files**:
+- `chess_flow2_start_move_save_new.gif` - Animated GIF showing all 5 steps
+- `chess_flow2_start_move_save_new_merged.png` - Merged PNG showing all 5 frames side-by-side
+- `chess_flow2_1_start.html` through `chess_flow2_5_load.html` - Individual HTML screenshots
+
+---
+
+### Test 3: CompleteFlow_StartMoveMoveEatSaveNewLoad_ShowsPawnMovedTwiceAndEaten (New)
+
+**Flow**: start → move → move → eat → save → new → load
+
+**Purpose**: Verifies that save/load correctly preserves complex game states including piece captures.
+
+**Steps**:
+1. **Start** - Create a new chess game with initial board setup
+2. **First Move** - Move white pawn from e2 to e4
+3. **Second Move** - Move white pawn from e4 to e5
+4. **Eat** - Move white pawn from e5 to d6, capturing the black pawn at d7
+5. **Save** - Save the game state (with white pawn at d6, black pawn at d7 captured)
+6. **New** - Click "New Game" to reset the board to initial state
+7. **Load** - Load the saved game state, restoring the captured piece state
+
+**Key Verification**: After loading, the board shows:
+- White pawn at d6 (moved twice from e2 → e4 → e5 → d6)
+- Black pawn at d7 is missing (captured)
+- All other pieces remain in their initial positions
+
+**Files**:
+- `chess_flow3_moves_and_capture.gif` - Animated GIF showing all 7 steps
+- `chess_flow3_moves_and_capture_merged.png` - Merged PNG showing all 7 frames side-by-side
+- `chess_flow3_1_start.html` through `chess_flow3_7_load.html` - Individual HTML screenshots
+
+---
+
+## Implementation Details
+
+### Save/Load Mechanism
+- Uses static in-memory dictionary keyed by game ID
+- Each save stores the complete board state and move count
+- Load restores both the board configuration and move count
+
+### Game ID Preservation
+- The "New Game" button now preserves the existing game ID (if one exists)
+- This allows save/load to work correctly when resetting the board
+- First click of "New Game" generates a new ID; subsequent clicks reuse it
+
+### Capture Functionality
+- Added third move pattern: white pawn captures black pawn (e5 to d6, removing d7)
+- Demonstrates that save/load preserves both piece positions and captured pieces
 
 ## Visualizations
 
-### Animated GIF
-The animated GIF shows the complete workflow with actual chess board rendering at each step:
+All test flows generate:
+1. **Animated GIF** - Shows the complete workflow with actual chess board rendering
+2. **Merged PNG** - Shows all frames side-by-side for easy comparison
+3. **Individual HTML files** - Full HTML capture of each step for detailed inspection
 
-![Chess Complete Flow](chess_complete_flow.gif)
-
-### Merged PNG
-The merged PNG shows all 5 frames in a single image for easy comparison:
-
-![Chess Complete Flow - All Frames](chess_complete_flow_merged.png)
-
-**Notice in the merged PNG:**
-- Frame 2: White pawn moved to e4
-- Frame 4: Black pawn moved to e5 (white pawn still at e4)
-- Frame 5: After load, black pawn is back at e7, white pawn remains at e4 (restored to saved state)
-
-Each frame shows the game state including the chess board, piece positions, and game metadata.
+Each visualization includes:
+- Game ID
+- Game Type (Chess)
+- Last Updated timestamp
+- Complete chess board with Unicode piece symbols
+- All UI buttons and their states
 
