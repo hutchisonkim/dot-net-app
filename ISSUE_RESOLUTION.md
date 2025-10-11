@@ -4,7 +4,9 @@
 
 **Issue**: The documentation for Test 1 contradicts the original implementation. The original test expected a black pawn to move from e7 to e5, but the documentation describes a white pawn moving from e4 to e5.
 
-**Source**: Issue raised from code review comment in PR #36
+**Source**: Issue raised from code review comment in PR #36  
+**Reference**: https://github.com/hutchisonkim/dot-net-app/pull/36#discussion_r2422716577  
+**Reviewer**: @copilot-pull-request-reviewer
 
 ## Root Cause Analysis
 
