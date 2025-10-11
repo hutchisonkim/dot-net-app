@@ -22,6 +22,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Shared\DotNetApp.Core\DotNetApp.Core.csproj" />
+    <ProjectReference Include="..\..\src\DotNetApp.Server\DotNetApp.Server.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
   </ItemGroup>
 
 </Project>
