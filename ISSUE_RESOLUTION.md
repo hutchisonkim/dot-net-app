@@ -4,7 +4,7 @@
 
 **Issue**: The documentation for Test 1 contradicts the original implementation. The original test expected a black pawn to move from e7 to e5, but the documentation describes a white pawn moving from e4 to e5.
 
-**Source**: Issue raised from code review comment in PR #36 (https://github.com/hutchisonkim/dot-net-app/pull/36#discussion_r2422716577)
+**Source**: Issue raised from code review comment in PR #36
 
 ## Root Cause Analysis
 
@@ -87,9 +87,17 @@ Column 7 = File h
 
 ### Example Moves
 
-- **e2 to e4**: (6, 4) → (4, 4) - White pawn advance
-- **e7 to e5**: (1, 4) → (3, 4) - Black pawn advance
-- **d7**: (1, 3) - Black pawn starting position on d-file
+With this coordinate system in mind:
+
+- **e2**: row 6, column 4 (White's e-file pawn starting position)
+- **e4**: row 4, column 4 (two squares forward for White)
+- **e7**: row 1, column 4 (Black's e-file pawn starting position)
+- **e5**: row 3, column 4 (two squares forward for Black)
+- **d7**: row 1, column 3 (Black's d-file pawn starting position)
+
+So the move sequence is:
+- **e2 to e4**: (6, 4) → (4, 4) - White pawn advance (row 6 to row 4, column 4)
+- **e7 to e5**: (1, 4) → (3, 4) - Black pawn advance (row 1 to row 3, column 4)
 
 ## Verification
 
@@ -105,8 +113,8 @@ Column 7 = File h
 
 ## Additional Fixes in This PR
 
-1. **Removed duplicate test method**: `Pong_SuccessfulConnection_ShowsConnectedStatus` was defined twice in `PongUITests.cs`
-2. **Removed duplicate variable declarations**: `newGameButton`, `loadButton`, `saveButton` were declared twice in `ChessUITests.InitialState_RendersWithCorrectElementsAndButtonStates`
+1. **Removed duplicate test method**: In `PongUITests.cs`, there was a duplicate `Pong_SuccessfulConnection_ShowsConnectedStatus` method definition that was removed
+2. **Cleaned up redundant code**: In `ChessUITests.InitialState_RendersWithCorrectElementsAndButtonStates`, removed redundant button element lookups that were fetching the same elements twice
 3. **Enhanced code comments**: Added detailed coordinate system documentation to prevent similar issues
 
 ## Conclusion
