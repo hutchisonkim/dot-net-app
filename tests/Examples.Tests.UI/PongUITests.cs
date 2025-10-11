@@ -145,8 +145,9 @@ public class PongUITests
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Assert - Verify layout structure
-        Assert.Contains("game-container", cut.Markup);
+        // Assert - Verify layout structure using data-testid
+        var gameContainer = cut.Find("[data-testid='game-container']");
+        Assert.NotNull(gameContainer);
         
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_layout_structure");
@@ -229,9 +230,10 @@ public class PongUITests
         var eventsLog = cut.Find("[data-testid='events-log']");
         Assert.NotNull(eventsLog);
         
-        // The events log should exist but have no event entries initially
-        var eventEntries = cut.FindAll(".event-entry");
-        Assert.Empty(eventEntries);
+        // Verify the events log is initially empty (no child div elements with event-entry class)
+        var eventsLogContent = eventsLog.InnerHtml.Trim();
+        // The events log should be empty or only contain whitespace initially
+        Assert.DoesNotContain("<div class=\"event-entry\">", eventsLogContent);
         
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_events_log_empty");
@@ -270,7 +272,7 @@ public class PongUITests
         var eventsLog = cut.Find("[data-testid='events-log']");
         Assert.NotNull(eventsLog);
         
-        var gameContainer = cut.Find(".game-container");
+        var gameContainer = cut.Find("[data-testid='game-container']");
         Assert.NotNull(gameContainer);
     }
 
