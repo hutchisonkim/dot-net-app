@@ -47,6 +47,19 @@ public class ChessUITests
         Assert.NotNull(saveButton);
         Assert.True(saveButton.HasAttribute("disabled"));
         
+        // Assert - Verify initial button states
+        var newGameButton = cut.Find("button:contains('New Game')");
+        Assert.NotNull(newGameButton);
+        Assert.False(newGameButton.HasAttribute("disabled"));
+
+        var loadButton = cut.Find("button:contains('Load Game')");
+        Assert.NotNull(loadButton);
+        Assert.True(loadButton.HasAttribute("disabled"));
+
+        var saveButton = cut.Find("button:contains('Save Game')");
+        Assert.NotNull(saveButton);
+        Assert.True(saveButton.HasAttribute("disabled"));
+        
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "chess_initial_state");
         _output.WriteLine($"Screenshot saved to: {screenshotPath}");

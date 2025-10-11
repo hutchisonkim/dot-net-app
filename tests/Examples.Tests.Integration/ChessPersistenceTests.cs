@@ -6,11 +6,16 @@ using Xunit;
 
 namespace Examples.Tests.Integration;
 
+/// <summary>
+/// Integration tests for Chess game persistence functionality.
+/// Tests the InMemoryGameStateStore with chess-specific scenarios.
+/// Follows MSDN and xUnit testing guidelines.
+/// </summary>
 [Trait("Category", "Integration")]
 public class ChessPersistenceTests
 {
     [Fact]
-    public async Task Chess_SaveAndRetrieveGameState_WithInMemoryStore()
+    public async Task SaveGameStateAsync_NewChessGame_StoresAndRetrieves()
     {
         // Arrange
         var store = new InMemoryGameStateStore();
@@ -36,7 +41,7 @@ public class ChessPersistenceTests
     }
 
     [Fact]
-    public async Task Chess_UpdateGameState_PreservesGameId()
+    public async Task SaveGameStateAsync_UpdatedChessGame_PreservesGameId()
     {
         // Arrange
         var store = new InMemoryGameStateStore();
@@ -71,7 +76,7 @@ public class ChessPersistenceTests
     }
 
     [Fact]
-    public async Task Chess_DeleteGameState_RemovesFromStore()
+    public async Task DeleteGameStateAsync_ExistingChessGame_RemovesFromStore()
     {
         // Arrange
         var store = new InMemoryGameStateStore();
@@ -96,7 +101,7 @@ public class ChessPersistenceTests
     }
 
     [Fact]
-    public async Task Chess_MultipleGames_CanBeStoredIndependently()
+    public async Task SaveGameStateAsync_MultipleChessGames_StoresIndependently()
     {
         // Arrange
         var store = new InMemoryGameStateStore();

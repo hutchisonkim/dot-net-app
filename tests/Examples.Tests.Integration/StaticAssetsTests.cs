@@ -19,12 +19,12 @@ public class StaticAssetsTests
 
         // Assert - Check index.html exists
         var indexPath = Path.Combine(projectRoot, "index.html");
-        Assert.True(File.Exists(indexPath), 
+        Assert.True(File.Exists(indexPath),
             $"{gameName} must have an index.html in wwwroot folder. Path checked: {indexPath}");
 
         // Assert - Check favicon.ico exists
         var faviconPath = Path.Combine(projectRoot, "favicon.ico");
-        Assert.True(File.Exists(faviconPath), 
+        Assert.True(File.Exists(faviconPath),
             $"{gameName} must have a favicon.ico in wwwroot folder to prevent 404 errors. Path checked: {faviconPath}");
     }
 
@@ -40,7 +40,7 @@ public class StaticAssetsTests
             "examples", gameName, "wwwroot"));
 
         var indexPath = Path.Combine(projectRoot, "index.html");
-        
+
         // Act
         var indexContent = File.ReadAllText(indexPath);
 

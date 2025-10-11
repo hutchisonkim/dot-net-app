@@ -108,7 +108,7 @@ public class HttpRetryPolicyTests
         // Arrange
         int callCount = 0;
         var handler = new DisposalTrackingHandler(HttpStatusCode.OK);
-        
+
         // Override to return non-success for first 2 calls, then success
         Func<Task<HttpResponseMessage>> action = async () =>
         {
@@ -164,7 +164,7 @@ public class HttpRetryPolicyTests
 
         // Assert
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await task);
-        
+
         // Should have disposed all attempted responses
         Assert.Equal(handler.CallCount, handler.DisposalCount);
     }

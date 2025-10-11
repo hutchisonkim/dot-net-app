@@ -30,7 +30,7 @@ namespace DotNetApp.Client.Tests
             {
                 await Task.Delay(_delayMs, cancellationToken);
             }
-            
+
             var msg = new HttpResponseMessage(_statusCode)
             {
                 Content = new StringContent(_responseBody)
