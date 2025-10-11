@@ -38,6 +38,10 @@ app.MapHub<DotNetApp.Server.Hubs.GameHub>("/gamehub");
 app.Run();
 
 // Expose Program type for WebApplicationFactory-based tests
+// This pattern is required for .NET 6+ with top-level statements to make the implicit
+// Program class accessible to integration tests using WebApplicationFactory.
+// See: https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests
+// Verified by: ProgramEntryPointTests in DotNetApp.Server.Tests.Integration
 namespace DotNetApp.Server
 {
     public partial class Program { }
