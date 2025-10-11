@@ -3,29 +3,29 @@
 @using DotNetApp.Core.Messages
 @implements IAsyncDisposable
 
-<div class="game-container">
+<div class="game-container" data-testid="game-container">
     <h1>Pong Game - SignalR Real-time Example</h1>
 
     <p>This is a minimal example demonstrating real-time game architecture using SignalR.</p>
 
     <div>
-        <button @onclick="ConnectToHub" disabled="@(isConnected)">Connect</button>
-        <button @onclick="JoinGame" disabled="@(!isConnected || string.IsNullOrEmpty(gameId))">Join Game</button>
-        <button @onclick="LeaveGame" disabled="@(!isJoined)">Leave Game</button>
+        <button data-testid="connect-button" @onclick="ConnectToHub" disabled="@(isConnected)">Connect</button>
+        <button data-testid="join-button" @onclick="JoinGame" disabled="@(!isConnected || string.IsNullOrEmpty(gameId))">Join Game</button>
+        <button data-testid="leave-button" @onclick="LeaveGame" disabled="@(!isJoined)">Leave Game</button>
     </div>
 
     <div>
         <label>
             Game ID:
-            <input @bind="gameId" placeholder="Enter game ID" />
+            <input data-testid="game-id-input" @bind="gameId" placeholder="Enter game ID" />
         </label>
     </div>
 
     <div style="margin-top: 20px;">
-        <h3>Connection Status: @(isConnected ? "Connected" : "Disconnected")</h3>
+        <h3>Connection Status: <span data-testid="connection-status">@(isConnected ? "Connected" : "Disconnected")</span></h3>
         @if (isJoined)
         {
-            <p>Joined game: @gameId</p>
+            <p data-testid="joined-game-info">Joined game: @gameId</p>
         }
     </div>
 
@@ -39,10 +39,10 @@
 
     <div style="margin-top: 20px;">
         <h3>Events Log:</h3>
-        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 10px; background-color: #111;">
+        <div data-testid="events-log" style="max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 10px; background-color: #111;">
             @foreach (var evt in events)
             {
-                <div>@evt</div>
+                <div class="event-entry">@evt</div>
             }
         </div>
     </div>

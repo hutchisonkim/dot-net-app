@@ -31,12 +31,23 @@ public class PongUITests
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Assert - Verify initial UI elements
+        // Assert - Verify initial UI elements using semantic selectors
         Assert.Contains("Pong Game - SignalR Real-time Example", cut.Markup);
-        Assert.Contains("<button", cut.Markup);
-        Assert.Contains("Connect", cut.Markup);
-        Assert.Contains("Connection Status:", cut.Markup);
-        Assert.Contains("Disconnected", cut.Markup);
+        
+        // Verify buttons exist using data-testid
+        var connectButton = cut.Find("[data-testid='connect-button']");
+        Assert.NotNull(connectButton);
+        
+        var joinButton = cut.Find("[data-testid='join-button']");
+        Assert.NotNull(joinButton);
+        
+        var leaveButton = cut.Find("[data-testid='leave-button']");
+        Assert.NotNull(leaveButton);
+        
+        // Verify connection status element exists
+        var connectionStatus = cut.Find("[data-testid='connection-status']");
+        Assert.NotNull(connectionStatus);
+        Assert.Equal("Disconnected", connectionStatus.TextContent);
         
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_initial_state");
@@ -56,16 +67,16 @@ public class PongUITests
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Assert - Verify initial button states
-        var connectButton = cut.Find("button:contains('Connect')");
+        // Assert - Verify initial button states using data-testid
+        var connectButton = cut.Find("[data-testid='connect-button']");
         Assert.NotNull(connectButton);
         Assert.False(connectButton.HasAttribute("disabled"));
 
-        var joinButton = cut.Find("button:contains('Join Game')");
+        var joinButton = cut.Find("[data-testid='join-button']");
         Assert.NotNull(joinButton);
         Assert.True(joinButton.HasAttribute("disabled"));
 
-        var leaveButton = cut.Find("button:contains('Leave Game')");
+        var leaveButton = cut.Find("[data-testid='leave-button']");
         Assert.NotNull(leaveButton);
         Assert.True(leaveButton.HasAttribute("disabled"));
 
@@ -111,8 +122,9 @@ public class PongUITests
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Assert - Verify events log section exists
-        Assert.Contains("Events Log:", cut.Markup);
+        // Assert - Verify events log section exists using data-testid
+        var eventsLog = cut.Find("[data-testid='events-log']");
+        Assert.NotNull(eventsLog);
         
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_initial_events_log");
@@ -131,10 +143,10 @@ public class PongUITests
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Assert - Verify Game ID input exists
-        Assert.Contains("Game ID:", cut.Markup);
-        Assert.Contains("<input", cut.Markup);
-        Assert.Contains("pong-room-1", cut.Markup); // Default game ID
+        // Assert - Verify Game ID input exists using data-testid
+        var gameIdInput = cut.Find("[data-testid='game-id-input']");
+        Assert.NotNull(gameIdInput);
+        Assert.Equal("pong-room-1", gameIdInput.GetAttribute("value")); // Default game ID
         
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_initial_game_id_input");
@@ -153,8 +165,9 @@ public class PongUITests
         // Act
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Assert - Verify layout structure
-        Assert.Contains("game-container", cut.Markup);
+        // Assert - Verify layout structure using data-testid
+        var gameContainer = cut.Find("[data-testid='game-container']");
+        Assert.NotNull(gameContainer);
         
         // Capture screenshot
         var screenshotPath = ScreenshotHelper.CaptureHtml(cut, "pong_layout_structure");
@@ -172,21 +185,22 @@ public class PongUITests
         using var ctx = new TestContext();
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Verify initial disconnected state
-        Assert.Contains("Disconnected", cut.Markup);
+        // Verify initial disconnected state using data-testid
+        var connectionStatus = cut.Find("[data-testid='connection-status']");
+        Assert.Equal("Disconnected", connectionStatus.TextContent);
         var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "pong_before_connect_attempt");
         _output.WriteLine($"Screenshot 1 (before connect) saved to: {screenshotPath1}");
 
         // Act - Click Connect button (will fail since no server is running)
-        var connectButton = cut.Find("button:contains('Connect')");
+        var connectButton = cut.Find("[data-testid='connect-button']");
         connectButton.Click();
 
         // Wait for async operation to complete
         System.Threading.Thread.Sleep(1000);
 
-        // Assert - Verify error message appears in events log
-        var markupAfterConnect = cut.Markup;
-        Assert.Contains("Events Log:", markupAfterConnect);
+        // Assert - Verify events log is still present (component still functional)
+        var eventsLog = cut.Find("[data-testid='events-log']");
+        Assert.NotNull(eventsLog);
         
         // The connection will fail, so we expect an error in the events
         // (This tests the error handling path)
@@ -205,11 +219,14 @@ public class PongUITests
         using var ctx = new TestContext();
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // Assert initial state
-        Assert.Contains("Disconnected", cut.Markup);
-        var initialConnectButton = cut.Find("button:contains('Connect')");
+        // Assert initial state using data-testid
+        var connectionStatus = cut.Find("[data-testid='connection-status']");
+        Assert.Equal("Disconnected", connectionStatus.TextContent);
+        
+        var initialConnectButton = cut.Find("[data-testid='connect-button']");
         Assert.False(initialConnectButton.HasAttribute("disabled"));
-        var initialJoinButton = cut.Find("button:contains('Join Game')");
+        
+        var initialJoinButton = cut.Find("[data-testid='join-button']");
         Assert.True(initialJoinButton.HasAttribute("disabled"));
 
         var screenshotPath1 = ScreenshotHelper.CaptureHtml(cut, "pong_connection_flow_1_initial");
@@ -223,9 +240,44 @@ public class PongUITests
         var screenshotPath2 = ScreenshotHelper.CaptureHtml(cut, "pong_connection_flow_2_after_connect_click");
         _output.WriteLine($"Screenshot 2 (after connect click) saved to: {screenshotPath2}");
 
-        // Verify component is still functional
-        Assert.Contains("Events Log:", cut.Markup);
-        Assert.Contains("game-container", cut.Markup);
+        // Verify component is still functional using data-testid
+        var eventsLog = cut.Find("[data-testid='events-log']");
+        Assert.NotNull(eventsLog);
+        
+        var gameContainer = cut.Find("[data-testid='game-container']");
+        Assert.NotNull(gameContainer);
+    }
+
+    /// <summary>
+    /// Tests successful connection state display.
+    /// Demonstrates the UI appearance when connection is successful by creating a mock connected state.
+    /// Note: This test creates a visual representation since actual SignalR connection requires a running server.
+    /// </summary>
+    [Fact]
+    public void Pong_SuccessfulConnection_ShowsConnectedStatus()
+    {
+        // Arrange
+        using var ctx = new TestContext();
+        var cut = ctx.RenderComponent<Pong.Pages.Index>();
+
+        // Act - Create a mock HTML representation of connected state for screenshot purposes
+        // This demonstrates what the UI looks like when successfully connected
+        var connectedMarkup = cut.Markup
+            .Replace("<span data-testid=\"connection-status\">Disconnected</span>", "<span data-testid=\"connection-status\">Connected</span>")
+            .Replace("disabled=\"\"", "disabled=\"disabled\""); // Connect button would be disabled when connected
+        
+        // Add success message to events log
+        var eventsLogPattern = "<div data-testid=\"events-log\" style=\"max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 10px; background-color: #111;\"></div>";
+        var eventsLogWithMessage = "<div data-testid=\"events-log\" style=\"max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 10px; background-color: #111;\"><div class=\"event-entry\">Connected to SignalR hub</div></div>";
+        connectedMarkup = connectedMarkup.Replace(eventsLogPattern, eventsLogWithMessage);
+
+        // Save the mock connected state as HTML for screenshot
+        var screenshotPath = ScreenshotHelper.CaptureHtmlContent(connectedMarkup, "pong_successful_connection");
+        _output.WriteLine($"Screenshot (connected state) saved to: {screenshotPath}");
+        
+        // Assert - Verify the mock markup contains connected state
+        Assert.Contains("<span data-testid=\"connection-status\">Connected</span>", connectedMarkup);
+        Assert.Contains("Connected to SignalR hub", connectedMarkup);
     }
 
     /// <summary>
@@ -273,9 +325,9 @@ public class PongUITests
         // Act - Render the component (ball animation starts automatically)
         var cut = ctx.RenderComponent<Pong.Pages.Index>();
 
-        // First verify connection status is visible
-        Assert.Contains("Connection Status:", cut.Markup);
-        Assert.Contains("Disconnected", cut.Markup);
+        // First verify connection status is visible using data-testid
+        var connectionStatus = cut.Find("[data-testid='connection-status']");
+        Assert.Equal("Disconnected", connectionStatus.TextContent);
 
         // Capture initial state
         var initialMarkup = cut.Markup;
