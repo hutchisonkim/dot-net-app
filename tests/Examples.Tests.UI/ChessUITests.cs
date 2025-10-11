@@ -30,12 +30,8 @@ public class ChessUITests
         // Assert - Verify initial UI elements
         Assert.Contains("Chess Game - Persistence Example", cut.Markup);
         
-        // Verify New Game button exists using data-testid
-        var newGameButton = cut.Find("[data-testid='new-game-button']");
-        Assert.NotNull(newGameButton);
-        
         // Assert - Verify initial button states using data-testid
-        newGameButton = cut.Find("[data-testid='new-game-button']");
+        var newGameButton = cut.Find("[data-testid='new-game-button']");
         Assert.NotNull(newGameButton);
         Assert.False(newGameButton.HasAttribute("disabled"));
 
@@ -44,19 +40,6 @@ public class ChessUITests
         Assert.True(loadButton.HasAttribute("disabled"));
 
         var saveButton = cut.Find("[data-testid='save-game-button']");
-        Assert.NotNull(saveButton);
-        Assert.True(saveButton.HasAttribute("disabled"));
-        
-        // Assert - Verify initial button states
-        var newGameButton = cut.Find("button:contains('New Game')");
-        Assert.NotNull(newGameButton);
-        Assert.False(newGameButton.HasAttribute("disabled"));
-
-        var loadButton = cut.Find("button:contains('Load Game')");
-        Assert.NotNull(loadButton);
-        Assert.True(loadButton.HasAttribute("disabled"));
-
-        var saveButton = cut.Find("button:contains('Save Game')");
         Assert.NotNull(saveButton);
         Assert.True(saveButton.HasAttribute("disabled"));
         
