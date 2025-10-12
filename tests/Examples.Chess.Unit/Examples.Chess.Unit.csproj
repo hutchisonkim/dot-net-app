@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Examples\Chess\Chess.csproj" />
+  <ProjectReference Include="..\..\tests\Shared\TestArtifacts\TestArtifacts.csproj" />
   </ItemGroup>
 
 </Project>

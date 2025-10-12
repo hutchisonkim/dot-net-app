@@ -2,7 +2,6 @@
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetApp.Server", "src\DotNetApp.Server\DotNetApp.Server.csproj", "{E4787A6F-2E4D-CDBC-A83F-6CEECD16407D}"
@@ -35,7 +34,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Examples.Chess.UI", "tests\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Examples.Chess.PolicyUnit", "tests\Examples.Chess.PolicyUnit\Examples.Chess.PolicyUnit.csproj", "{8AF6084F-C770-4498-93EF-274F735D9590}"
 EndProject
-
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{DCDCC001-0599-41E6-8C94-ABDCD393DDA3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{7F8BE836-7BEB-4740-B89A-F70B6D31C7F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestArtifacts", "tests\Shared\TestArtifacts\TestArtifacts.csproj", "{5E9520C6-79E8-433B-AFEB-C103975F20EB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -104,11 +108,19 @@ Global
 		{8AF6084F-C770-4498-93EF-274F735D9590}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8AF6084F-C770-4498-93EF-274F735D9590}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8AF6084F-C770-4498-93EF-274F735D9590}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E9520C6-79E8-433B-AFEB-C103975F20EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E9520C6-79E8-433B-AFEB-C103975F20EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E9520C6-79E8-433B-AFEB-C103975F20EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E9520C6-79E8-433B-AFEB-C103975F20EB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {865D83FD-2761-48B0-B275-827738B8E41C}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7F8BE836-7BEB-4740-B89A-F70B6D31C7F0} = {DCDCC001-0599-41E6-8C94-ABDCD393DDA3}
+		{5E9520C6-79E8-433B-AFEB-C103975F20EB} = {7F8BE836-7BEB-4740-B89A-F70B6D31C7F0}
 	EndGlobalSection
 EndGlobal

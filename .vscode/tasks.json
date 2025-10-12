@@ -1,0 +1,104 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Chess: Unit Tests (Examples.Chess.Unit)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Examples.Chess.Unit/Examples.Chess.Unit.csproj",
+        "-c",
+        "Release"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Chess: Integration Tests (Examples.Chess.Integration)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Examples.Chess.Integration/Examples.Chess.Integration.csproj",
+        "-c",
+        "Release"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "Chess: UI Tests (Examples.Chess.UI)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Examples.Chess.UI/Examples.Chess.UI.csproj",
+        "-c",
+        "Release"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "Chess: Policy Unit Tests (Examples.Chess.PolicyUnit)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Examples.Chess.PolicyUnit/Examples.Chess.PolicyUnit.csproj",
+        "-c",
+        "Release"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "Chess: All Tests (sequence)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Chess: Unit Tests (Examples.Chess.Unit)",
+        "Chess: Integration Tests (Examples.Chess.Integration)",
+        "Chess: UI Tests (Examples.Chess.UI)",
+        "Chess: Policy Unit Tests (Examples.Chess.PolicyUnit)"
+      ],
+      "type": "shell",
+      "command": "echo",
+      "args": [
+        "Running Chess test tasks in sequence..."
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
