@@ -48,15 +48,11 @@ While modernizing the example and test layout, I noted a few places that do not 
    - Problem: No repo-level VS Code launch/debug configs for the example projects.
    - Suggestion: Provide `/.vscode/launch.json` snippets to run `src/Examples/Chess` and `src/Examples/Pong` locally with proper port mappings.
 
-4) Remove or archive old `examples/` folders
-   - Problem: Original `examples/` folders still exist (not used by the solution). They can cause confusion.
-   - Suggestion: Archive or empty the files (you requested deletes be manual). Optionally add a migration note.
-
-5) Update solution to include example tests in CI matrix
+4) Update solution to include example tests in CI matrix
    - Problem: CI runs are generic; examples have dedicated workflows but the main CI doesn't include example test breakouts.
    - Suggestion: Add separate CI jobs for example unit/integration/UI tests with appropriate runners.
 
-6) Uniform test naming and additional unit test coverage
+5) Uniform test naming and additional unit test coverage
    - Problem: Example test methods are placeholders; add specific method naming per MSDN/xUnit guidance and expand coverage.
    - Suggestion: Replace placeholders with real tests following `{Method}_{Scenario}_{Expected}` pattern.
 
