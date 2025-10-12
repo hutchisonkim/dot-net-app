@@ -1,0 +1,191 @@
+
+@page "/"
+@using Microsoft.AspNetCore.SignalR.Client
+@using DotNetApp.Core.Messages
+@implements IAsyncDisposable
+
+<div class="game-container" data-testid="game-container">
+	<h1>Pong Game - SignalR Real-time Example</h1>
+
+	<p>This is a minimal example demonstrating real-time game architecture using SignalR.</p>
+
+	<div>
+		<button data-testid="connect-button" @onclick="ConnectToHub" disabled="@(isConnected)">Connect</button>
+		<button data-testid="join-button" @onclick="JoinGame" disabled="@(!isConnected || string.IsNullOrEmpty(gameId))">Join Game</button>
+		<button data-testid="leave-button" @onclick="LeaveGame" disabled="@(!isJoined)">Leave Game</button>
+	</div>
+
+	<div>
+		<label>
+			Game ID:
+			<input data-testid="game-id-input" @bind="gameId" placeholder="Enter game ID" />
+		</label>
+	</div>
+
+	<div style="margin-top: 20px;">
+		<h3>Connection Status: <span data-testid="connection-status">@(isConnected ? "Connected" : "Disconnected")</span></h3>
+		@if (isJoined)
+		{
+			<p data-testid="joined-game-info">Joined game: @gameId</p>
+		}
+	</div>
+
+	<div class="pong-canvas" style="width: 600px; height: 400px; position: relative; background: black;">
+		<!-- Paddles -->
+		<div style="position: absolute; left: 10px; top: @(leftPaddleY)px; width: 10px; height: 60px; background: white;"></div>
+		<div style="position: absolute; right: 10px; top: @(rightPaddleY)px; width: 10px; height: 60px; background: white;"></div>
+		<!-- Ball -->
+		<div style="position: absolute; left: @(ballX)px; top: @(ballY)px; width: 10px; height: 10px; background: white; border-radius: 50%;"></div>
+	</div>
+
+	<div style="margin-top: 20px;">
+		<h3>Events Log:</h3>
+		<div data-testid="events-log" style="max-height: 200px; overflow-y: auto; border: 1px solid #333; padding: 10px; background-color: #111;">
+			@foreach (var evt in events)
+			{
+				<div class="event-entry">@evt</div>
+			}
+		</div>
+	</div>
+</div>
+
+@code {
+	private HubConnection? hubConnection;
+	private string gameId = "pong-room-1";
+	private bool isConnected = false;
+	private bool isJoined = false;
+	private List<string> events = new();
+    
+	// Game state
+	private int ballX = 295;
+	private int ballY = 195;
+	private int ballVelocityX = 3;
+	private int ballVelocityY = 2;
+	private int leftPaddleY = 170;
+	private int rightPaddleY = 170;
+	private System.Threading.Timer? gameTimer;
+
+	protected override void OnInitialized()
+	{
+		// Start game loop for ball animation
+		gameTimer = new System.Threading.Timer(UpdateGameState, null, 0, 50); // Update every 50ms
+	}
+
+	private void UpdateGameState(object? state)
+	{
+		// Update ball position
+		ballX += ballVelocityX;
+		ballY += ballVelocityY;
+        
+		// Bounce off top and bottom
+		if (ballY <= 0 || ballY >= 390)
+		{
+			ballVelocityY = -ballVelocityY;
+		}
+        
+		// Bounce off paddles
+		if ((ballX <= 20 && ballY >= leftPaddleY && ballY <= leftPaddleY + 60) ||
+			(ballX >= 570 && ballY >= rightPaddleY && ballY <= rightPaddleY + 60))
+		{
+			ballVelocityX = -ballVelocityX;
+		}
+        
+		// Reset if ball goes out of bounds
+		if (ballX < 0 || ballX > 600)
+		{
+			ballX = 295;
+			ballY = 195;
+			ballVelocityX = ballVelocityX < 0 ? 3 : -3;
+		}
+        
+		// Simple AI for paddles
+		if (leftPaddleY + 30 < ballY) leftPaddleY += 2;
+		if (leftPaddleY + 30 > ballY) leftPaddleY -= 2;
+		if (rightPaddleY + 30 < ballY) rightPaddleY += 2;
+		if (rightPaddleY + 30 > ballY) rightPaddleY -= 2;
+        
+		// Constrain paddles to canvas
+		leftPaddleY = Math.Clamp(leftPaddleY, 0, 340);
+		rightPaddleY = Math.Clamp(rightPaddleY, 0, 340);
+        
+		InvokeAsync(StateHasChanged);
+	}
+
+	private async Task ConnectToHub()
+	{
+		try
+		{
+			hubConnection = new HubConnectionBuilder()
+				.WithUrl("http://localhost:5000/gamehub")
+				.Build();
+
+			hubConnection.On<string, DateTime>("PlayerJoined", (connectionId, timestamp) =>
+			{
+				events.Add($"[{timestamp:HH:mm:ss}] Player joined: {connectionId}");
+				StateHasChanged();
+			});
+
+			hubConnection.On<string, DateTime>("PlayerLeft", (connectionId, timestamp) =>
+			{
+				events.Add($"[{timestamp:HH:mm:ss}] Player left: {connectionId}");
+				StateHasChanged();
+			});
+
+			hubConnection.On<GameMessage>("ReceiveGameMessage", (message) =>
+			{
+				events.Add($"[{message.Timestamp:HH:mm:ss}] Message: {message.MessageType}");
+				StateHasChanged();
+			});
+
+			await hubConnection.StartAsync();
+			isConnected = true;
+			events.Add("Connected to SignalR hub");
+		}
+		catch (Exception ex)
+		{
+			events.Add($"Error connecting: {ex.Message}");
+		}
+	}
+
+	private async Task JoinGame()
+	{
+		if (hubConnection is null || string.IsNullOrEmpty(gameId)) return;
+
+		try
+		{
+			await hubConnection.InvokeAsync("JoinGame", gameId);
+			isJoined = true;
+			events.Add($"Joined game: {gameId}");
+		}
+		catch (Exception ex)
+		{
+			events.Add($"Error joining game: {ex.Message}");
+		}
+	}
+
+	private async Task LeaveGame()
+	{
+		if (hubConnection is null || string.IsNullOrEmpty(gameId)) return;
+
+		try
+		{
+			await hubConnection.InvokeAsync("LeaveGame", gameId);
+			isJoined = false;
+			events.Add($"Left game: {gameId}");
+		}
+		catch (Exception ex)
+		{
+			events.Add($"Error leaving game: {ex.Message}");
+		}
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		gameTimer?.Dispose();
+        
+		if (hubConnection is not null)
+		{
+			await hubConnection.DisposeAsync();
+		}
+	}
+}
