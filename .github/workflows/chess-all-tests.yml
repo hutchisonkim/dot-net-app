@@ -1,0 +1,35 @@
+name: Chess — All Tests
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    name: Build and run all Chess tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore solution
+        run: dotnet restore DotNetApp.sln
+
+      - name: Build solution
+        run: dotnet build DotNetApp.sln --configuration Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test tests/Examples.Chess.Unit/Examples.Chess.Unit.csproj --configuration Release --no-build --logger "trx"
+
+      - name: Run integration tests
+        run: dotnet test tests/Examples.Chess.Integration/Examples.Chess.Integration.csproj --configuration Release --no-build --logger "trx"
+
+      - name: Run UI tests
+        run: dotnet test tests/Examples.Chess.UI/Examples.Chess.UI.csproj --configuration Release --no-build --logger "trx"
+
+      - name: Run policy unit tests
+        run: dotnet test tests/Examples.Chess.PolicyUnit/Examples.Chess.PolicyUnit.csproj --configuration Release --no-build --logger "trx"
