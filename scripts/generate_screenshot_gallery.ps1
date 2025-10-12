@@ -326,8 +326,8 @@ if ($chessScreenshots.Count -gt 0) {
 if ($pongScreenshots.Count -gt 0) {
     $html += @"
             <div class="game-section">
-                <h2 class="game-title">🏓 Pong Game - SignalR Real-time Example</h2>
-                <p class="game-subtitle">Testing real-time multiplayer with SignalR connection and event flow</p>
+                <h2 class="game-title">� Pong Game</h2>
+                <p class="game-subtitle">Real-time multiplayer example (SignalR removed)</p>
                 <div class="screenshots-grid">
 "@
 

@@ -8,8 +8,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// SignalR for real-time game communication
-builder.Services.AddSignalR();
+// SignalR removed: real-time game communication has been disabled/removed.
 
 // Core + application services
 // Register core-like services directly (DotNetApp.Core project removed in this workspace).
@@ -33,7 +32,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
 app.MapControllers();
-app.MapHub<DotNetApp.Server.Hubs.GameHub>("/gamehub");
+// SignalR hub mapping removed
 
 app.Run();
 

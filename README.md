@@ -5,7 +5,7 @@ DotNetApp is a **reusable template** for building multiplayer game applications 
 ## Features
 
 ✔️ **Game State Management**: IGameStateService abstraction with InMemory and Cosmos DB implementations  
-✔️ **Real-time Communication**: SignalR hub for multiplayer game synchronization  
+✔️ **Real-time Communication**: (removed) SignalR-based real-time multiplayer functionality has been removed from this template.
 ✔️ **Example Games**: Chess (persistence-focused) and Pong (real-time-focused)  
 ✔️ **Comprehensive Testing**: Unit tests, integration tests, and E2E tests (Playwright)  
 ✔️ **100% Code Coverage**: Full coverage tracking with automated reporting  
