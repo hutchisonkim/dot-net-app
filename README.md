@@ -2,8 +2,8 @@
 
 DotNetApp is a demo starter built to showcase clean, maintainable **.NET 8** patterns while following **MSDN best practices** and **xUnit testing guidelines**.
 
-> [!NOTE]
-> This repo has been retired. Check the new repo hobby at [hutchisonkim/game](https://github.com/hutchisonkim/game).
+> [!WARNING]
+> This repo has been retired. For an active work-in-progress, see [hutchisonkim/game](https://github.com/hutchisonkim/game).
 
 
 ## Features
